@@ -1,0 +1,170 @@
+global codes "G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\Procesamiento\Codigos\Ingresos"
+
+*-------------------------------------------------------------
+* SECCIÓN 1: CONFIGURACIÓN DE RUTAS Y DIRECTORIOS
+*-------------------------------------------------------------
+* Definición de rutas globales para facilitar la portabilidad del código
+global bases "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Procesamiento/Bases"
+global raw "$bases/enemdu_diciembres"
+global procesado "$bases/Procesadas"
+global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Outcomes/Curvas de crecimiento"
+
+
+
+foreach y of numlist 1991(2)2023 2024 {
+    di "**********`y'***********"		
+	
+	local condact_var condact
+	if inrange(`y', 2007, 2013) local condact_var CONDACTN
+
+	local instr_var nivins
+	if `y' >= 2007 local instr_var p10a
+	
+	capture describe adec using "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta"
+	if !_rc local adec_var adec
+	else local adec_var
+		
+	use `adec_var' `condact_var' `instr_var' anio fexp using  "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta", clear
+	
+   rename `condact_var' condact_`y'
+   rename `instr_var' nivins_`y'
+   
+
+   save "$procesado/empleo_adecuado/empleo_`y'.dta", replace
+
+}
+
+
+use condact nivin* adec anio fexp using "$procesado/empleo_adecuado/empleo_2001.dta", clear
+
+foreach y of numlist 1991(2)2023 2024 {
+    di "**********`y'***********"		
+			
+	capture describe adec using "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta"
+	if !_rc local adec_var adec
+	else local adec_var	
+			
+    append using "$procesado/empleo_adecuado/empleo_`y'.dta", keep(condact* nivins anio fexp `adec_var')
+
+}
+
+save "$procesado/empleo_adecuado/empleo_anios_impares_2000s.dta", replace
+s
+
+use "$procesado/empleo_adecuado/empleo_anios_impares_2000s.dta", clear
+
+*tostring anio, replace
+cap drop uni
+gen universitario = 0
+
+foreach var of varlist nivins_* {
+
+if "`var'" == "nivins_2001" replace universitario = 1 if `var' >= 6 & `var' != .
+else replace universitario = 1 if `var' >= 9 & `var' != .
+
+
+local anio = real(substr("`var'", -4, .))
+di "`anio'"
+replace universitario = . if `var' == . & anio == `anio'
+
+}
+
+
+cap drop emp_adec
+gen emp_adec = 0
+
+foreach var of varlist condact_* {
+
+local anio = real(substr("`var'", -4, .))
+di "`anio'"
+
+replace emp_adec = 1 if `var' == 1  
+replace emp_adec = . if inlist(`var', 0, 9) & anio == `anio'
+replace emp_adec = adec if inlist(anio , 2001, 2003, 2005, 2015) 
+}
+
+
+keep if !inlist(., universitario, emp_adec)
+
+tab emp_adec anio [iw = fexp], nofreq col
+
+tabstat emp_adec [w = fexp], by(anio) 
+s
+
+replace emp_adec = emp_adec *100
+
+gen emp_adec_n = emp_adec
+
+
+
+
+
+collapse (mean) emp_adec (count) emp_adec_n  [iw = fexp], by(universitario anio) 
+
+gen a = emp_adec*emp_adec_n
+bysort anio: egen b = sum(a)
+bysort anio: egen c = sum(emp_adec_n)
+gen emp_nacional = b/c
+
+twoway (connected emp_nacional anio, lcolor(dkgreen) mcolor(dkgreen)), ///
+       legend(order(1 "Nacional") col(3)) ///
+       xtitle("Año") ytitle("Empleo adecuado (%)") ///
+	   xlabel(2001(4)2023) ///
+	   name(nacional, replace)
+
+
+twoway (connected emp_adec anio if universitario == 0, lcolor(navy) mcolor(navy)) ///
+       (connected emp_adec anio if universitario == 1, lcolor(cranberry) mcolor(cranberry)), ///
+       legend(order(1 "No universitario" 2 "Universitario") col(3)) ///
+       xtitle("Año") ytitle("Empleo adecuado (%)") ///
+	   xlabel(2001(4)2023) ///
+	   name(adec_educ, replace)
+	   
+	   
+twoway (connected emp_adec anio if universitario == 0, lcolor(navy) mcolor(navy)) ///
+       (connected emp_adec anio if universitario == 1, lcolor(cranberry) mcolor(cranberry)) ///
+       (connected emp_nacional anio, lcolor(dkgreen) mcolor(dkgreen)), ///
+       legend(order(1 "No universitario" 2 "Universitario" 3 "Nacional") col(3)) ///
+       xtitle("Año") ytitle("Empleo adecuado (%)") ///
+	   xlabel(2001(4)2023) ///
+	   name(adec_combined, replace)
+
+
+
+
+/*
+
+2001: 7 8  (9?)
+
+2003, 2005: 7, 8, 9
+ 
+2015: 7, 8
+
+2007-2013, 2017-2023: 1, 9
+
+*/
+
+** Educación
+** 2001: 7
+
+
+
+foreach y of numlist 2001 2003 2005 2015 {
+    di "**********`y'***********"		
+	
+	local condact_var condact
+	if inrange(`y', 2007, 2013) local condact_var CONDACTN
+
+	local instr_var nivins
+	if `y' >= 2007 local instr_var p10a
+	
+	use `condact_var' `instr_var' anio fexp using  "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta", clear
+	
+	order `condact_var' `instr_var' 
+	
+	label dir 
+    local first_lab = word("`r(names) '", 2)	
+	label list  `first_lab'
+}
+
+

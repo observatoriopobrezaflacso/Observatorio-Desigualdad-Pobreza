@@ -1,0 +1,360 @@
+
+# =============================================================================
+# MORTALIDAD INFANTIL Y MATERNA
+# =============================================================================
+
+cat("\n--- Análisis de mortalidad infantil y materna ---\n")
+
+# Población de referencia para mortalidad infantil y materna ----
+# Necesitamos consultar la base de datos censal para obtener:
+# 1. Número de nacimientos/niños <1 año (aproximación)
+# 2. Mujeres en edad fértil para calcular tasas maternas
+
+# Para mortalidad infantil, usaremos la población de niños <1 año del censo
+# Para mortalidad materna, usaremos mujeres en edad fértil (15-49 años)
+
+con <- dbConnect(duckdb::duckdb(), dbdir = file.path(base_dir, "Procesamiento/Bases/Censo/mydb.duckdb"), read_only = TRUE)
+
+# Población infantil (<1 año) - gedad == 0
+poblacion_infantil_total <- dbGetQuery(con, "
+  SELECT COUNT(*) AS n_personas
+  FROM censo2022
+  WHERE gedad == 0
+")$n_personas
+
+# Mujeres en edad fértil (15-49 años) - gedad entre 4 y 11
+poblacion_mujeres_fertiles <- dbGetQuery(con, "
+  SELECT COUNT(*) AS n_personas
+  FROM censo2022
+  WHERE P02 == 2 AND gedad BETWEEN 4 AND 11
+")$n_personas
+
+# Población infantil por educación de la madre (aproximación usando nivel educativo del hogar)
+# Para esto necesitaríamos relacionar con jefe/a de hogar, pero como no tenemos esa info,
+# usaremos un proxy: distribución educativa de mujeres en edad fértil
+
+poblacion_infantil_educ <- dbGetQuery(con, "
+  SELECT
+    CASE
+      WHEN P17R >= 6 THEN 'Secundaria completa o más'
+      ELSE 'Secundaria incompleta o menos'
+    END AS nivel_educativo_madre,
+    COUNT(*) AS n_mujeres
+  FROM censo2022
+  WHERE P02 == 2 AND gedad BETWEEN 4 AND 11
+  GROUP BY nivel_educativo_madre
+")
+
+# Población infantil por pobreza de la parroquia
+# Usaremos la distribución de población infantil por nivel de pobreza de parroquia
+
+dbDisconnect(con)
+
+cat("Población infantil (<1 año):", format(poblacion_infantil_total, big.mark = ","), "\n")
+cat("Mujeres en edad fértil (15-49):", format(poblacion_mujeres_fertiles, big.mark = ","), "\n")
+
+# MORTALIDAD INFANTIL ----
+
+# Identificar defunciones infantiles (menores de 1 año)
+defunciones_infantiles <- defunciones %>%
+  filter(edad_num < 1)
+
+cat("Defunciones infantiles (<1 año):", nrow(defunciones_infantiles), "\n")
+
+# MORTALIDAD INFANTIL POR EDUCACIÓN DE LA MADRE ----
+# Nota: Los datos de defunciones contienen información sobre educación de la madre (est_mad)
+
+defunciones_infantiles <- defunciones_infantiles %>%
+  mutate(
+    educacion_madre = case_when(
+      as.numeric(est_mad) %in% c(4, 5, 6, 7, 8) ~ "Secundaria completa o más",
+      as.numeric(est_mad) %in% c(0, 1, 2, 3) ~ "Secundaria incompleta o menos",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Calcular proporción para estimar población infantil por educación materna
+prop_educ_madre <- poblacion_infantil_educ %>%
+  mutate(prop = n_mujeres / sum(n_mujeres))
+
+poblacion_infantil_por_educ <- data.frame(
+  educacion_madre = c("Secundaria completa o más", "Secundaria incompleta o menos"),
+  poblacion = c(
+    poblacion_infantil_total * prop_educ_madre$prop[prop_educ_madre$nivel_educativo_madre == "Secundaria completa o más"],
+    poblacion_infantil_total * prop_educ_madre$prop[prop_educ_madre$nivel_educativo_madre == "Secundaria incompleta o menos"]
+  )
+)
+
+# Tasa de mortalidad infantil por educación de la madre
+tasas_mort_infantil_educ <- defunciones_infantiles %>%
+  filter(!is.na(educacion_madre)) %>%
+  count(educacion_madre) %>%
+  left_join(poblacion_infantil_por_educ, by = "educacion_madre") %>%
+  mutate(tasa_1000 = n / poblacion * 1000)
+
+# Calcular ratio
+ratio_mort_infantil_educ <- tasas_mort_infantil_educ %>%
+  select(educacion_madre, tasa_1000) %>%
+  pivot_wider(names_from = educacion_madre, values_from = tasa_1000) %>%
+  mutate(ratio = `Secundaria incompleta o menos` / `Secundaria completa o más`,
+         ratio_label = paste0(round(ratio, 1), "x"))
+
+# Gráfico: Mortalidad infantil por educación de la madre
+g_mort_infantil_educ <- ggplot(tasas_mort_infantil_educ, aes(x = educacion_madre, y = tasa_1000, fill = educacion_madre)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = paste0(round(tasa_1000, 2), "\n(n=", format(n, big.mark = ","), ")")),
+            vjust = -0.3, size = 4.5) +
+  annotate("segment", x = 1, xend = 2,
+           y = max(tasas_mort_infantil_educ$tasa_1000) * 1.28,
+           yend = max(tasas_mort_infantil_educ$tasa_1000) * 1.28,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 1, xend = 1,
+           y = max(tasas_mort_infantil_educ$tasa_1000) * 1.28,
+           yend = max(tasas_mort_infantil_educ$tasa_1000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 2, xend = 2,
+           y = max(tasas_mort_infantil_educ$tasa_1000) * 1.28,
+           yend = max(tasas_mort_infantil_educ$tasa_1000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  geom_label(aes(x = 1.5, y = max(tasas_mort_infantil_educ$tasa_1000) * 1.33,
+                 label = ratio_mort_infantil_educ$ratio_label),
+             fill = "white", color = "gray20", size = 4, fontface = "bold",
+             label.padding = unit(0.2, "lines")) +
+  scale_fill_manual(values = c("Secundaria completa o más" = "#27AE60", "Secundaria incompleta o menos" = "#E74C3C")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.45))) +
+  labs(
+    title = "Tasa de mortalidad infantil (<1 año) por educación de la madre",
+    subtitle = "Ecuador 2024 - Tasa por 1,000 nacidos vivos (ratio = Sec. incompleta / Sec. completa)",
+    x = NULL,
+    y = "Tasa por 1,000 nacidos vivos"
+  ) +
+  theme(legend.position = "none")
+
+ggsave(file.path(output_dir, "mortalidad_infantil_educacion_madre.png"), g_mort_infantil_educ, width = 9, height = 6, dpi = 300, bg = "white")
+cat("Gráfico guardado: mortalidad_infantil_educacion_madre.png\n")
+
+# MORTALIDAD INFANTIL POR POBREZA ----
+
+# Agregar datos de pobreza a defunciones infantiles
+defunciones_infantiles_pobreza <- defunciones_infantiles %>%
+  left_join(df_parroquias_pobreza, by = "cod_parroquia")
+
+# Calcular población infantil por nivel de pobreza (usando distribución de población total)
+poblacion_infantil_pobreza <- poblacion_pobreza %>%
+  mutate(poblacion_infantil = poblacion / poblacion_total * poblacion_infantil_total)
+
+# Tasa de mortalidad infantil por pobreza
+tasas_mort_infantil_pob <- defunciones_infantiles_pobreza %>%
+  filter(!is.na(nivel_pobreza)) %>%
+  count(nivel_pobreza) %>%
+  left_join(poblacion_infantil_pobreza %>% select(nivel_pobreza, poblacion = poblacion_infantil), by = "nivel_pobreza") %>%
+  mutate(tasa_1000 = n / poblacion * 1000)
+
+tasas_mort_infantil_pob$nivel_pobreza <- factor(
+  tasas_mort_infantil_pob$nivel_pobreza,
+  levels = c("Mayor pobreza", "Pobreza media", "Menor pobreza")
+)
+
+# Calcular ratio
+ratio_mort_infantil_pob <- tasas_mort_infantil_pob %>%
+  filter(nivel_pobreza %in% c("Mayor pobreza", "Menor pobreza")) %>%
+  select(nivel_pobreza, tasa_1000) %>%
+  pivot_wider(names_from = nivel_pobreza, values_from = tasa_1000) %>%
+  mutate(ratio = `Mayor pobreza` / `Menor pobreza`,
+         ratio_label = paste0(round(ratio, 1), "x"))
+
+# Gráfico: Mortalidad infantil por pobreza
+g_mort_infantil_pob <- ggplot(tasas_mort_infantil_pob, aes(x = nivel_pobreza, y = tasa_1000, fill = nivel_pobreza)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = paste0(round(tasa_1000, 2), "\n(n=", format(n, big.mark = ","), ")")),
+            vjust = -0.3, size = 4.5) +
+  annotate("segment", x = 1, xend = 3,
+           y = max(tasas_mort_infantil_pob$tasa_1000) * 1.28,
+           yend = max(tasas_mort_infantil_pob$tasa_1000) * 1.28,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 1, xend = 1,
+           y = max(tasas_mort_infantil_pob$tasa_1000) * 1.28,
+           yend = max(tasas_mort_infantil_pob$tasa_1000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 3, xend = 3,
+           y = max(tasas_mort_infantil_pob$tasa_1000) * 1.28,
+           yend = max(tasas_mort_infantil_pob$tasa_1000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  geom_label(aes(x = 2, y = max(tasas_mort_infantil_pob$tasa_1000) * 1.33,
+                 label = ratio_mort_infantil_pob$ratio_label),
+             fill = "white", color = "gray20", size = 4, fontface = "bold",
+             label.padding = unit(0.2, "lines")) +
+  scale_fill_manual(values = colores_pobreza) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.45))) +
+  labs(
+    title = "Tasa de mortalidad infantil (<1 año) por nivel de pobreza de la parroquia",
+    subtitle = "Ecuador 2024 - Tasa por 1,000 nacidos vivos (ratio = Mayor pobreza / Menor pobreza)",
+    x = "Nivel de pobreza (NBI)",
+    y = "Tasa por 1,000 nacidos vivos"
+  ) +
+  theme(legend.position = "none")
+
+ggsave(file.path(output_dir, "mortalidad_infantil_pobreza.png"), g_mort_infantil_pob, width = 9, height = 6, dpi = 300, bg = "white")
+cat("Gráfico guardado: mortalidad_infantil_pobreza.png\n")
+
+# MORTALIDAD MATERNA ----
+
+# Identificar defunciones maternas
+# Usaremos causas relacionadas con embarazo, parto y puerperio (Capítulo XV CIE-10: O00-O99)
+defunciones_maternas <- defunciones %>%
+  filter(grepl("^O", as.character(causa)) & as.numeric(sexo) == 2 & edad_num >= 15 & edad_num < 50)
+
+cat("Defunciones maternas:", nrow(defunciones_maternas), "\n")
+
+# MORTALIDAD MATERNA POR EDUCACIÓN ----
+
+defunciones_maternas <- defunciones_maternas %>%
+  mutate(
+    nivel_educativo_materna = case_when(
+      as.numeric(niv_inst) %in% c(4, 5, 6, 7, 8) ~ "Secundaria completa o más",
+      as.numeric(niv_inst) %in% c(0, 1, 2, 3) ~ "Secundaria incompleta o menos",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Población de referencia: mujeres en edad fértil por educación
+con <- dbConnect(duckdb::duckdb(), dbdir = file.path(base_dir, "Procesamiento/Bases/Censo/mydb.duckdb"), read_only = TRUE)
+
+poblacion_mujeres_educ <- dbGetQuery(con, "
+  SELECT
+    CASE
+      WHEN P17R >= 6 THEN 'Secundaria completa o más'
+      ELSE 'Secundaria incompleta o menos'
+    END AS nivel_educativo,
+    COUNT(*) AS n_personas
+  FROM censo2022
+  WHERE P02 == 2 AND gedad BETWEEN 4 AND 11
+  GROUP BY nivel_educativo
+")
+
+dbDisconnect(con)
+
+# Tasa de mortalidad materna por educación
+tasas_mort_materna_educ <- defunciones_maternas %>%
+  filter(!is.na(nivel_educativo_materna)) %>%
+  count(nivel_educativo_materna) %>%
+  left_join(poblacion_mujeres_educ, by = c("nivel_educativo_materna" = "nivel_educativo")) %>%
+  mutate(tasa_100000 = n / n_personas * 100000)
+
+# Calcular ratio
+ratio_mort_materna_educ <- tasas_mort_materna_educ %>%
+  select(nivel_educativo_materna, tasa_100000) %>%
+  pivot_wider(names_from = nivel_educativo_materna, values_from = tasa_100000) %>%
+  mutate(ratio = `Secundaria incompleta o menos` / `Secundaria completa o más`,
+         ratio_label = paste0(round(ratio, 1), "x"))
+
+# Gráfico: Mortalidad materna por educación
+g_mort_materna_educ <- ggplot(tasas_mort_materna_educ, aes(x = nivel_educativo_materna, y = tasa_100000, fill = nivel_educativo_materna)) +
+  geom_col(width = 0.5) +
+  geom_text(aes(label = paste0(round(tasa_100000, 2), "\n(n=", format(n, big.mark = ","), ")")),
+            vjust = -0.3, size = 4.5) +
+  annotate("segment", x = 1, xend = 2,
+           y = max(tasas_mort_materna_educ$tasa_100000) * 1.28,
+           yend = max(tasas_mort_materna_educ$tasa_100000) * 1.28,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 1, xend = 1,
+           y = max(tasas_mort_materna_educ$tasa_100000) * 1.28,
+           yend = max(tasas_mort_materna_educ$tasa_100000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 2, xend = 2,
+           y = max(tasas_mort_materna_educ$tasa_100000) * 1.28,
+           yend = max(tasas_mort_materna_educ$tasa_100000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  geom_label(aes(x = 1.5, y = max(tasas_mort_materna_educ$tasa_100000) * 1.33,
+                 label = ratio_mort_materna_educ$ratio_label),
+             fill = "white", color = "gray20", size = 4, fontface = "bold",
+             label.padding = unit(0.2, "lines")) +
+  scale_fill_manual(values = c("Secundaria completa o más" = "#27AE60", "Secundaria incompleta o menos" = "#E74C3C")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.45))) +
+  labs(
+    title = "Razón de mortalidad materna por nivel educativo",
+    subtitle = "Ecuador 2024 - Muertes por 100,000 mujeres en edad fértil (ratio = Sec. incompleta / Sec. completa)",
+    x = NULL,
+    y = "Muertes por 100,000 mujeres (15-49 años)"
+  ) +
+  theme(legend.position = "none")
+
+ggsave(file.path(output_dir, "mortalidad_materna_educacion.png"), g_mort_materna_educ, width = 9, height = 6, dpi = 300, bg = "white")
+cat("Gráfico guardado: mortalidad_materna_educacion.png\n")
+
+# MORTALIDAD MATERNA POR POBREZA ----
+
+# Agregar datos de pobreza
+defunciones_maternas_pobreza <- defunciones_maternas %>%
+  left_join(df_parroquias_pobreza, by = "cod_parroquia")
+
+# Calcular población de mujeres en edad fértil por nivel de pobreza
+poblacion_mujeres_pobreza <- poblacion_pobreza %>%
+  mutate(poblacion_mujeres = poblacion / 2)  # Aproximación: 50% mujeres, ajustado por edad fértil
+
+# Tasa de mortalidad materna por pobreza
+tasas_mort_materna_pob <- defunciones_maternas_pobreza %>%
+  filter(!is.na(nivel_pobreza)) %>%
+  count(nivel_pobreza) %>%
+  left_join(poblacion_mujeres_pobreza %>% select(nivel_pobreza, poblacion = poblacion_mujeres), by = "nivel_pobreza") %>%
+  mutate(tasa_100000 = n / poblacion * 100000)
+
+tasas_mort_materna_pob$nivel_pobreza <- factor(
+  tasas_mort_materna_pob$nivel_pobreza,
+  levels = c("Mayor pobreza", "Pobreza media", "Menor pobreza")
+)
+
+# Calcular ratio
+ratio_mort_materna_pob <- tasas_mort_materna_pob %>%
+  filter(nivel_pobreza %in% c("Mayor pobreza", "Menor pobreza")) %>%
+  select(nivel_pobreza, tasa_100000) %>%
+  pivot_wider(names_from = nivel_pobreza, values_from = tasa_100000) %>%
+  mutate(ratio = `Mayor pobreza` / `Menor pobreza`,
+         ratio_label = paste0(round(ratio, 1), "x"))
+
+# Gráfico: Mortalidad materna por pobreza
+g_mort_materna_pob <- ggplot(tasas_mort_materna_pob, aes(x = nivel_pobreza, y = tasa_100000, fill = nivel_pobreza)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = paste0(round(tasa_100000, 2), "\n(n=", format(n, big.mark = ","), ")")),
+            vjust = -0.3, size = 4.5) +
+  annotate("segment", x = 1, xend = 3,
+           y = max(tasas_mort_materna_pob$tasa_100000) * 1.28,
+           yend = max(tasas_mort_materna_pob$tasa_100000) * 1.28,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 1, xend = 1,
+           y = max(tasas_mort_materna_pob$tasa_100000) * 1.28,
+           yend = max(tasas_mort_materna_pob$tasa_100000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  annotate("segment", x = 3, xend = 3,
+           y = max(tasas_mort_materna_pob$tasa_100000) * 1.28,
+           yend = max(tasas_mort_materna_pob$tasa_100000) * 1.25,
+           color = "gray40", linewidth = 0.5) +
+  geom_label(aes(x = 2, y = max(tasas_mort_materna_pob$tasa_100000) * 1.33,
+                 label = ratio_mort_materna_pob$ratio_label),
+             fill = "white", color = "gray20", size = 4, fontface = "bold",
+             label.padding = unit(0.2, "lines")) +
+  scale_fill_manual(values = colores_pobreza) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.45))) +
+  labs(
+    title = "Razón de mortalidad materna por nivel de pobreza de la parroquia",
+    subtitle = "Ecuador 2024 - Muertes por 100,000 mujeres en edad fértil (ratio = Mayor pobreza / Menor pobreza)",
+    x = "Nivel de pobreza (NBI)",
+    y = "Muertes por 100,000 mujeres (15-49 años)"
+  ) +
+  theme(legend.position = "none")
+
+ggsave(file.path(output_dir, "mortalidad_materna_pobreza.png"), g_mort_materna_pob, width = 9, height = 6, dpi = 300, bg = "white")
+cat("Gráfico guardado: mortalidad_materna_pobreza.png\n")
+
+# Resumen mortalidad infantil y materna ----
+cat("\n--- Resumen de mortalidad infantil ---\n")
+cat("Por educación de la madre:\n")
+print(tasas_mort_infantil_educ)
+cat("\nPor nivel de pobreza:\n")
+print(tasas_mort_infantil_pob)
+
+cat("\n--- Resumen de mortalidad materna ---\n")
+cat("Por educación:\n")
+print(tasas_mort_materna_educ)
+cat("\nPor nivel de pobreza:\n")
+print(tasas_mort_materna_pob)

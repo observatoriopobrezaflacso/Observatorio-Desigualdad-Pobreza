@@ -1,0 +1,26 @@
+*Growth incidence analysis
+
+*Entre el 2006 y el 2010.
+*nominales
+
+clear all
+use "C:\Inequality\ing_perca_2006_r.dta", clear
+
+*En nominales
+gicurve using "C:\Inequality\ing_perca_2010_r.dta" [w=round(fexp)], var1(ingtot_per) var2(ingtot_per) np(10) hc(32.5) yp(4)mgrpp
+
+
+*Entre 2000 y 2006.
+*Año base, 2000
+
+use "C:\Inequality\ing_perca_2000_r.dta", clear
+
+gicurve using "C:\Inequality\ing_perca_2006_r.dta" [w=round(fexp)], var1(ingtot_per) var2(ingtot_per) np(10) pl(36.4) yp(6)mgrpp
+
+
+*Entre 1990 y 2000
+
+use "C:\Inequality\ing_perca_1990.dta", clear
+
+
+gicurve using "C:\Inequality\ing_perca_2000.dta" [w=round(fexp)], var1(ingtot_per) var2(ingtot_per) np(10) hc(53.7) yp(10) mgrpp

@@ -1,0 +1,25 @@
+# Databases
+*.duckdb
+*.sqlite
+*.db
+
+# Datasets
+Procesamiento/Bases/
+
+# Data file formats
+*.csv
+*.xlsx
+*.xls
+*.rds
+*.zip
+*.sav
+*.dta
+
+# System files
+.DS_Store
+.Rhistory
+.RData
+.Ruserdata
+
+# Claude/Cursor
+.claude/

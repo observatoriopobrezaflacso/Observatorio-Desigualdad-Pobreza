@@ -1,0 +1,1544 @@
+------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  G:/Mi unidad/Trabajos/Observatorio de PolÃ­ticas PÃºblicas/BoletÃ­n 1/Outcomes/Curvas 
+> de crecimiento/exploration.log
+  log type:  text
+ opened on:   9 Dec 2025, 23:57:44
+
+. 
+. 
+. use "$procesado/ingresos_pc/ing_perca_2015_nac_precios2000.dta", clear
+
+. 
+. *foreach v of varlist p20 p21 p22 p25 p27 p32 p34 p35 {
+. foreach v of varlist p20 p21 p22 p25 p27 p32 p34 p35 {
+  2.         
+.         di "**** `v' *******"
+  3. 
+. 
+.         foreach y of numlist 1991 1995 2005 2015 {
+  4. 
+.    
+.         use "$procesado/ingresos_pc/ing_perca_`y'_urb_precios2000.dta", clear
+  5. 
+.         di "**** `y' *******"
+  6. 
+. 
+.                 if inrange(`y', 2001, 2005) rename hormas p27
+  7. 
+.                 
+.                 if inrange(`y', 1990, 2005) {
+  8.                         
+. 
+.                         gen t = 1
+  9.                         rename t t_a
+ 10. 
+.                         rename edad p03
+ 11.                         rename trabajo p20
+ 12.                         rename actayuda p21 
+ 13.                         rename aunotra p22 
+ 14.                         rename hortrasa p24
+ 15.                         rename ratmeh p25
+ 16.                         rename bustrama  p32
+ 17.                         rename motnobus p34
+ 18.                         rename deseatra p35
+ 19.                         rename hortrahp p51a
+ 20.                         rename hortrahs p51b
+ 21.                         rename hortraho p51c
+ 22.                 }
+ 23. 
+.         
+.                 if inrange(`y', 1991, 1999) {           
+ 24.                         gen p27 = 2  if p20 == 1 | p22 == 1 | !inlist(p25, 9, .)
+ 25.                         capture replace p27 = 1 if ratmeh1 != .
+ 26.                         capture replace p27 = 1 if hormas != .
+ 27.                 }
+ 28. 
+.         
+.           codebook `v'
+ 29. 
+.                 
+. }
+ 30. 
+. }
+**** p20 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p20                                                                     trabajó la semana pasada
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: trabajo, but 1 nonmissing value is not labeled
+
+                 Range: [0,2]                         Units: 1
+         Unique values: 3                         Missing .: 9,183/39,071
+
+            Tabulation: Freq.   Numeric  Label
+                           20         0  
+                       14,870         1  trabajo al menos 1 hora
+                       14,998         2  no trabajo
+                        9,183         .  
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p20                                                                     trabajó la semana pasada
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: trabajo, but 1 nonmissing value is not labeled
+
+                 Range: [0,2]                         Units: 1
+         Unique values: 3                         Missing .: 7,849/36,568
+
+            Tabulation: Freq.   Numeric  Label
+                            2         0  
+                       14,377         1  trabajo al menos 1 hora
+                       14,340         2  no trabajo
+                        7,849         .  
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p20                                                               pe20. trabajó la semana pasada
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABD
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 3,658/41,633
+
+            Tabulation: Freq.   Numeric  Label
+                       17,634         1  si
+                       20,341         2  no
+                        3,658         .  
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p20                                                                 20. TrabajÃ³ la semana pasada
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels28
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 5,742/66,646
+
+            Tabulation: Freq.   Numeric  Label
+                       28,024         1  Si
+                       32,880         2  No
+                        5,742         .  
+**** p21 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p21                                                actividad que realizó para ayudar en su hogar
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: actayuda
+
+                 Range: [3,12]                        Units: 1
+         Unique values: 10                        Missing .: 24,073/39,071
+
+              Examples: 12    no realizo ninguna actividad
+                        .     
+                        .     
+                        .     
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p21                                                actividad que realizó para ayudar en su hogar
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: actayuda
+
+                 Range: [3,12]                        Units: 1
+         Unique values: 10                        Missing .: 22,228/36,568
+
+              Examples: 12    no realizo ninguna actividad
+                        .     
+                        .     
+                        .     
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p21                                          pe21. actividad que realizó para ayudar en su hogar
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: actayuda
+
+                 Range: [1,11]                        Units: 1
+         Unique values: 11                        Missing .: 21,292/41,633
+
+              Examples: 11    no realizo ninguna actividad
+                        11    no realizo ninguna actividad
+                        .     
+                        .     
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p21                                            21. Actividad que realizÃ³ para ayudar en su hogar
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels29
+
+                 Range: [1,12]                        Units: 1
+         Unique values: 12                        Missing .: 33,766/66,646
+
+              Examples: 12    No realizÃ³ ninguna actividad
+                        12    No realizÃ³ ninguna actividad
+                        .     
+                        .     
+**** p22 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p22                                                        tiene trabajo del cual estuvo ausente
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABB
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 24,364/39,071
+
+            Tabulation: Freq.   Numeric  Label
+                          491         1  si
+                       14,216         2  no
+                       24,364         .  
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p22                                                        tiene trabajo del cual estuvo ausente
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABB
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 22,546/36,568
+
+            Tabulation: Freq.   Numeric  Label
+                          173         1  si
+                       13,849         2  no
+                       22,546         .  
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p22                                                  pe22. tiene trabajo del cual estuvo ausente
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABD
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 21,646/41,633
+
+            Tabulation: Freq.   Numeric  Label
+                          220         1  si
+                       19,767         2  no
+                       21,646         .  
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p22                                                    22. Tiene trabajo del cual estuvo ausente
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels30
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 34,312/66,646
+
+            Tabulation: Freq.   Numeric  Label
+                          345         1  Si
+                       31,989         2  No
+                       34,312         .  
+**** p25 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p25                                                   razón por la que trabajó menos de 40 horas
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: ratmeh
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 35,594/39,071
+
+            Tabulation: Freq.   Numeric  Label
+                        2,868         1  horario normal
+                          609         2  no desea trabajar más horas
+                       35,594         .  
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p25                                                   razón por la que trabajó menos de 40 horas
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: ratmeh
+
+                 Range: [1,3]                         Units: 1
+         Unique values: 3                         Missing .: 34,068/36,568
+
+            Tabulation: Freq.   Numeric  Label
+                        1,000         1  horario normal
+                        1,161         2  motivos de salud, familiar o
+                                         personal
+                          339         3  no desea trabajar más horas
+                       34,068         .  
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p25                                             pe25. razón por la que trabajó menos de 40 horas
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: ratmeh
+
+                 Range: [1,8]                         Units: 1
+         Unique values: 8                         Missing .: 36,662/41,633
+
+            Tabulation: Freq.   Numeric  Label
+                          674         1  no consiguió trabajo en otra
+                                         parte
+                          995         2  no consiguió más trabajo
+                          183         3  reducción de actidades
+                                         económicas
+                          109         4  falta de materia prima
+                        2,038         5  horario normal
+                          415         6  motivos de salud, personales o
+                                         familiares
+                          465         7  por estudios
+                           92         8  otro
+                       36,662         .  
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p25                                               25. RazÃ³n por la que trabajÃ³ menos de 40 horas
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels33
+
+                 Range: [1,9]                         Units: 1
+         Unique values: 9                         Missing .: 59,466/66,646
+
+            Tabulation: Freq.   Numeric  Label
+                        2,504         1  Su trabajo asÃ­ lo exige
+                        1,088         2  No consiguiÃ³ trabajo en otra
+                                         parte
+                        1,238         3  No consiguiÃ³ mÃ¡s trabajo
+                          123         4  ReducciÃ³n actividades
+                                         econÃ³micas
+                           28         5  Falta de materia prima
+                        1,243         6  Motivos de salud, familiares
+                          528         7  Por estudios
+                           13         8  Por huelga o paro
+                          415         9  No desea o no necesita
+                       59,466         .  
+**** p27 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p27                                                                                  (unlabeled)
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (float)
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 23,484/39,071
+
+            Tabulation: Freq.  Value
+                        2,911  1
+                       12,676  2
+                       23,484  .
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p27                                                                                  (unlabeled)
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (float)
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 21,801/36,568
+
+            Tabulation: Freq.  Value
+                        1,000  1
+                       13,767  2
+                       21,801  .
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p27                                                               pe27. desea trabajar mas horas
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABD
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 23,425/41,633
+
+            Tabulation: Freq.   Numeric  Label
+                        7,895         1  si
+                       10,313         2  no
+                       23,425         .  
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p27                                                                 27. Desea trabajar mÃ¡s horas
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels35
+
+                 Range: [1,4]                         Units: 1
+         Unique values: 4                         Missing .: 38,146/66,646
+
+            Tabulation: Freq.   Numeric  Label
+                        1,997         1  Trabajar mÃ¡s horas en su
+                                         trabajo actual
+                        1,963         2  Trabajar mÃ¡s horas en otro
+                                         trabajo
+                        1,834         3  Cambiar el trabajo por otro con
+                                         mÃ¡s horas
+                       22,706         4  No desea trabajar mÃ¡s horas
+                       38,146         .  
+**** p32 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p32                                                                buscó trabajo el mes anterior
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABB
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 25,518/39,071
+
+            Tabulation: Freq.   Numeric  Label
+                          248         1  si
+                       13,305         2  no
+                       25,518         .  
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p32                                                                buscó trabajo el mes anterior
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABB
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 23,371/36,568
+
+            Tabulation: Freq.   Numeric  Label
+                          176         1  si
+                       13,021         2  no
+                       23,371         .  
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p32                                                          pe29. buscó trabajo el mes anterior
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABD
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 22,485/41,633
+
+            Tabulation: Freq.   Numeric  Label
+                          200         1  si
+                       18,948         2  no
+                       22,485         .  
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p32                                                            32. BuscÃ³ trabajo el mes anterior
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels40
+
+                 Range: [1,11]                        Units: 1
+         Unique values: 11                        Missing .: 34,657/66,646
+
+              Examples: 11    No realizÃ³ ninguna gestiÃ³n
+                        11    No realizÃ³ ninguna gestiÃ³n
+                        .     
+                        .     
+**** p34 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p34                                                            razón por la que no buscó trabajo
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: motnobus
+
+                 Range: [1,8]                         Units: 1
+         Unique values: 8                         Missing .: 25,766/39,071
+
+            Tabulation: Freq.   Numeric  Label
+                        1,470         1  no tiene necesidad o deseos de
+                                         trabajar
+                        8,817         2  no tiene tiempo
+                          634         3  está enfermo
+                        1,926         4  no está en edad de trabajar
+                          169         5  piensa que no le darán trabajo
+                          208         6  no cree poder encontrar
+                           38         7  espera respuesta a una gestión
+                           43         8  espera respuesta de un
+                                         empleador u otras gestiones
+                       25,766         .  
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p34                                                            razón por la que no buscó trabajo
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: motnobus
+
+                 Range: [1,8]                         Units: 1
+         Unique values: 8                         Missing .: 23,547/36,568
+
+            Tabulation: Freq.   Numeric  Label
+                        1,318         1  no tiene necesidad o deseos de
+                                         trabajar
+                       10,043         2  no tiene tiempo
+                          454         3  está enfermo
+                          969         4  no está en edad de trabajar
+                           69         5  piensa que no le darán trabajo
+                           91         6  no cree poder encontrar
+                           32         7  espera respuesta a una gestión
+                           45         8  espera respuesta de un
+                                         empleador u otras gestiones
+                       23,547         .  
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p34                                                      pe32. razón por la que no buscó trabajo
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: motnobus
+
+                 Range: [1,11]                        Units: 1
+         Unique values: 11                        Missing .: 22,685/41,633
+
+              Examples: 9     no tiene tiempo
+                        11    no tiene edad de trabajar
+                        .     
+                        .     
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p34                                                        34. RazÃ³n por la que no buscÃ³ trabajo
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels42
+
+                 Range: [1,12]                        Units: 1
+         Unique values: 12                        Missing .: 36,088/66,646
+
+              Examples: 9     No tiene tiempo
+                        12    No estÃ¡ en edad de trabajar
+                        .     
+                        .     
+**** p35 *******
+**** 1991 *******
+(23,490 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p35                                                                   desea trabajar actualmente
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABC
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 38,613/39,071
+
+            Tabulation: Freq.   Numeric  Label
+                          417         1  si
+                           41         2  no
+                       38,613         .  
+**** 1995 *******
+(21,801 missing values generated)
+
+------------------------------------------------------------------------------------------------
+p35                                                                   desea trabajar actualmente
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABC
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 36,331/36,568
+
+            Tabulation: Freq.   Numeric  Label
+                          228         1  si
+                            9         2  no
+                       36,331         .  
+**** 2005 *******
+
+------------------------------------------------------------------------------------------------
+p35                                              pe33. desea trabajar y esta dispuesto a hacerlo
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: LABD
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 40,634/41,633
+
+            Tabulation: Freq.   Numeric  Label
+                          609         1  si
+                          390         2  no
+                       40,634         .  
+**** 2015 *******
+
+------------------------------------------------------------------------------------------------
+p35                                                35. Desea trabajar y estÃ¡ dispuesto a hacerlo
+------------------------------------------------------------------------------------------------
+
+                  Type: Numeric (byte)
+                 Label: labels43
+
+                 Range: [1,2]                         Units: 1
+         Unique values: 2                         Missing .: 66,173/66,646
+
+            Tabulation: Freq.   Numeric  Label
+                          384         1  Si
+                           89         2  No
+                       66,173         .  
+
+. 
+. 
+. 
+. use "$procesado/ingresos_pc/ing_perca_2015_nac_precios2000.dta", clear
+
+. 
+. foreach v of varlist p20 p21 p22 p25 p27 p32 p34 p35 {
+  2. *foreach v of varlist p32 {
+.         
+.         di "**** `v' *******"
+  3. 
+. 
+.         foreach y of numlist 1991 1995 2005 2015 {
+  4. 
+.         di "**** `y' *******"
+  5. 
+.         use "$procesado/ingresos_pc/ing_perca_`y'_urb_precios2000.dta", clear
+  6. 
+. 
+.                 if inrange(`y', 2001, 2005) rename hormas p27
+  7. 
+.                 if inrange(`y', 1990, 1999) {           
+  8.                         cap gen p27 = ratmeh1
+  9.                         cap gen p27 = hormas
+ 10.                         *replace p27 = 1 if ratmeh1 != .
+.                 }
+ 11.                 
+.                 if inrange(`y', 1990, 2005) {
+ 12. 
+.                         gen t = 1
+ 13.                         rename t t_a
+ 14. 
+.                         rename edad p03
+ 15.                         rename trabajo p20
+ 16.                         rename actayuda p21 
+ 17.                         rename aunotra p22 
+ 18.                         rename hortrasa p24
+ 19.                         rename ratmeh p25
+ 20.                         rename bustrama  p32
+ 21.                         rename motnobus p34
+ 22.                         rename deseatra p35
+ 23.                         rename hortrahp p51a
+ 24.                         rename hortrahs p51b
+ 25.                         rename hortraho p51c
+ 26.                 }
+ 27. 
+.         
+.           tab  `v'
+ 28.           tab  `v', nol
+ 29. 
+.                 
+. }
+ 30. 
+. }
+**** p20 *******
+**** 1991 *******
+
+      trabajó la semana |
+                 pasada |      Freq.     Percent        Cum.
+------------------------+-----------------------------------
+                      0 |         20        0.07        0.07
+trabajo al menos 1 hora |     14,870       49.75       49.82
+             no trabajo |     14,998       50.18      100.00
+------------------------+-----------------------------------
+                  Total |     29,888      100.00
+
+ trabajó la |
+     semana |
+     pasada |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |         20        0.07        0.07
+          1 |     14,870       49.75       49.82
+          2 |     14,998       50.18      100.00
+------------+-----------------------------------
+      Total |     29,888      100.00
+**** 1995 *******
+
+      trabajó la semana |
+                 pasada |      Freq.     Percent        Cum.
+------------------------+-----------------------------------
+                      0 |          2        0.01        0.01
+trabajo al menos 1 hora |     14,377       50.06       50.07
+             no trabajo |     14,340       49.93      100.00
+------------------------+-----------------------------------
+                  Total |     28,719      100.00
+
+ trabajó la |
+     semana |
+     pasada |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |          2        0.01        0.01
+          1 |     14,377       50.06       50.07
+          2 |     14,340       49.93      100.00
+------------+-----------------------------------
+      Total |     28,719      100.00
+**** 2005 *******
+
+      pe20. |
+ trabajó la |
+     semana |
+     pasada |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |     17,634       46.44       46.44
+         no |     20,341       53.56      100.00
+------------+-----------------------------------
+      Total |     37,975      100.00
+
+      pe20. |
+ trabajó la |
+     semana |
+     pasada |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |     17,634       46.44       46.44
+          2 |     20,341       53.56      100.00
+------------+-----------------------------------
+      Total |     37,975      100.00
+**** 2015 *******
+
+        20. |
+ TrabajÃ³ la |
+     semana |
+     pasada |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         Si |     28,024       46.01       46.01
+         No |     32,880       53.99      100.00
+------------+-----------------------------------
+      Total |     60,904      100.00
+
+        20. |
+ TrabajÃ³ la |
+     semana |
+     pasada |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |     28,024       46.01       46.01
+          2 |     32,880       53.99      100.00
+------------+-----------------------------------
+      Total |     60,904      100.00
+**** p21 *******
+**** 1991 *******
+
+actividad que realizó para ayudar en |
+                            su hogar |      Freq.     Percent        Cum.
+-------------------------------------+-----------------------------------
+                 aten.negocio propio |         39        0.26        0.26
+             fabricar algún producto |          8        0.05        0.31
+   hacer algo en casa por un ingreso |         45        0.30        0.61
+              brindar algún servicio |         14        0.09        0.71
+    ayudar en algún negocio familiar |        140        0.93        1.64
+                 aprendiz remunerado |          3        0.02        1.66
+estudiante que realizó algún trabajo |          9        0.06        1.72
+          trabajar para otra familia |          8        0.05        1.77
+       otra actividad por un ingreso |         24        0.16        1.93
+        no realizo ninguna actividad |     14,708       98.07      100.00
+-------------------------------------+-----------------------------------
+                               Total |     14,998      100.00
+
+  actividad |
+que realizó |
+para ayudar |
+en su hogar |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          3 |         39        0.26        0.26
+          4 |          8        0.05        0.31
+          5 |         45        0.30        0.61
+          6 |         14        0.09        0.71
+          7 |        140        0.93        1.64
+          8 |          3        0.02        1.66
+          9 |          9        0.06        1.72
+         10 |          8        0.05        1.77
+         11 |         24        0.16        1.93
+         12 |     14,708       98.07      100.00
+------------+-----------------------------------
+      Total |     14,998      100.00
+**** 1995 *******
+
+actividad que realizó para ayudar en |
+                            su hogar |      Freq.     Percent        Cum.
+-------------------------------------+-----------------------------------
+              atender negocio propio |         83        0.58        0.58
+             fabricar algún producto |         13        0.09        0.67
+   hacer algo en casa por un ingreso |         23        0.16        0.83
+              brindar algún servicio |         13        0.09        0.92
+    ayudar en algún negocio familiar |        167        1.16        2.09
+                 aprendiz remunerado |          5        0.03        2.12
+estudiante que realizó algún trabajo |          5        0.03        2.15
+          trabajar para otra familia |          7        0.05        2.20
+       otra actividad por un ingreso |          2        0.01        2.22
+        no realizo ninguna actividad |     14,022       97.78      100.00
+-------------------------------------+-----------------------------------
+                               Total |     14,340      100.00
+
+  actividad |
+que realizó |
+para ayudar |
+en su hogar |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          3 |         83        0.58        0.58
+          4 |         13        0.09        0.67
+          5 |         23        0.16        0.83
+          6 |         13        0.09        0.92
+          7 |        167        1.16        2.09
+          8 |          5        0.03        2.12
+          9 |          5        0.03        2.15
+         10 |          7        0.05        2.20
+         11 |          2        0.01        2.22
+         12 |     14,022       97.78      100.00
+------------+-----------------------------------
+      Total |     14,340      100.00
+**** 2005 *******
+
+pe21. actividad que realizó para ayudar |
+                            en su hogar |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+                 atender negocio propio |         80        0.39        0.39
+                      labores agrícolas |         64        0.31        0.71
+                fabricar algún producto |          8        0.04        0.75
+      hacer algo en casa por un ingreso |         29        0.14        0.89
+                 brindar algún servicio |         22        0.11        1.00
+       ayudar en algún negocio familiar |         97        0.48        1.47
+aprendiz remunerado en dinero o especie |          7        0.03        1.51
+   estudiante que realizó algún trabajo |          8        0.04        1.55
+             trabajar para otra familia |          7        0.03        1.58
+          otra actividad por un ingreso |         32        0.16        1.74
+           no realizo ninguna actividad |     19,987       98.26      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     20,341      100.00
+
+      pe21. |
+  actividad |
+que realizó |
+para ayudar |
+en su hogar |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |         80        0.39        0.39
+          2 |         64        0.31        0.71
+          3 |          8        0.04        0.75
+          4 |         29        0.14        0.89
+          5 |         22        0.11        1.00
+          6 |         97        0.48        1.47
+          7 |          7        0.03        1.51
+          8 |          8        0.04        1.55
+          9 |          7        0.03        1.58
+         10 |         32        0.16        1.74
+         11 |     19,987       98.26      100.00
+------------+-----------------------------------
+      Total |     20,341      100.00
+**** 2015 *******
+
+ 21. Actividad que realizÃ³ para ayudar |
+                           en su hogar |      Freq.     Percent        Cum.
+---------------------------------------+-----------------------------------
+                Atender negocio propio |         74        0.23        0.23
+               Fabricar algÃºn producto |          9        0.03        0.25
+     Hacer algo en casa por un ingreso |         33        0.10        0.35
+                Brindar algÃºn servicio |         35        0.11        0.46
+      Ayudar en algÃºn negocio familiar |        182        0.55        1.01
+Ayudar en el trabajo de algÃºn familiar |         30        0.09        1.10
+                   Aprendiz remunerado |          1        0.00        1.11
+   Labores agrÃ­colas, cuidado animales |        135        0.41        1.52
+  Estudiante que realizÃ³ algÃºn trabajo |          7        0.02        1.54
+            Trabajar para otra familia |          5        0.02        1.55
+         Otra actividad por un ingreso |         35        0.11        1.66
+          No realizÃ³ ninguna actividad |     32,334       98.34      100.00
+---------------------------------------+-----------------------------------
+                                 Total |     32,880      100.00
+
+        21. |
+  Actividad |
+        que |
+    realizÃ³ |
+para ayudar |
+en su hogar |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |         74        0.23        0.23
+          2 |          9        0.03        0.25
+          3 |         33        0.10        0.35
+          4 |         35        0.11        0.46
+          5 |        182        0.55        1.01
+          6 |         30        0.09        1.10
+          7 |          1        0.00        1.11
+          8 |        135        0.41        1.52
+          9 |          7        0.02        1.54
+         10 |          5        0.02        1.55
+         11 |         35        0.11        1.66
+         12 |     32,334       98.34      100.00
+------------+-----------------------------------
+      Total |     32,880      100.00
+**** p22 *******
+**** 1991 *******
+
+      tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        491        3.34        3.34
+         no |     14,216       96.66      100.00
+------------+-----------------------------------
+      Total |     14,707      100.00
+
+      tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        491        3.34        3.34
+          2 |     14,216       96.66      100.00
+------------+-----------------------------------
+      Total |     14,707      100.00
+**** 1995 *******
+
+      tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        173        1.23        1.23
+         no |     13,849       98.77      100.00
+------------+-----------------------------------
+      Total |     14,022      100.00
+
+      tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        173        1.23        1.23
+          2 |     13,849       98.77      100.00
+------------+-----------------------------------
+      Total |     14,022      100.00
+**** 2005 *******
+
+pe22. tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        220        1.10        1.10
+         no |     19,767       98.90      100.00
+------------+-----------------------------------
+      Total |     19,987      100.00
+
+pe22. tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        220        1.10        1.10
+          2 |     19,767       98.90      100.00
+------------+-----------------------------------
+      Total |     19,987      100.00
+**** 2015 *******
+
+  22. Tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         Si |        345        1.07        1.07
+         No |     31,989       98.93      100.00
+------------+-----------------------------------
+      Total |     32,334      100.00
+
+  22. Tiene |
+trabajo del |
+cual estuvo |
+    ausente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        345        1.07        1.07
+          2 |     31,989       98.93      100.00
+------------+-----------------------------------
+      Total |     32,334      100.00
+**** p25 *******
+**** 1991 *******
+
+   razón por la que trabajó |
+          menos de 40 horas |      Freq.     Percent        Cum.
+----------------------------+-----------------------------------
+             horario normal |      2,868       82.48       82.48
+no desea trabajar más horas |        609       17.52      100.00
+----------------------------+-----------------------------------
+                      Total |      3,477      100.00
+
+  razón por |
+     la que |
+    trabajó |
+menos de 40 |
+      horas |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      2,868       82.48       82.48
+          2 |        609       17.52      100.00
+------------+-----------------------------------
+      Total |      3,477      100.00
+**** 1995 *******
+
+ razón por la que trabajó menos de 40 |
+                                horas |      Freq.     Percent        Cum.
+--------------------------------------+-----------------------------------
+                       horario normal |      1,000       40.00       40.00
+motivos de salud, familiar o personal |      1,161       46.44       86.44
+          no desea trabajar más horas |        339       13.56      100.00
+--------------------------------------+-----------------------------------
+                                Total |      2,500      100.00
+
+  razón por |
+     la que |
+    trabajó |
+menos de 40 |
+      horas |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      1,000       40.00       40.00
+          2 |      1,161       46.44       86.44
+          3 |        339       13.56      100.00
+------------+-----------------------------------
+      Total |      2,500      100.00
+**** 2005 *******
+
+pe25. razón por la que trabajó menos de |
+                               40 horas |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+     no consiguió trabajo en otra parte |        674       13.56       13.56
+               no consiguió más trabajo |        995       20.02       33.57
+      reducción de actidades económicas |        183        3.68       37.26
+                 falta de materia prima |        109        2.19       39.45
+                         horario normal |      2,038       41.00       80.45
+motivos de salud, personales o familiar |        415        8.35       88.80
+                           por estudios |        465        9.35       98.15
+                                   otro |         92        1.85      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      4,971      100.00
+
+pe25. razón |
+ por la que |
+    trabajó |
+menos de 40 |
+      horas |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        674       13.56       13.56
+          2 |        995       20.02       33.57
+          3 |        183        3.68       37.26
+          4 |        109        2.19       39.45
+          5 |      2,038       41.00       80.45
+          6 |        415        8.35       88.80
+          7 |        465        9.35       98.15
+          8 |         92        1.85      100.00
+------------+-----------------------------------
+      Total |      4,971      100.00
+**** 2015 *******
+
+      25. RazÃ³n por la que trabajÃ³ |
+                 menos de 40 horas |      Freq.     Percent        Cum.
+-----------------------------------+-----------------------------------
+           Su trabajo asÃ­ lo exige |      2,504       34.87       34.87
+No consiguiÃ³ trabajo en otra parte |      1,088       15.15       50.03
+          No consiguiÃ³ mÃ¡s trabajo |      1,238       17.24       67.27
+  ReducciÃ³n actividades econÃ³micas |        123        1.71       68.98
+            Falta de materia prima |         28        0.39       69.37
+      Motivos de salud, familiares |      1,243       17.31       86.69
+                      Por estudios |        528        7.35       94.04
+                 Por huelga o paro |         13        0.18       94.22
+            No desea o no necesita |        415        5.78      100.00
+-----------------------------------+-----------------------------------
+                             Total |      7,180      100.00
+
+  25. RazÃ³n |
+ por la que |
+    trabajÃ³ |
+menos de 40 |
+      horas |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      2,504       34.87       34.87
+          2 |      1,088       15.15       50.03
+          3 |      1,238       17.24       67.27
+          4 |        123        1.71       68.98
+          5 |         28        0.39       69.37
+          6 |      1,243       17.31       86.69
+          7 |        528        7.35       94.04
+          8 |         13        0.18       94.22
+          9 |        415        5.78      100.00
+------------+-----------------------------------
+      Total |      7,180      100.00
+**** p27 *******
+**** 1991 *******
+
+        p27 |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |          1        0.03        0.03
+          3 |        592       20.34       20.37
+          4 |        521       17.90       38.27
+          5 |        125        4.29       42.56
+          6 |        236        8.11       50.67
+          7 |      1,026       35.25       85.92
+          8 |         54        1.86       87.77
+          9 |        356       12.23      100.00
+------------+-----------------------------------
+      Total |      2,911      100.00
+
+        p27 |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |          1        0.03        0.03
+          3 |        592       20.34       20.37
+          4 |        521       17.90       38.27
+          5 |        125        4.29       42.56
+          6 |        236        8.11       50.67
+          7 |      1,026       35.25       85.92
+          8 |         54        1.86       87.77
+          9 |        356       12.23      100.00
+------------+-----------------------------------
+      Total |      2,911      100.00
+**** 1995 *******
+
+        p27 |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          4 |        230       23.00       23.00
+          5 |        401       40.10       63.10
+          6 |         91        9.10       72.20
+          7 |         82        8.20       80.40
+          8 |        196       19.60      100.00
+------------+-----------------------------------
+      Total |      1,000      100.00
+
+        p27 |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          4 |        230       23.00       23.00
+          5 |        401       40.10       63.10
+          6 |         91        9.10       72.20
+          7 |         82        8.20       80.40
+          8 |        196       19.60      100.00
+------------+-----------------------------------
+      Total |      1,000      100.00
+**** 2005 *******
+
+pe27. desea |
+   trabajar |
+  mas horas |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |      7,895       43.36       43.36
+         no |     10,313       56.64      100.00
+------------+-----------------------------------
+      Total |     18,208      100.00
+
+pe27. desea |
+   trabajar |
+  mas horas |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      7,895       43.36       43.36
+          2 |     10,313       56.64      100.00
+------------+-----------------------------------
+      Total |     18,208      100.00
+**** 2015 *******
+
+           27. Desea trabajar mÃ¡s horas |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+Trabajar mÃ¡s horas en su trabajo actual |      1,997        7.01        7.01
+     Trabajar mÃ¡s horas en otro trabajo |      1,963        6.89       13.89
+Cambiar el trabajo por otro con mÃ¡s hor |      1,834        6.44       20.33
+            No desea trabajar mÃ¡s horas |     22,706       79.67      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     28,500      100.00
+
+  27. Desea |
+   trabajar |
+  mÃ¡s horas |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      1,997        7.01        7.01
+          2 |      1,963        6.89       13.89
+          3 |      1,834        6.44       20.33
+          4 |     22,706       79.67      100.00
+------------+-----------------------------------
+      Total |     28,500      100.00
+**** p32 *******
+**** 1991 *******
+
+      buscó |
+ trabajo el |
+        mes |
+   anterior |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        248        1.83        1.83
+         no |     13,305       98.17      100.00
+------------+-----------------------------------
+      Total |     13,553      100.00
+
+      buscó |
+ trabajo el |
+        mes |
+   anterior |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        248        1.83        1.83
+          2 |     13,305       98.17      100.00
+------------+-----------------------------------
+      Total |     13,553      100.00
+**** 1995 *******
+
+      buscó |
+ trabajo el |
+        mes |
+   anterior |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        176        1.33        1.33
+         no |     13,021       98.67      100.00
+------------+-----------------------------------
+      Total |     13,197      100.00
+
+      buscó |
+ trabajo el |
+        mes |
+   anterior |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        176        1.33        1.33
+          2 |     13,021       98.67      100.00
+------------+-----------------------------------
+      Total |     13,197      100.00
+**** 2005 *******
+
+pe29. buscó |
+ trabajo el |
+        mes |
+   anterior |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        200        1.04        1.04
+         no |     18,948       98.96      100.00
+------------+-----------------------------------
+      Total |     19,148      100.00
+
+pe29. buscó |
+ trabajo el |
+        mes |
+   anterior |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        200        1.04        1.04
+          2 |     18,948       98.96      100.00
+------------+-----------------------------------
+      Total |     19,148      100.00
+**** 2015 *******
+
+      32. BuscÃ³ trabajo el mes anterior |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+Acudir a sitios de contrataciÃ³n tempora |        144        0.45        0.45
+          Hablar con amigos o parientes |        465        1.45        1.90
+            Buscar en la prensa o radio |         90        0.28        2.19
+            Acudir a agencias de empleo |         96        0.30        2.49
+Tratar de establecer su propio taller,  |         14        0.04        2.53
+                  Asistir a entrevistas |         62        0.19        2.72
+ Colocar carteles en tiendas o negocios |          6        0.02        2.74
+                    Buscar por Internet |        162        0.51        3.25
+                    Enviar hoja de vida |        389        1.22        4.46
+                           Otra gestiÃ³n |          3        0.01        4.47
+             No realizÃ³ ninguna gestiÃ³n |     30,558       95.53      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     31,989      100.00
+
+  32. BuscÃ³ |
+ trabajo el |
+        mes |
+   anterior |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        144        0.45        0.45
+          2 |        465        1.45        1.90
+          3 |         90        0.28        2.19
+          4 |         96        0.30        2.49
+          5 |         14        0.04        2.53
+          6 |         62        0.19        2.72
+          7 |          6        0.02        2.74
+          8 |        162        0.51        3.25
+          9 |        389        1.22        4.46
+         10 |          3        0.01        4.47
+         11 |     30,558       95.53      100.00
+------------+-----------------------------------
+      Total |     31,989      100.00
+**** p34 *******
+**** 1991 *******
+
+      razón por la que no buscó trabajo |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+no tiene necesidad o deseos de trabajar |      1,470       11.05       11.05
+                        no tiene tiempo |      8,817       66.27       77.32
+                           está enfermo |        634        4.77       82.08
+            no está en edad de trabajar |      1,926       14.48       96.56
+         piensa que no le darán trabajo |        169        1.27       97.83
+                no cree poder encontrar |        208        1.56       99.39
+         espera respuesta a una gestión |         38        0.29       99.68
+espera respuesta de un empleador u otra |         43        0.32      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     13,305      100.00
+
+  razón por |
+  la que no |
+      buscó |
+    trabajo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      1,470       11.05       11.05
+          2 |      8,817       66.27       77.32
+          3 |        634        4.77       82.08
+          4 |      1,926       14.48       96.56
+          5 |        169        1.27       97.83
+          6 |        208        1.56       99.39
+          7 |         38        0.29       99.68
+          8 |         43        0.32      100.00
+------------+-----------------------------------
+      Total |     13,305      100.00
+**** 1995 *******
+
+      razón por la que no buscó trabajo |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+no tiene necesidad o deseos de trabajar |      1,318       10.12       10.12
+                        no tiene tiempo |     10,043       77.13       87.25
+                           está enfermo |        454        3.49       90.74
+            no está en edad de trabajar |        969        7.44       98.18
+         piensa que no le darán trabajo |         69        0.53       98.71
+                no cree poder encontrar |         91        0.70       99.41
+         espera respuesta a una gestión |         32        0.25       99.65
+espera respuesta de un empleador u otra |         45        0.35      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     13,021      100.00
+
+  razón por |
+  la que no |
+      buscó |
+    trabajo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      1,318       10.12       10.12
+          2 |     10,043       77.13       87.25
+          3 |        454        3.49       90.74
+          4 |        969        7.44       98.18
+          5 |         69        0.53       98.71
+          6 |         91        0.70       99.41
+          7 |         32        0.25       99.65
+          8 |         45        0.35      100.00
+------------+-----------------------------------
+      Total |     13,021      100.00
+**** 2005 *******
+
+pe32. razón por la que no buscó trabajo |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+                tiene trabajo ocasional |         51        0.27        0.27
+piensa que no le daran trabajo o se can |        108        0.57        0.84
+                no cree poder encontrar |        278        1.47        2.31
+     su cónyuge o familia no le permite |        442        2.33        4.64
+espera rta. a gestión para establecer n |         34        0.18        4.82
+espera rta. de empleador u otras gestio |         45        0.24        5.06
+  espera cosecha o temporada de trabajo |         41        0.22        5.27
+no tiene necesidad o deseos de trabajar |      1,666        8.79       14.06
+                        no tiene tiempo |      9,207       48.59       62.66
+             esta enfermo/ incapacitado |      1,036        5.47       68.12
+              no tiene edad de trabajar |      6,040       31.88      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     18,948      100.00
+
+pe32. razón |
+ por la que |
+   no buscó |
+    trabajo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |         51        0.27        0.27
+          2 |        108        0.57        0.84
+          3 |        278        1.47        2.31
+          4 |        442        2.33        4.64
+          5 |         34        0.18        4.82
+          6 |         45        0.24        5.06
+          7 |         41        0.22        5.27
+          8 |      1,666        8.79       14.06
+          9 |      9,207       48.59       62.66
+         10 |      1,036        5.47       68.12
+         11 |      6,040       31.88      100.00
+------------+-----------------------------------
+      Total |     18,948      100.00
+**** 2015 *******
+
+  34. RazÃ³n por la que no buscÃ³ trabajo |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+                      Trabajo ocasional |         30        0.10        0.10
+Tiene trabajo para empezar inmediatamen |          8        0.03        0.12
+         Espera respuesta a una gestiÃ³n |         17        0.06        0.18
+       Espera respuesta de un empleador |         40        0.13        0.31
+  Espera cosecha o temporada de trabajo |          9        0.03        0.34
+         Piensa que no le darÃ¡n trabajo |         92        0.30        0.64
+                No cree poder encontrar |        277        0.91        1.55
+         No tiene necesidad de trabajar |      1,754        5.74        7.29
+                        No tiene tiempo |     14,754       48.28       55.57
+    Su cÃ³nyuge o familia no le permiten |      1,594        5.22       60.79
+            EstÃ¡ enfermo o incapacitado |      1,627        5.32       66.11
+            No estÃ¡ en edad de trabajar |     10,356       33.89      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     30,558      100.00
+
+  34. RazÃ³n |
+ por la que |
+   no buscÃ³ |
+    trabajo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |         30        0.10        0.10
+          2 |          8        0.03        0.12
+          3 |         17        0.06        0.18
+          4 |         40        0.13        0.31
+          5 |          9        0.03        0.34
+          6 |         92        0.30        0.64
+          7 |        277        0.91        1.55
+          8 |      1,754        5.74        7.29
+          9 |     14,754       48.28       55.57
+         10 |      1,594        5.22       60.79
+         11 |      1,627        5.32       66.11
+         12 |     10,356       33.89      100.00
+------------+-----------------------------------
+      Total |     30,558      100.00
+**** p35 *******
+**** 1991 *******
+
+      desea |
+   trabajar |
+actualmente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        417       91.05       91.05
+         no |         41        8.95      100.00
+------------+-----------------------------------
+      Total |        458      100.00
+
+      desea |
+   trabajar |
+actualmente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        417       91.05       91.05
+          2 |         41        8.95      100.00
+------------+-----------------------------------
+      Total |        458      100.00
+**** 1995 *******
+
+      desea |
+   trabajar |
+actualmente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        228       96.20       96.20
+         no |          9        3.80      100.00
+------------+-----------------------------------
+      Total |        237      100.00
+
+      desea |
+   trabajar |
+actualmente |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        228       96.20       96.20
+          2 |          9        3.80      100.00
+------------+-----------------------------------
+      Total |        237      100.00
+**** 2005 *******
+
+pe33. desea |
+ trabajar y |
+       esta |
+dispuesto a |
+    hacerlo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         si |        609       60.96       60.96
+         no |        390       39.04      100.00
+------------+-----------------------------------
+      Total |        999      100.00
+
+pe33. desea |
+ trabajar y |
+       esta |
+dispuesto a |
+    hacerlo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        609       60.96       60.96
+          2 |        390       39.04      100.00
+------------+-----------------------------------
+      Total |        999      100.00
+**** 2015 *******
+
+  35. Desea |
+ trabajar y |
+       estÃ¡ |
+dispuesto a |
+    hacerlo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         Si |        384       81.18       81.18
+         No |         89       18.82      100.00
+------------+-----------------------------------
+      Total |        473      100.00
+
+  35. Desea |
+ trabajar y |
+       estÃ¡ |
+dispuesto a |
+    hacerlo |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        384       81.18       81.18
+          2 |         89       18.82      100.00
+------------+-----------------------------------
+      Total |        473      100.00
+
+. 
+. 
+. 
+. 
+. 
+. log close
+      name:  <unnamed>
+       log:  G:/Mi unidad/Trabajos/Observatorio de PolÃ­ticas PÃºblicas/BoletÃ­n 1/Outcomes/Curvas 
+> de crecimiento/exploration.log
+  log type:  text
+ closed on:   9 Dec 2025, 23:58:11
+------------------------------------------------------------------------------------------------

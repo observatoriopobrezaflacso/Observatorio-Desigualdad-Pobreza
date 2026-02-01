@@ -1,0 +1,1732 @@
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\enemdu_diciembres\GIC_urbano_1991_1999_base1991.log
+  log type:  text
+ opened on:  18 Nov 2025, 23:54:54
+
+. clear all
+
+. set more off
+
+. 
+. *-------------------------------------------------------------
+. 
+. * Rutas
+. global raw "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/enemdu_diciembres"
+
+. global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento"
+
+. capture mkdir "$out/ingresos_pc_urb"
+
+. capture mkdir "$out/GIC_exports"
+
+. 
+. cd "$raw"
+G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\enemdu_diciembres
+
+. 
+. *-------------------------------------------------------------
+. * Tabla IPC (valores de diciembre) y base 1991
+. tempfile ipc
+
+. clear
+
+. input year cpi_dec
+
+          year    cpi_dec
+  1. 1991  1.97
+  2. 1992  2.98
+  3. 1993  4.15
+  4. 1994  5.24
+  5. 1995  6.40
+  6. 1996  6.84
+  7. 1997  8.17
+  8. 1998 15.07
+  9. 1999 46.25
+ 10. end
+
+. save `ipc'
+file C:\Users\santy\AppData\Local\Temp\ST_13f74_000001.tmp saved
+
+. scalar base_year = 1991
+
+. scalar cpi_base  = 1.97     // CPI dic-1991
+
+. global ipcfile "`ipc'"
+
+. clear
+
+. 
+. *-------------------------------------------------------------
+. program drop _all
+
+. program define mk_ingtot_urb
+  1.     version 15
+  2.     syntax , year(integer)
+  3. 
+.     use "$raw/empleo`year'.dta", clear
+  4. 
+.     foreach v in ciudad zona sector vivienda hogar {
+  5.         capture confirm variable `v'
+  6.         if !_rc destring `v', replace force
+  7.     }
+  8. 
+.     gen year = `year'
+  9.     merge m:1 year using "$ipcfile", keep(match) nogen
+ 10.     gen deflator = cpi_base / cpi_dec
+ 11. 
+.     if `year' == 1991 {
+ 12.         recode ingobr (.=0)
+ 13.         recode ingpat (9999998=.) (.=0)
+ 14.         foreach v in ingalq ingjub ingotr {
+ 15.             recode `v' (.=0)
+ 16.         }
+ 17.         gen ing_sal  = ingobr
+ 18.         gen ing_cta  = ingpat
+ 19.         gen ing_rent = ingalq + ingjub + ingotr
+ 20.         gen ing_lab  = ing_sal + ing_cta
+ 21.         gen ing_tot  = ing_lab + ing_rent
+ 22.     }
+ 23. *    else if inrange(`year',1992,1999) {
+.     else if `year' == 1998 {
+ 24.         recode ingpat (9999999=.) (9999998=.) (.=0)
+ 25.         recode ingasg (9999999=.) (.=0)
+ 26.         recode ingepv (9999999=.) (9999998=.) (.=0)
+ 27.         recode ingdom (9999999=.) (.=0)
+ 28.         gen ing_sal = ingasg + ingepv + ingdom
+ 29.         gen ing_cta = ingpat
+ 30.         gen ing_lab = ing_cta + ing_sal
+ 31. 
+.         recode ingjub (9999999=.) (.=0)
+ 32.         recode ingalq (9999999=.) (9999998=.) (.=0)
+ 33.         recode ingotr (9999999=.) (.=0)
+ 34.         gen ing_rent = ingjub + ingalq + ingotr
+ 35.         gen ing_tot  = ing_lab + ing_rent
+ 36.     }
+ 37.     else {
+ 38.         di as error "Programa sólo cubre 1991-1999."
+ 39.         exit 198
+ 40.     }
+ 41. 
+.     foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingrl {
+ 42.         recode `v' (0=.)
+ 43.         replace `v' = `v' * deflator     // precios dic-1991
+ 44.     }
+ 45. 
+.     egen idhogar = group(ciudad zona sector vivienda hogar)
+ 46.     gen uno = 1
+ 47.     egen miembros  = total(uno),     by(idhogar)
+ 48.     egen ingtot_hh = total(ing_tot), by(idhogar)
+ 49.     gen ingtot_per = ingtot_hh / miembros
+ 50.     *drop uno ingtot_hh miembros deflator cpi_dec survey_year
+. 
+.     *capture confirm variable area
+.     *if !_rc destring area, replace force
+.     *keep if area == 1   // cambia si urbano tiene otro código
+. 
+.     capture confirm variable fexp
+ 51.     if _rc {
+ 52.         di as error "No existe fexp en `year'."
+ 53.         exit 459
+ 54.     }
+ 55.     gen fw = round(fexp)
+ 56.     drop if missing(ingtot_per) | missing(fw)
+ 57.     recode ingtot_per 0=.
+ 58. 
+.         
+.     label var ingtot_per "Ingreso per cápita urbano (`year', precios dic-1991)"
+ 59. 
+.     save "$out/ingresos_pc_urb/ing_perca_`year'_urb_base1991.dta", replace
+ 60. end
+
+. 
+. *-------------------------------------------------------------
+. mk_ingtot_urb, year(1991)
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            39,071  
+    -----------------------------------------
+(ingobr: 29677 changes made)
+(ingpat: 33861 changes made)
+(ingalq: 38674 changes made)
+(ingjub: 38469 changes made)
+(ingotr: 38453 changes made)
+(1 missing value generated)
+(1 missing value generated)
+(1 missing value generated)
+(ing_sal: 29677 changes made)
+(0 real changes made)
+(ing_cta: 33860 changes made)
+(0 real changes made)
+(ing_rent: 37535 changes made)
+(0 real changes made)
+(ing_lab: 24813 changes made)
+(0 real changes made)
+(ing_tot: 23676 changes made)
+(0 real changes made)
+(ingrl: 15650 changes made)
+(0 real changes made)
+(0 observations deleted)
+(ingtot_per: 537 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1991_urb_base1991.dta saved
+
+. mk_ingtot_urb, year(1998)
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            40,509  
+    -----------------------------------------
+(ingpat: 34872 changes made)
+(ingasg: 38446 changes made)
+(ingepv: 34352 changes made)
+(ingdom: 39709 changes made)
+(512 missing values generated)
+(494 missing values generated)
+(998 missing values generated)
+(ingjub: 39804 changes made)
+(ingalq: 39772 changes made)
+(ingotr: 39016 changes made)
+(70 missing values generated)
+(1,065 missing values generated)
+(ing_sal: 31049 changes made)
+(8,948 real changes made)
+(ing_cta: 34378 changes made)
+(5,637 real changes made)
+(ing_rent: 37669 changes made)
+(2,770 real changes made)
+(ing_lab: 25243 changes made)
+(14,268 real changes made)
+(ing_tot: 23202 changes made)
+(16,242 real changes made)
+(ingrl: 17361 changes made)
+variable ingrl was long now double
+(14,410 real changes made)
+(0 observations deleted)
+(ingtot_per: 1386 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1998_urb_base1991.dta saved
+
+. 
+. /*foreach y in 1992 1993 1994 1995 1996 1997 1998 1999 {
+>     mk_ingtot_urb, year(`y')
+> }*/
+. 
+. use "$out/ingresos_pc_urb/ing_perca_1991_urb_base1991.dta", clear
+
+. 
+. gicurve using "$out/ingresos_pc_urb/ing_perca_1998_urb_base1991.dta" ///
+>     [fw=fw], var1(ingtot_per) var2(ingtot_per)  yp(7) np(10) mgrpp ///
+>     saving("$out/GIC_exports/gic_urb_1991_1998_base1991", replace) 
+(file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_1991_1998_base1991.gph saved)
+
+
+
+   Growth rate in mean         =  1.55
+   Growth rate at median       =  1.23
+   Mean percentile growth rate =  1.37
+
+   Corresponding percentile | Rate of pro-poor growth 
+----------------------------+-------------------------
+           10               |        0.12
+           15               |        0.08
+           20               |        0.56
+           25               |        0.45
+           30               |        0.79
+------------------------------------------------------
+
+. graph export "$out/GIC_exports/gic_urb_1991_1998_base1991.png", replace width(2400)
+(file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_1991_1998_base1991.png written in PNG format)
+
+. s
+command s is unrecognized
+r(199);
+
+end of do-file
+
+r(199);
+
+. do "C:\Users\santy\AppData\Local\Temp\STD13f74_000000.tmp"
+
+. use empleo2006, clear
+
+. 
+end of do-file
+
+. describe pe68b
+
+              storage   display    value
+variable name   type    format     label      variable label
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pe68b           long    %12.0g     LABL       pe68b. ingreso recibido por transacciones de capital
+
+. describe pe6*
+
+              storage   display    value
+variable name   type    format     label      variable label
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pe60a           int     %8.0g      LABF       pe60a. horas participa - arreglo de la casa
+pe60b           int     %8.0g      LABF       pe60b. horas participa - compras en mercados
+pe60c           int     %8.0g      LABF       pe60c. horas participa - arreglo de ropa
+pe60d           int     %8.0g      LABF       pe60d. participa - horas preparaci�n de alimentos
+pe60e           int     %8.0g      LABF       pe60e. participa - cuidado de ni�os
+pe60f           int     %8.0g      LABF       pe60f. horas participa - tareas escolares
+pe60g           int     %8.0g      LABF       pe60g. participa - total horas
+pe60h           int     %8.0g      LABF       pe60h. horas participa - mingas
+pe60i           int     %8.0g      LABF       pe60i. horas participa - reuniones del barrio
+pe61            long    %12.0g     LABL       pe61. ingresos - patronos cta. propia
+pe62a           byte    %8.0g      LABD       pe62a. retiro de bienes del negocio
+pe62b           long    %12.0g     LABL       pe62b. monto de retiros de bienes del negocio
+pe63            long    %12.0g     LABL       pe63. ingreso de asalariados y/o empl. dom�sticos
+pe64            long    %12.0g     LABL       pe64. descuentos de asalariados
+pe65a           byte    %8.0g      LABD       pe65a. recibi� ingreso por especies
+pe65b           long    %12.0g     LABL       pe65b. ingreso por especies de asalariados
+pe66            long    %12.0g     LABL       pe66. ingreso ocup. secundaria - asalariados e independiente
+pe67a           byte    %8.0g      LABD       pe67a. recibi� pago en especies - trabajo secundario
+pe67b           long    %12.0g     LABL       pe67b. pago en especies - trabajo secundario
+pe68a           byte    %8.0g      LABD       pe68a. recibi� ingresos derivados del capital
+pe68b           long    %12.0g     LABL       pe68b. ingreso recibido por transacciones de capital
+pe69a           byte    %8.0g      LABD       pe69a. recibe jubilaci�n o pensiones
+pe69b           long    %12.0g     LABL       pe69b. ingreso por jubilaci�n o pensiones
+
+. describe pe7*
+
+              storage   display    value
+variable name   type    format     label      variable label
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pe70a           byte    %8.0g      LABD       pe70a. recibi� regalos o donaciones
+pe70b           int     %8.0g      LABL       pe70b. ingreso por regalos o donaciones
+pe71a           byte    %8.0g      LABD       pe71a. recibi� dinero del exterior
+pe71b           long    %12.0g     LABL       pe71b. ingreso del exterior
+pe72            byte    %8.0g      LABL       pe72. recibi� el bono de desarrollo humano
+pe73            byte    %8.0g      pe73       pe73.  monto que recibi� por el bdh en noviembre
+pe74a           byte    %8.0g      LABD       pe74a. en los �ltimos 12 meses recibi� pr�stamos bancarios o
+pe74b           long    %12.0g                pe74b. monto que recibi� por pr�stamo
+
+. do "G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\Ind_\Ind_2005.do"
+
+. 
+.  use "C:\Users\JuanElíasPonceJarrín\OneDrive - flacso.edu.ec\Documents\DISCO D\BASES DE DATOS DEMOGRAFICAS INEC\ENCUENTAS DE EMPLEO\Encuestas de empleo\empleo05.dta", clear
+file C:\Users\JuanElíasPonceJarrín\OneDrive - flacso.edu.ec\Documents\DISCO D\BASES DE DATOS DEMOGRAFICAS INEC\ENCUENTAS DE EMPLEO\Encuestas de empleo\empleo05.dta not found
+r(601);
+
+end of do-file
+
+r(601);
+
+. do "C:\Users\santy\AppData\Local\Temp\STD13f74_000000.tmp"
+
+. 
+. *use "C:\Users\JuanElíasPonceJarrín\OneDrive - flacso.edu.ec\Documents\DISCO D\BASES DE DATOS DEMOGRAFICAS INEC\ENCUENTAS DE EMPLEO\Encuestas de empleo\empleo05.dta", clear
+.  
+.  *Rentas y otros
+. recode pe68b 999999=.
+(pe68b: 5 changes made)
+
+. recode pe68b 999=.
+(pe68b: 0 changes made)
+
+. recode pe68b .=0
+(pe68b: 77019 changes made)
+
+. recode pe69b 999999=.
+(pe69b: 14 changes made)
+
+. recode pe69b 999=.
+(pe69b: 0 changes made)
+
+. recode pe69b .=0
+(pe69b: 76481 changes made)
+
+. recode pe70b 999999=.
+(pe70b: 0 changes made)
+
+. recode pe70b .=0
+(pe70b: 75778 changes made)
+
+. 
+. generate ing_rent=pe68b+pe69b+pe70b
+
+. 
+. generate ing_rem=pe71b
+(76,576 missing values generated)
+
+. recode ing_rem 999999= .
+(ing_rem: 1 changes made)
+
+. recode ing_rem .=0
+(ing_rem: 76577 changes made)
+
+. 
+. generate ingbon=pe73
+(72,325 missing values generated)
+
+. recode ingbon .=0
+(ingbon: 72325 changes made)
+
+. 
+. 
+. recode ingrl (-1=.) (999999=.) (0=.)
+(ingrl: 40844 changes made)
+
+. 
+. generate ing_tot=ingrl+ing_rent+ingbon+ing_rem
+(48,047 missing values generated)
+
+. 
+. recode ing_tot (0=.)
+(ing_tot: 0 changes made)
+
+. 
+. *Hogar
+. destring area ciudad zona sector panelm vivienda hogar, replace
+area already numeric; no replace
+ciudad already numeric; no replace
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as int
+panelm already numeric; no replace
+vivienda already numeric; no replace
+hogar already numeric; no replace
+
+. sort ciudad zona sector panelm vivienda hogar
+
+. egen idhogar=group(ciudad zona sector panelm vivienda hogar)
+
+. 
+. gen x=1
+
+. egen n=sum(x), by(idhogar)
+
+. egen ingtot_hh=sum(ing_tot), by(idhogar)
+
+. gen ingpc=ingtot_hh/n
+
+. 
+. 
+. inequal ingpc [w=round(fexp)]
+command inequal is unrecognized
+r(199);
+
+end of do-file
+
+r(199);
+
+. do "C:\Users\santy\AppData\Local\Temp\STD13f74_000000.tmp"
+
+. 
+. *-------------------------------------------------------------
+. * Rutas
+. global raw "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/enemdu_diciembres"
+
+. global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento"
+
+. capture mkdir "$out/ingresos_pc_urb"
+
+. capture mkdir "$out/GIC_exports"
+
+. 
+. *-------------------------------------------------------------
+. * IPC de diciembre (base = 1991)
+. tempfile ipc
+
+. clear
+
+. input year cpi_dec
+
+          year    cpi_dec
+  1. 1991  1.97
+  2. 1992  2.98
+  3. 1993  4.15
+  4. 1994  5.24
+  5. 1995  6.40
+  6. 1996  6.84
+  7. 1997  8.17
+  8. 1998 15.07
+  9. 1999 46.25
+ 10. 2006 71.13   // Sustituye con el valor exacto de tu tabla si difiere
+ 11. 2010 89.57   // Sustituye con el valor exacto de tu tabla si difiere
+ 12. end
+
+. save `ipc'
+file C:\Users\santy\AppData\Local\Temp\ST_13f74_000001.tmp saved
+
+. scalar base_year = 1991
+
+. scalar cpi_base  = 1.97
+
+. global ipcfile "`ipc'"
+
+. clear
+
+. 
+. *-------------------------------------------------------------
+. program drop _all
+
+. program define mk_ingtot_urb
+  1.     version 15
+  2.     syntax , year(integer)
+  3. 
+.     use "$raw/empleo`year'.dta", clear
+  4. 
+.     foreach v in ciudad zona sector vivienda hogar {
+  5.         capture confirm variable `v'
+  6.         if !_rc destring `v', replace force
+  7.     }
+  8. 
+.     gen enc_year = `year'
+  9.     merge m:1 enc_year using "$ipcfile", keep(match) nogen
+ 10.     gen deflator = cpi_base / cpi_dec
+ 11. 
+.     if `year' == 1991 {
+ 12.         recode ingobr (.=0)
+ 13.         recode ingpat (9999998=.) (.=0)
+ 14.         foreach v in ingalq ingjub ingotr {
+ 15.             recode `v' (.=0)
+ 16.         }
+ 17.         gen ing_sal  = ingobr
+ 18.         gen ing_cta  = ingpat
+ 19.         gen ing_rent = ingalq + ingjub + ingotr
+ 20.         gen ing_lab  = ing_sal + ing_cta
+ 21.         gen ing_tot  = ing_lab + ing_rent
+ 22.     }
+ 23.     else if inrange(`year',1992,1999) {
+ 24.         recode ingpat (9999999=.) (9999998=.) (.=0)
+ 25.         recode ingasg (9999999=.) (.=0)
+ 26.         recode ingepv (9999999=.) (9999998=.) (.=0)
+ 27.         recode ingdom (9999999=.) (.=0)
+ 28.         gen ing_sal = ingasg + ingepv + ingdom
+ 29.         gen ing_cta = ingpat
+ 30.         gen ing_lab = ing_cta + ing_sal
+ 31. 
+.         recode ingjub (9999999=.) (.=0)
+ 32.         recode ingalq (9999999=.) (9999998=.) (.=0)
+ 33.         recode ingotr (9999999=.) (.=0)
+ 34.         gen ing_rent = ingjub + ingalq + ingotr
+ 35.         gen ing_tot  = ing_lab + ing_rent
+ 36.     }
+ 37.     else if `year' == 2006 {
+ 38.         recode pe68b (999999=.) (999=.) (.=0)
+ 39.         recode pe69b (999999=.) (999=.) (.=0)
+ 40.         recode pe70b (999999=.) (.=0)
+ 41.         gen ing_rent = pe68b + pe69b + pe70b
+ 42. 
+.         gen ing_rem = pe71b
+ 43.         recode ing_rem (999999=.) (.=0)
+ 44. 
+.         gen ingbon = pe73
+ 45.         recode ingbon (999999=.) (.=0)
+ 46. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 47.         gen ing_sal = ingrl
+ 48.         gen ing_cta = 0
+ 49.         gen ing_lab = ingrl
+ 50.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 51.     }
+ 52.     else if `year' == 2010 {
+ 53.         foreach v in p71b p72b p73b p74b p76 {
+ 54.             recode `v' (999999=.) (.=0)
+ 55.         }
+ 56.         gen ing_cap = p71b
+ 57.         gen ing_pen = p72b
+ 58.         gen ing_rent = p71b + p72b + p73b
+ 59. 
+.         gen ing_rem = p74b
+ 60.         gen ingbon = p76
+ 61. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 62.         gen ing_sal = ingrl
+ 63.         gen ing_cta = 0
+ 64.         gen ing_lab = ingrl
+ 65.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 66.     }
+ 67.     else {
+ 68.         di as error "Programa sólo cubre 1991-1999, 2006 y 2010."
+ 69.         exit 198
+ 70.     }
+ 71. 
+.     foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingrl ing_rem ingbon ing_cap ing_pen {
+ 72.         capture confirm variable `v'
+ 73.         if !_rc {
+ 74.             recode `v' (0=.)
+ 75.             replace `v' = `v' * deflator
+ 76.         }
+ 77.     }
+ 78. 
+.     egen idhogar = group(ciudad zona sector vivienda hogar)
+ 79.     gen uno = 1
+ 80.     egen miembros  = total(uno),     by(idhogar)
+ 81.     egen ingtot_hh = total(ing_tot), by(idhogar)
+ 82.     gen ingtot_per = ingtot_hh / miembros
+ 83.     drop uno ingtot_hh miembros deflator cpi_dec enc_year
+ 84. 
+.     capture confirm variable area
+ 85.     if !_rc destring area, replace force
+ 86.     keep if area == 1
+ 87. 
+.     capture confirm variable fexp
+ 88.     if _rc {
+ 89.         di as error "No existe fexp en `year'."
+ 90.         exit 459
+ 91.     }
+ 92.     gen fw = round(fexp)
+ 93.     drop if missing(ingtot_per) | missing(fw)
+ 94.     recode ingtot_per (0=.)
+ 95. 
+.     label var ingtot_per "Ingreso per cápita urbano (`year', precios dic-1991)"
+ 96.     label var fw "Factor expansión redondeado"
+ 97. 
+.     save "$out/ingresos_pc_urb/ing_perca_`year'_urb_base1991.dta", replace
+ 98. end
+
+. 
+. *-------------------------------------------------------------
+. local years_90s "1991 1992 1993 1994 1995 1996 1997 1998 1999"
+
+. foreach y of local years_90s {
+  2.     mk_ingtot_urb, year(`y')
+  3. }
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+variable enc_year not found
+r(111);
+
+end of do-file
+
+r(111);
+
+. do "C:\Users\santy\AppData\Local\Temp\STD13f74_000000.tmp"
+
+. 
+. *-------------------------------------------------------------
+. * Rutas
+. global raw "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/enemdu_diciembres"
+
+. global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento"
+
+. capture mkdir "$out/ingresos_pc_urb"
+
+. capture mkdir "$out/GIC_exports"
+
+. 
+. *-------------------------------------------------------------
+. * IPC de diciembre (base = 1991)
+. tempfile ipc
+
+. clear
+
+. input enc_year cpi_dec
+
+      enc_year    cpi_dec
+  1. 1991  1.97
+  2. 1992  2.98
+  3. 1993  4.15
+  4. 1994  5.24
+  5. 1995  6.40
+  6. 1996  6.84
+  7. 1997  8.17
+  8. 1998 15.07
+  9. 1999 46.25
+ 10. 2006 71.13   // Sustituye con el valor exacto de tu tabla si difiere
+ 11. 2010 89.57   // Sustituye con el valor exacto de tu tabla si difiere
+ 12. end
+
+. save `ipc'
+file C:\Users\santy\AppData\Local\Temp\ST_13f74_000001.tmp saved
+
+. scalar base_year = 1991
+
+. scalar cpi_base  = 1.97
+
+. global ipcfile "`ipc'"
+
+. clear
+
+. 
+. *-------------------------------------------------------------
+. program drop _all
+
+. program define mk_ingtot_urb
+  1.     version 15
+  2.     syntax , year(integer)
+  3. 
+.     use "$raw/empleo`year'.dta", clear
+  4. 
+.     foreach v in ciudad zona sector vivienda hogar {
+  5.         capture confirm variable `v'
+  6.         if !_rc destring `v', replace force
+  7.     }
+  8. 
+.     gen enc_year = `year'
+  9.     merge m:1 enc_year using "$ipcfile", keep(match) nogen
+ 10.     gen deflator = cpi_base / cpi_dec
+ 11. 
+.     if `year' == 1991 {
+ 12.         recode ingobr (.=0)
+ 13.         recode ingpat (9999998=.) (.=0)
+ 14.         foreach v in ingalq ingjub ingotr {
+ 15.             recode `v' (.=0)
+ 16.         }
+ 17.         gen ing_sal  = ingobr
+ 18.         gen ing_cta  = ingpat
+ 19.         gen ing_rent = ingalq + ingjub + ingotr
+ 20.         gen ing_lab  = ing_sal + ing_cta
+ 21.         gen ing_tot  = ing_lab + ing_rent
+ 22.     }
+ 23.     else if inrange(`year',1992,1999) {
+ 24.         recode ingpat (9999999=.) (9999998=.) (.=0)
+ 25.         recode ingasg (9999999=.) (.=0)
+ 26.         recode ingepv (9999999=.) (9999998=.) (.=0)
+ 27.         recode ingdom (9999999=.) (.=0)
+ 28.         gen ing_sal = ingasg + ingepv + ingdom
+ 29.         gen ing_cta = ingpat
+ 30.         gen ing_lab = ing_cta + ing_sal
+ 31. 
+.         recode ingjub (9999999=.) (.=0)
+ 32.         recode ingalq (9999999=.) (9999998=.) (.=0)
+ 33.         recode ingotr (9999999=.) (.=0)
+ 34.         gen ing_rent = ingjub + ingalq + ingotr
+ 35.         gen ing_tot  = ing_lab + ing_rent
+ 36.     }
+ 37.     else if `year' == 2006 {
+ 38.         recode pe68b (999999=.) (999=.) (.=0)
+ 39.         recode pe69b (999999=.) (999=.) (.=0)
+ 40.         recode pe70b (999999=.) (.=0)
+ 41.         gen ing_rent = pe68b + pe69b + pe70b
+ 42. 
+.         gen ing_rem = pe71b
+ 43.         recode ing_rem (999999=.) (.=0)
+ 44. 
+.         gen ingbon = pe73
+ 45.         recode ingbon (999999=.) (.=0)
+ 46. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 47.         gen ing_sal = ingrl
+ 48.         gen ing_cta = 0
+ 49.         gen ing_lab = ingrl
+ 50.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 51.     }
+ 52.     else if `year' == 2010 {
+ 53.         foreach v in p71b p72b p73b p74b p76 {
+ 54.             recode `v' (999999=.) (.=0)
+ 55.         }
+ 56.         gen ing_cap = p71b
+ 57.         gen ing_pen = p72b
+ 58.         gen ing_rent = p71b + p72b + p73b
+ 59. 
+.         gen ing_rem = p74b
+ 60.         gen ingbon = p76
+ 61. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 62.         gen ing_sal = ingrl
+ 63.         gen ing_cta = 0
+ 64.         gen ing_lab = ingrl
+ 65.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 66.     }
+ 67.     else {
+ 68.         di as error "Programa sólo cubre 1991-1999, 2006 y 2010."
+ 69.         exit 198
+ 70.     }
+ 71. 
+.     foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingrl ing_rem ingbon ing_cap ing_pen {
+ 72.         capture confirm variable `v'
+ 73.         if !_rc {
+ 74.             recode `v' (0=.)
+ 75.             replace `v' = `v' * deflator
+ 76.         }
+ 77.     }
+ 78. 
+.     egen idhogar = group(ciudad zona sector vivienda hogar)
+ 79.     gen uno = 1
+ 80.     egen miembros  = total(uno),     by(idhogar)
+ 81.     egen ingtot_hh = total(ing_tot), by(idhogar)
+ 82.     gen ingtot_per = ingtot_hh / miembros
+ 83.     drop uno ingtot_hh miembros deflator cpi_dec enc_year
+ 84. 
+.     capture confirm variable area
+ 85.     if !_rc destring area, replace force
+ 86.     keep if area == 1
+ 87. 
+.     capture confirm variable fexp
+ 88.     if _rc {
+ 89.         di as error "No existe fexp en `year'."
+ 90.         exit 459
+ 91.     }
+ 92.     gen fw = round(fexp)
+ 93.     drop if missing(ingtot_per) | missing(fw)
+ 94.     recode ingtot_per (0=.)
+ 95. 
+.     label var ingtot_per "Ingreso per cápita urbano (`year', precios dic-1991)"
+ 96.     label var fw "Factor expansión redondeado"
+ 97. 
+.     save "$out/ingresos_pc_urb/ing_perca_`year'_urb_base1991.dta", replace
+ 98. end
+
+. 
+. *-------------------------------------------------------------
+. local years_90s "1991 1992 1993 1994 1995 1996 1997 1998 1999"
+
+. foreach y of local years_90s {
+  2.     mk_ingtot_urb, year(`y')
+  3. }
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            39,071  
+    -----------------------------------------
+(ingobr: 29677 changes made)
+(ingpat: 33861 changes made)
+(ingalq: 38674 changes made)
+(ingjub: 38469 changes made)
+(ingotr: 38453 changes made)
+(1 missing value generated)
+(1 missing value generated)
+(1 missing value generated)
+(ing_sal: 29677 changes made)
+(0 real changes made)
+(ing_cta: 33860 changes made)
+(0 real changes made)
+(ing_rent: 37535 changes made)
+(0 real changes made)
+(ing_lab: 24813 changes made)
+(0 real changes made)
+(ing_tot: 23676 changes made)
+(0 real changes made)
+(ingrl: 15650 changes made)
+(0 real changes made)
+area not found
+r(111);
+
+end of do-file
+
+r(111);
+
+. do "C:\Users\santy\AppData\Local\Temp\STD13f74_000000.tmp"
+
+. 
+. *-------------------------------------------------------------
+. * Rutas
+. global raw "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/enemdu_diciembres"
+
+. global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento"
+
+. capture mkdir "$out/ingresos_pc_urb"
+
+. capture mkdir "$out/GIC_exports"
+
+. 
+. *-------------------------------------------------------------
+. * IPC de diciembre (base = 1991)
+. tempfile ipc
+
+. clear
+
+. input enc_year cpi_dec
+
+      enc_year    cpi_dec
+  1. 1991  1.97
+  2. 1992  2.98
+  3. 1993  4.15
+  4. 1994  5.24
+  5. 1995  6.40
+  6. 1996  6.84
+  7. 1997  8.17
+  8. 1998 15.07
+  9. 1999 46.25
+ 10. 2006 71.13   // Sustituye con el valor exacto de tu tabla si difiere
+ 11. 2010 89.57   // Sustituye con el valor exacto de tu tabla si difiere
+ 12. end
+
+. save `ipc'
+file C:\Users\santy\AppData\Local\Temp\ST_13f74_000001.tmp saved
+
+. scalar base_year = 1991
+
+. scalar cpi_base  = 1.97
+
+. global ipcfile "`ipc'"
+
+. clear
+
+. 
+. *-------------------------------------------------------------
+. program drop _all
+
+. program define mk_ingtot_urb
+  1.     version 15
+  2.     syntax , year(integer)
+  3. 
+.     use "$raw/empleo`year'.dta", clear
+  4. 
+.     foreach v in ciudad zona sector vivienda hogar {
+  5.         capture confirm variable `v'
+  6.         if !_rc destring `v', replace force
+  7.     }
+  8. 
+.     gen enc_year = `year'
+  9.     merge m:1 enc_year using "$ipcfile", keep(match) nogen
+ 10.     gen deflator = cpi_base / cpi_dec
+ 11. 
+.     if `year' == 1991 {
+ 12.         recode ingobr (.=0)
+ 13.         recode ingpat (9999998=.) (.=0)
+ 14.         foreach v in ingalq ingjub ingotr {
+ 15.             recode `v' (.=0)
+ 16.         }
+ 17.         gen ing_sal  = ingobr
+ 18.         gen ing_cta  = ingpat
+ 19.         gen ing_rent = ingalq + ingjub + ingotr
+ 20.         gen ing_lab  = ing_sal + ing_cta
+ 21.         gen ing_tot  = ing_lab + ing_rent
+ 22.     }
+ 23.     else if inrange(`year',1992,1999) {
+ 24.         recode ingpat (9999999=.) (9999998=.) (.=0)
+ 25.         recode ingasg (9999999=.) (.=0)
+ 26.         recode ingepv (9999999=.) (9999998=.) (.=0)
+ 27.         recode ingdom (9999999=.) (.=0)
+ 28.         gen ing_sal = ingasg + ingepv + ingdom
+ 29.         gen ing_cta = ingpat
+ 30.         gen ing_lab = ing_cta + ing_sal
+ 31. 
+.         recode ingjub (9999999=.) (.=0)
+ 32.         recode ingalq (9999999=.) (9999998=.) (.=0)
+ 33.         recode ingotr (9999999=.) (.=0)
+ 34.         gen ing_rent = ingjub + ingalq + ingotr
+ 35.         gen ing_tot  = ing_lab + ing_rent
+ 36.     }
+ 37.     else if `year' == 2006 {
+ 38.         recode pe68b (999999=.) (999=.) (.=0)
+ 39.         recode pe69b (999999=.) (999=.) (.=0)
+ 40.         recode pe70b (999999=.) (.=0)
+ 41.         gen ing_rent = pe68b + pe69b + pe70b
+ 42. 
+.         gen ing_rem = pe71b
+ 43.         recode ing_rem (999999=.) (.=0)
+ 44. 
+.         gen ingbon = pe73
+ 45.         recode ingbon (999999=.) (.=0)
+ 46. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 47.         gen ing_sal = ingrl
+ 48.         gen ing_cta = 0
+ 49.         gen ing_lab = ingrl
+ 50.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 51.     }
+ 52.     else if `year' == 2010 {
+ 53.         foreach v in p71b p72b p73b p74b p76 {
+ 54.             recode `v' (999999=.) (.=0)
+ 55.         }
+ 56.         gen ing_cap = p71b
+ 57.         gen ing_pen = p72b
+ 58.         gen ing_rent = p71b + p72b + p73b
+ 59. 
+.         gen ing_rem = p74b
+ 60.         gen ingbon = p76
+ 61. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 62.         gen ing_sal = ingrl
+ 63.         gen ing_cta = 0
+ 64.         gen ing_lab = ingrl
+ 65.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 66.     }
+ 67.     else {
+ 68.         di as error "Programa sólo cubre 1991-1999, 2006 y 2010."
+ 69.         exit 198
+ 70.     }
+ 71. 
+.     foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingrl ing_rem ingbon ing_cap ing_pen {
+ 72.         capture confirm variable `v'
+ 73.         if !_rc {
+ 74.             recode `v' (0=.)
+ 75.             replace `v' = `v' * deflator
+ 76.         }
+ 77.     }
+ 78. 
+.     egen idhogar = group(ciudad zona sector vivienda hogar)
+ 79.     gen uno = 1
+ 80.     egen miembros  = total(uno),     by(idhogar)
+ 81.     egen ingtot_hh = total(ing_tot), by(idhogar)
+ 82.     gen ingtot_per = ingtot_hh / miembros
+ 83.     drop uno ingtot_hh miembros deflator cpi_dec enc_year
+ 84. 
+.     capture confirm variable area
+ 85.     if !_rc destring area, replace force
+ 86.     keep if area == 1
+ 87. 
+.     capture confirm variable fexp
+ 88.     if _rc {
+ 89.         di as error "No existe fexp en `year'."
+ 90.         exit 459
+ 91.     }
+ 92.     gen fw = round(fexp)
+ 93.     drop if missing(ingtot_per) | missing(fw)
+ 94.     recode ingtot_per (0=.)
+ 95. 
+.     label var ingtot_per "Ingreso per cápita urbano (`year', precios dic-1991)"
+ 96.     label var fw "Factor expansión redondeado"
+ 97. 
+.     save "$out/ingresos_pc_urb/ing_perca_`year'_urb_base1991.dta", replace
+ 98. end
+
+. 
+. *-------------------------------------------------------------
+. local years_90s "1991 1992 1993 1994 1995 1996 1997 1998 1999"
+
+. foreach y of local years_90s {
+  2.     mk_ingtot_urb, year(`y')
+  3. }
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            39,071  
+    -----------------------------------------
+(ingobr: 29677 changes made)
+(ingpat: 33861 changes made)
+(ingalq: 38674 changes made)
+(ingjub: 38469 changes made)
+(ingotr: 38453 changes made)
+(1 missing value generated)
+(1 missing value generated)
+(1 missing value generated)
+(ing_sal: 29677 changes made)
+(0 real changes made)
+(ing_cta: 33860 changes made)
+(0 real changes made)
+(ing_rent: 37535 changes made)
+(0 real changes made)
+(ing_lab: 24813 changes made)
+(0 real changes made)
+(ing_tot: 23676 changes made)
+(0 real changes made)
+(ingrl: 15650 changes made)
+(0 real changes made)
+area not found
+r(111);
+
+end of do-file
+
+r(111);
+
+. do "C:\Users\santy\AppData\Local\Temp\STD13f74_000000.tmp"
+
+. 
+. *-------------------------------------------------------------
+. * Rutas
+. global raw "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/enemdu_diciembres"
+
+. global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento"
+
+. capture mkdir "$out/ingresos_pc_urb"
+
+. capture mkdir "$out/GIC_exports"
+
+. 
+. *-------------------------------------------------------------
+. * IPC de diciembre (base = 1991)
+. tempfile ipc
+
+. clear
+
+. input enc_year cpi_dec
+
+      enc_year    cpi_dec
+  1. 1991  1.97
+  2. 1992  2.98
+  3. 1993  4.15
+  4. 1994  5.24
+  5. 1995  6.40
+  6. 1996  6.84
+  7. 1997  8.17
+  8. 1998 15.07
+  9. 1999 46.25
+ 10. 2006 71.13   // Sustituye con el valor exacto de tu tabla si difiere
+ 11. 2010 89.57   // Sustituye con el valor exacto de tu tabla si difiere
+ 12. end
+
+. save `ipc'
+file C:\Users\santy\AppData\Local\Temp\ST_13f74_000001.tmp saved
+
+. scalar base_year = 1991
+
+. scalar cpi_base  = 1.97
+
+. global ipcfile "`ipc'"
+
+. clear
+
+. 
+. *-------------------------------------------------------------
+. program drop _all
+
+. program define mk_ingtot_urb
+  1.     version 15
+  2.     syntax , year(integer)
+  3. 
+.     use "$raw/empleo`year'.dta", clear
+  4. 
+.     foreach v in ciudad zona sector vivienda hogar {
+  5.         capture confirm variable `v'
+  6.         if !_rc destring `v', replace force
+  7.     }
+  8. 
+.     gen enc_year = `year'
+  9.     merge m:1 enc_year using "$ipcfile", keep(match) nogen
+ 10.     gen deflator = cpi_base / cpi_dec
+ 11. 
+.     if `year' == 1991 {
+ 12.         recode ingobr (.=0)
+ 13.         recode ingpat (9999998=.) (.=0)
+ 14.         foreach v in ingalq ingjub ingotr {
+ 15.             recode `v' (.=0)
+ 16.         }
+ 17.         gen ing_sal  = ingobr
+ 18.         gen ing_cta  = ingpat
+ 19.         gen ing_rent = ingalq + ingjub + ingotr
+ 20.         gen ing_lab  = ing_sal + ing_cta
+ 21.         gen ing_tot  = ing_lab + ing_rent
+ 22.     }
+ 23.     else if inrange(`year',1992,1999) {
+ 24.         recode ingpat (9999999=.) (9999998=.) (.=0)
+ 25.         recode ingasg (9999999=.) (.=0)
+ 26.         recode ingepv (9999999=.) (9999998=.) (.=0)
+ 27.         recode ingdom (9999999=.) (.=0)
+ 28.         gen ing_sal = ingasg + ingepv + ingdom
+ 29.         gen ing_cta = ingpat
+ 30.         gen ing_lab = ing_cta + ing_sal
+ 31. 
+.         recode ingjub (9999999=.) (.=0)
+ 32.         recode ingalq (9999999=.) (9999998=.) (.=0)
+ 33.         recode ingotr (9999999=.) (.=0)
+ 34.         gen ing_rent = ingjub + ingalq + ingotr
+ 35.         gen ing_tot  = ing_lab + ing_rent
+ 36.     }
+ 37.     else if `year' == 2006 {
+ 38.         recode pe68b (999999=.) (999=.) (.=0)
+ 39.         recode pe69b (999999=.) (999=.) (.=0)
+ 40.         recode pe70b (999999=.) (.=0)
+ 41.         gen ing_rent = pe68b + pe69b + pe70b
+ 42. 
+.         gen ing_rem = pe71b
+ 43.         recode ing_rem (999999=.) (.=0)
+ 44. 
+.         gen ingbon = pe73
+ 45.         recode ingbon (999999=.) (.=0)
+ 46. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 47.         gen ing_sal = ingrl
+ 48.         gen ing_cta = 0
+ 49.         gen ing_lab = ingrl
+ 50.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 51.     }
+ 52.     else if `year' == 2010 {
+ 53.         foreach v in p71b p72b p73b p74b p76 {
+ 54.             recode `v' (999999=.) (.=0)
+ 55.         }
+ 56.         gen ing_cap = p71b
+ 57.         gen ing_pen = p72b
+ 58.         gen ing_rent = p71b + p72b + p73b
+ 59. 
+.         gen ing_rem = p74b
+ 60.         gen ingbon = p76
+ 61. 
+.         recode ingrl (-1=.) (999999=.) (0=.)
+ 62.         gen ing_sal = ingrl
+ 63.         gen ing_cta = 0
+ 64.         gen ing_lab = ingrl
+ 65.         gen ing_tot = ingrl + ing_rent + ingbon + ing_rem
+ 66.     }
+ 67.     else {
+ 68.         di as error "Programa sólo cubre 1991-1999, 2006 y 2010."
+ 69.         exit 198
+ 70.     }
+ 71. 
+.     foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingrl ing_rem ingbon ing_cap ing_pen {
+ 72.         capture confirm variable `v'
+ 73.         if !_rc {
+ 74.             recode `v' (0=.)
+ 75.             replace `v' = `v' * deflator
+ 76.         }
+ 77.     }
+ 78. 
+.     egen idhogar = group(ciudad zona sector vivienda hogar)
+ 79.     gen uno = 1
+ 80.     egen miembros  = total(uno),     by(idhogar)
+ 81.     egen ingtot_hh = total(ing_tot), by(idhogar)
+ 82.     gen ingtot_per = ingtot_hh / miembros
+ 83.     drop uno ingtot_hh miembros deflator cpi_dec enc_year
+ 84. 
+.     capture confirm variable area
+ 85.     if !_rc {
+ 86.         destring area, replace force
+ 87.     keep if area == 1
+ 88.         }
+ 89. 
+.     capture confirm variable fexp
+ 90.     if _rc {
+ 91.         di as error "No existe fexp en `year'."
+ 92.         exit 459
+ 93.     }
+ 94.     gen fw = round(fexp)
+ 95.     drop if missing(ingtot_per) | missing(fw)
+ 96.     recode ingtot_per (0=.)
+ 97. 
+.     label var ingtot_per "Ingreso per cápita urbano (`year', precios dic-1991)"
+ 98.     label var fw "Factor expansión redondeado"
+ 99. 
+.     save "$out/ingresos_pc_urb/ing_perca_`year'_urb_base1991.dta", replace
+100. end
+
+. 
+. *-------------------------------------------------------------
+. local years_90s "1991 1992 1993 1994 1995 1996 1997 1998 1999"
+
+. foreach y of local years_90s {
+  2.     mk_ingtot_urb, year(`y')
+  3. }
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            39,071  
+    -----------------------------------------
+(ingobr: 29677 changes made)
+(ingpat: 33861 changes made)
+(ingalq: 38674 changes made)
+(ingjub: 38469 changes made)
+(ingotr: 38453 changes made)
+(1 missing value generated)
+(1 missing value generated)
+(1 missing value generated)
+(ing_sal: 29677 changes made)
+(0 real changes made)
+(ing_cta: 33860 changes made)
+(0 real changes made)
+(ing_rent: 37535 changes made)
+(0 real changes made)
+(ing_lab: 24813 changes made)
+(0 real changes made)
+(ing_tot: 23676 changes made)
+(0 real changes made)
+(ingrl: 15650 changes made)
+(0 real changes made)
+(0 observations deleted)
+(ingtot_per: 537 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1991_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            38,088  
+    -----------------------------------------
+(ingpat: 32125 changes made)
+(ingasg: 35661 changes made)
+(ingepv: 32563 changes made)
+(ingdom: 37442 changes made)
+(339 missing values generated)
+(360 missing values generated)
+(695 missing values generated)
+(ingjub: 37640 changes made)
+(ingalq: 37611 changes made)
+(ingotr: 37282 changes made)
+(11 missing values generated)
+(706 missing values generated)
+(ing_sal: 29237 changes made)
+(8,512 real changes made)
+(ing_cta: 31765 changes made)
+(5,963 real changes made)
+(ing_rent: 36431 changes made)
+(1,646 real changes made)
+(ing_lab: 23291 changes made)
+(14,102 real changes made)
+(ing_tot: 22187 changes made)
+(15,195 real changes made)
+(ingrl: 15500 changes made)
+variable ingrl was long now double
+(14,120 real changes made)
+(0 observations deleted)
+(ingtot_per: 843 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1992_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            37,735  
+    -----------------------------------------
+(ingpat: 32191 changes made)
+(ingasg: 35707 changes made)
+(ingepv: 32271 changes made)
+(ingdom: 37099 changes made)
+(654 missing values generated)
+(438 missing values generated)
+(1,085 missing values generated)
+(ingjub: 37228 changes made)
+(ingalq: 37146 changes made)
+(ingotr: 36988 changes made)
+(55 missing values generated)
+(1,139 missing values generated)
+(ing_sal: 29003 changes made)
+(8,078 real changes made)
+(ing_cta: 31753 changes made)
+(5,544 real changes made)
+(ing_rent: 35917 changes made)
+(1,763 real changes made)
+(ing_lab: 23334 changes made)
+(13,316 real changes made)
+(ing_tot: 22099 changes made)
+(14,497 real changes made)
+(ingrl: 24330 changes made)
+variable ingrl was long now double
+(13,405 real changes made)
+(0 observations deleted)
+(ingtot_per: 1497 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1993_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            37,409  
+    -----------------------------------------
+(ingpat: 32661 changes made)
+(ingasg: 35443 changes made)
+(ingepv: 32330 changes made)
+(ingdom: 36828 changes made)
+(1,128 missing values generated)
+(953 missing values generated)
+(2,058 missing values generated)
+(ingjub: 36945 changes made)
+(ingalq: 36914 changes made)
+(ingotr: 36812 changes made)
+(117 missing values generated)
+(2,165 missing values generated)
+(ing_sal: 28716 changes made)
+(7,565 real changes made)
+(ing_cta: 31708 changes made)
+(4,748 real changes made)
+(ing_rent: 35819 changes made)
+(1,473 real changes made)
+(ing_lab: 23267 changes made)
+(12,084 real changes made)
+(ing_tot: 22122 changes made)
+(13,122 real changes made)
+(ingrl: 17041 changes made)
+variable ingrl was long now double
+(12,122 real changes made)
+(0 observations deleted)
+(ingtot_per: 3298 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1994_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            36,568  
+    -----------------------------------------
+(ingpat: 31464 changes made)
+(ingasg: 34547 changes made)
+(ingepv: 31138 changes made)
+(ingdom: 35936 changes made)
+(521 missing values generated)
+(498 missing values generated)
+(1,014 missing values generated)
+(ingjub: 36001 changes made)
+(ingalq: 35927 changes made)
+(ingotr: 35768 changes made)
+(84 missing values generated)
+(1,081 missing values generated)
+(ing_sal: 28038 changes made)
+(8,009 real changes made)
+(ing_cta: 30966 changes made)
+(5,104 real changes made)
+(ing_rent: 34597 changes made)
+(1,887 real changes made)
+(ing_lab: 22770 changes made)
+(12,784 real changes made)
+(ing_tot: 21420 changes made)
+(14,067 real changes made)
+(ingrl: 15882 changes made)
+variable ingrl was long now double
+(12,835 real changes made)
+(0 observations deleted)
+(ingtot_per: 1505 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1995_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            37,264  
+    -----------------------------------------
+(ingpat: 32365 changes made)
+(ingasg: 35338 changes made)
+(ingepv: 32259 changes made)
+(ingdom: 36653 changes made)
+(764 missing values generated)
+(833 missing values generated)
+(1,571 missing values generated)
+(ingjub: 36667 changes made)
+(ingalq: 36634 changes made)
+(ingotr: 36446 changes made)
+(155 missing values generated)
+(1,690 missing values generated)
+(ing_sal: 29001 changes made)
+(7,499 real changes made)
+(ing_cta: 31532 changes made)
+(4,899 real changes made)
+(ing_rent: 35180 changes made)
+(1,929 real changes made)
+(ing_lab: 23540 changes made)
+(12,153 real changes made)
+(ing_tot: 22111 changes made)
+(13,463 real changes made)
+(ingrl: 25055 changes made)
+variable ingrl was long now double
+(12,209 real changes made)
+(0 observations deleted)
+(ingtot_per: 2806 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1996_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            36,684  
+    -----------------------------------------
+(ingpat: 31396 changes made)
+(ingasg: 34600 changes made)
+(ingepv: 31196 changes made)
+(ingdom: 36028 changes made)
+(487 missing values generated)
+(444 missing values generated)
+(920 missing values generated)
+(ingjub: 36099 changes made)
+(ingalq: 36080 changes made)
+(ingotr: 35857 changes made)
+(45 missing values generated)
+(965 missing values generated)
+(ing_sal: 28037 changes made)
+(8,160 real changes made)
+(ing_cta: 30952 changes made)
+(5,288 real changes made)
+(ing_rent: 34707 changes made)
+(1,932 real changes made)
+(ing_lab: 22606 changes made)
+(13,158 real changes made)
+(ing_tot: 21180 changes made)
+(14,539 real changes made)
+(ingrl: 15705 changes made)
+variable ingrl was long now double
+(13,199 real changes made)
+(0 observations deleted)
+(ingtot_per: 1397 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1997_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            40,509  
+    -----------------------------------------
+(ingpat: 34872 changes made)
+(ingasg: 38446 changes made)
+(ingepv: 34352 changes made)
+(ingdom: 39709 changes made)
+(512 missing values generated)
+(494 missing values generated)
+(998 missing values generated)
+(ingjub: 39804 changes made)
+(ingalq: 39772 changes made)
+(ingotr: 39016 changes made)
+(70 missing values generated)
+(1,065 missing values generated)
+(ing_sal: 31049 changes made)
+(8,948 real changes made)
+(ing_cta: 34378 changes made)
+(5,637 real changes made)
+(ing_rent: 37669 changes made)
+(2,770 real changes made)
+(ing_lab: 25243 changes made)
+(14,268 real changes made)
+(ing_tot: 23202 changes made)
+(16,242 real changes made)
+(ingrl: 17361 changes made)
+variable ingrl was long now double
+(14,410 real changes made)
+(0 observations deleted)
+(ingtot_per: 1386 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1998_urb_ba
+> se1991.dta saved
+ciudad: all characters numeric; replaced as long
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as byte
+vivienda: all characters numeric; replaced as byte
+hogar: all characters numeric; replaced as byte
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            40,072  
+    -----------------------------------------
+(ingpat: 33926 changes made)
+(ingasg: 37985 changes made)
+(ingepv: 33557 changes made)
+(ingdom: 39243 changes made)
+(ingjub: 39259 changes made)
+(ingalq: 39363 changes made)
+(ingotr: 37039 changes made)
+(ing_sal: 30716 changes made)
+(9,356 real changes made)
+(ing_cta: 33926 changes made)
+(6,146 real changes made)
+(ing_rent: 35688 changes made)
+(4,384 real changes made)
+(ing_lab: 24921 changes made)
+(15,151 real changes made)
+(ing_tot: 21951 changes made)
+(18,121 real changes made)
+(ingrl: 25816 changes made)
+variable ingrl was long now double
+(14,251 real changes made)
+(0 observations deleted)
+(ingtot_per: 377 changes made)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_1999_urb_ba
+> se1991.dta saved
+
+. foreach y in 2006 2010 {
+  2.     mk_ingtot_urb, year(`y')
+  3. }
+ciudad already numeric; no replace
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as int
+vivienda already numeric; no replace
+hogar already numeric; no replace
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            77,964  
+    -----------------------------------------
+(pe68b: 77019 changes made)
+(pe69b: 76481 changes made)
+(pe70b: 75778 changes made)
+(18 missing values generated)
+(76,576 missing values generated)
+(ing_rem: 76577 changes made)
+(72,325 missing values generated)
+(ingbon: 72325 changes made)
+(ingrl: 40844 changes made)
+(48,047 missing values generated)
+(48,047 missing values generated)
+(48,050 missing values generated)
+(ing_sal: 0 changes made)
+(29,917 real changes made)
+(ing_cta: 77964 changes made)
+(0 real changes made)
+(ing_rent: 73626 changes made)
+(4,320 real changes made)
+(ing_lab: 0 changes made)
+(29,917 real changes made)
+(ing_tot: 0 changes made)
+(29,914 real changes made)
+(ingrl: 0 changes made)
+variable ingrl was long now double
+(29,917 real changes made)
+(ing_rem: 76576 changes made)
+(1,387 real changes made)
+(ingbon: 72339 changes made)
+(5,625 real changes made)
+area already numeric; no replace
+(36,471 observations deleted)
+(0 observations deleted)
+(ingtot_per: 100 changes made)
+(note: file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_2006
+> _urb_base1991.dta not found)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_2006_urb_ba
+> se1991.dta saved
+ciudad already numeric; no replace
+zona: all characters numeric; replaced as int
+sector: all characters numeric; replaced as int
+vivienda already numeric; no replace
+hogar already numeric; no replace
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                            82,774  
+    -----------------------------------------
+(p71b: 81762 changes made)
+(p72b: 80542 changes made)
+(p73b: 80003 changes made)
+(p74b: 81589 changes made)
+(p76: 72996 changes made)
+(10 missing values generated)
+(24 missing values generated)
+(42 missing values generated)
+(3 missing values generated)
+(ingrl: 2139 changes made)
+(52,427 missing values generated)
+(52,427 missing values generated)
+(52,432 missing values generated)
+(ing_sal: 0 changes made)
+(30,347 real changes made)
+(ing_cta: 82774 changes made)
+(0 real changes made)
+(ing_rent: 77107 changes made)
+(5,625 real changes made)
+(ing_lab: 0 changes made)
+(30,347 real changes made)
+(ing_tot: 0 changes made)
+(30,342 real changes made)
+(ingrl: 0 changes made)
+(30,347 real changes made)
+(ing_rem: 81586 changes made)
+(1,185 real changes made)
+(ingbon: 73593 changes made)
+(9,181 real changes made)
+(ing_cap: 81753 changes made)
+(1,011 real changes made)
+(ing_pen: 80519 changes made)
+(2,231 real changes made)
+area already numeric; no replace
+(37,981 observations deleted)
+(0 observations deleted)
+(ingtot_per: 199 changes made)
+(note: file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_2010
+> _urb_base1991.dta not found)
+file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/ingresos_pc_urb/ing_perca_2010_urb_ba
+> se1991.dta saved
+
+. 
+. use "$out/ingresos_pc_urb/ing_perca_1991_urb_base1991.dta", clear
+
+. gicurve using "$out/ingresos_pc_urb/ing_perca_1998_urb_base1991.dta" ///
+>     [fw=fw], var1(ingtot_per) var2(ingtot_per) yp(7) np(10) mgrpp ///
+>     saving("$out/GIC_exports/gic_urb_1991_1998_base1991", replace)
+(file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_1991_1998_base19
+> 91.gph saved)
+
+
+
+   Growth rate in mean         =  1.55
+   Growth rate at median       =  1.23
+   Mean percentile growth rate =  1.37
+
+   Corresponding percentile | Rate of pro-poor growth 
+----------------------------+-------------------------
+           10               |        0.12
+           15               |        0.08
+           20               |        0.56
+           25               |        0.45
+           30               |        0.79
+------------------------------------------------------
+
+. graph export "$out/GIC_exports/gic_urb_1991_1998_base1991.png", replace width(2400)
+(file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_1991_1998_base19
+> 91.png written in PNG format)
+
+. 
+. use "$out/ingresos_pc_urb/ing_perca_2006_urb_base1991.dta", clear
+
+. gicurve using "$out/ingresos_pc_urb/ing_perca_2010_urb_base1991.dta" ///
+>     [fw=fw], var1(ingtot_per) var2(ingtot_per) yp(7) np(10) mgrpp ///
+>     saving("$out/GIC_exports/gic_urb_2006_2010_base1991", replace)
+(note: file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_2006_2010_
+> base1991.gph not found)
+(file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_2006_2010_base19
+> 91.gph saved)
+
+
+
+   Growth rate in mean         = -0.45
+   Growth rate at median       =  0.85
+   Mean percentile growth rate =  0.48
+
+   Corresponding percentile | Rate of pro-poor growth 
+----------------------------+-------------------------
+           10               |        0.70
+           15               |        0.47
+           20               |        0.85
+           25               |        0.68
+           30               |        0.85
+------------------------------------------------------
+
+. graph export "$out/GIC_exports/gic_urb_2006_2010_base1991.png", replace width(2400)
+(note: file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_2006_2010_
+> base1991.png not found)
+(file G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Curvas de crecimiento/GIC_exports/gic_urb_2006_2010_base19
+> 91.png written in PNG format)
+
+. 
+. log close
+      name:  <unnamed>
+       log:  G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\enemdu_diciembres\GIC_urbano_1991_1999_base1991.log
+  log type:  text
+ closed on:  19 Nov 2025, 00:35:44
+-----------------------------------------------------------------------------------------------------------------------------------
