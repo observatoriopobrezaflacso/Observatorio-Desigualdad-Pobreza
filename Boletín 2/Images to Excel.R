@@ -11,6 +11,7 @@ setwd('/Users/vero/Library/CloudStorage/GoogleDrive-savaldiviesofl@flacso.edu.ec
 image_folder <- "Graficos" 
 output_file <- "Organized_Graphs.xlsx"
 
+
 # --- 2. SETUP ---
 files <- list.files(image_folder, pattern = "\\.png$", full.names = TRUE)
 file_names <- basename(files)
