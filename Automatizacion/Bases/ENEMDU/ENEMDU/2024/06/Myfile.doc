@@ -1,0 +1,177 @@
+{\rtf1\ansi\deff0 {\fonttbl{\f0\fnil Garamond;}}
+{\info {\author .}{\company .}{\title .}}
+\deflang1033\plain\fs20
+{\footer\pard\qc\plain\f0\fs20\chpgn\par}
+{
+{\b\qc\line  }{\par}
+{\trowd\trgaph108\trleft-108
+\clbrdrt\brdrw10\brdrs   \cellx2000
+\fs20\pard\intbl\qc { }\cell
+\clbrdrt\brdrw10\brdrs   \cellx3250
+\fs20\pard\intbl\qc {{(1)}}\cell
+\clbrdrt\brdrw10\brdrs   \cellx4550
+\fs20\pard\intbl\qc {{(2)}}\cell
+\clbrdrt\brdrw10\brdrs   \cellx5850
+\fs20\pard\intbl\qc {{(3)}}\cell
+\clbrdrt\brdrw10\brdrs   \cellx7150
+\fs20\pard\intbl\qc {{(4)}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\clbrdrb\brdrw25\brdrs   \cellx2000
+\fs20\pard\intbl\qc { }\cell
+\clbrdrb\brdrw25\brdrs   \cellx3250
+\fs20\pard\intbl\qc { {ls}}\cell
+\clbrdrb\brdrw25\brdrs   \cellx4550
+\fs20\pard\intbl\qc { {ls}}\cell
+\clbrdrb\brdrw25\brdrs   \cellx5850
+\fs20\pard\intbl\qc { {ls}}\cell
+\clbrdrb\brdrw25\brdrs   \cellx7150
+\fs20\pard\intbl\qc { {ls}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { {health}}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{.049***}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{-.016***}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{0}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{.002}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { { }}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{(.006)}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{(.006)}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{(.006)}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{(.006)}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { {lncpc}}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{.344***}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{.341***}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{.345***}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { { }}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{(.013)}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{(.013)}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{(.013)}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { {PSA023}}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{.301***}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{.313***}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { { }}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{(.02)}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{(.02)}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { {_cons}}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{7.546***}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{5.878***}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{5.412***}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{5.156***}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { { }}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{(.015)}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{(.064)}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{(.071)}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{(.085)}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { {Observations}}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{28958}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{28958}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{28958}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{28958}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql { {R-squared}}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{.002}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{.026}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{.034}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{.047}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx2000
+\fs20\pard\intbl\ql {{EF Provincia}}\cell
+\cellx3250
+\fs20\pard\intbl\qc {{No}}\cell
+\cellx4550
+\fs20\pard\intbl\qc {{No}}\cell
+\cellx5850
+\fs20\pard\intbl\qc {{No}}\cell
+\cellx7150
+\fs20\pard\intbl\qc {{Si}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\clbrdrt\brdrw15\brdrs\cellx7150\i {Robust standard errors are in parentheses}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx7150
+\fs20\pard\intbl\ql \i {*** p<.01, ** p<.05, * p<.1 }\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx7150
+\fs20\pard\intbl\ql {}\cell
+\row}
+
+
+\writepositionforappend
+}}

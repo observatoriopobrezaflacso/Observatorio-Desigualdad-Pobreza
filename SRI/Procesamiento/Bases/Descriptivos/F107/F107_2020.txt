@@ -1,0 +1,1608 @@
+# =============================================================================
+# DATA SPECIFICATION FILE
+# =============================================================================
+# This file describes the statistical properties of a dataset.
+# It can be used to generate synthetic data with similar characteristics.
+#
+# Variable types:
+#   - numeric: Continuous or discrete numbers
+#   - character: Text strings
+#   - character_labelled: Labelled categorical (Stata-style)
+#
+# Distribution forms (dist_form):
+#   - normal: Gaussian distribution
+#   - lognormal: Right-skewed positive values
+#   - categorical: Discrete categories with probabilities
+#   - heavy_tailed: Extreme values, use quantile-based generation
+#   - numeric_id: Unique identifier (integer-like)
+#   - categorical_string: Text categories
+#   - high_cardinality_id: Many unique values (ID-like)
+# =============================================================================
+
+metadata:
+  n_original: 100000
+  n_vars: 56
+  extraction_date: 2026-02-05 15:12:20
+  format_version: '1.0'
+variables:
+  codigo_tipo_identificacion:
+    name: codigo_tipo_identificacion
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 1
+      - 1
+    is_numeric_string: no
+    n_unique: 3
+    fixed_length: yes
+    dist_form: categorical_string
+    categories:
+      - C
+      - E
+      - P
+    category_probs:
+      C: 0.99111
+      E: 0.00116
+      P: 0.00773
+  ingresos_liq_pagados:
+    name: ingresos_liq_pagados
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 265995.84
+    mean: 6741.474122
+    sd: 8172.192764
+    skewness: 5.283479
+    is_integer_like: no
+    n_unique: 41142
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 1834.0
+      50%: 4852.8
+      75%: 8796.0
+      95%: 20112.0
+      99%: 37477.1904
+    cv: 1.212226
+    dist_form: heavy_tailed
+  aporte_iess_empleado:
+    name: aporte_iess_empleado
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 32075.23
+    mean: 794.571726
+    sd: 1068.143919
+    skewness: 5.065004
+    is_integer_like: no
+    n_unique: 46127
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 173.88
+      50%: 500.12
+      75%: 988.9125
+      95%: 2887.63
+      99%: 4817.85
+    cv: 1.3443
+    dist_form: heavy_tailed
+  base_imponible:
+    name: base_imponible
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 333329.08
+    mean: 5937.001032
+    sd: 7561.739592
+    skewness: 12.446912
+    is_integer_like: no
+    n_unique: 73128
+    quantiles:
+      1%: 0.0
+      5%: 118.4795
+      25%: 1861.44
+      50%: 4911.735
+      75%: 8231.34
+      95%: 13539.529
+      99%: 29522.0425
+    cv: 1.273663
+    dist_form: heavy_tailed
+  valor_retenido:
+    name: valor_retenido
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 90287.13
+    mean: 94.543568
+    sd: 1247.39669
+    skewness: 39.427897
+    is_integer_like: no
+    n_unique: 7680
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 121.148
+      99%: 2023.897
+    cv: 13.193743
+    dist_form: heavy_tailed
+  numero_retenciones:
+    name: numero_retenciones
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  anio_retencion:
+    name: anio_retencion
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 4
+      - 4
+    is_numeric_string: yes
+    n_unique: 1
+    fixed_length: yes
+    dist_form: numeric_id
+    id_min: 2020.0
+    id_max: 2020.0
+    id_length: 4
+  estado:
+    name: estado
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 4
+      - 4
+    is_numeric_string: no
+    n_unique: 1
+    fixed_length: yes
+    dist_form: categorical_string
+    categories: CDEF
+    category_probs:
+      CDEF: 1.0
+  anio:
+    name: anio
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 4
+      - 4
+    is_numeric_string: yes
+    n_unique: 1
+    fixed_length: yes
+    dist_form: numeric_id
+    id_min: 2020.0
+    id_max: 2020.0
+    id_length: 4
+  sob_suel_com_remu:
+    name: sob_suel_com_remu
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 186536.0
+    mean: 726.135685
+    sd: 3130.953571
+    skewness: 21.256279
+    is_integer_like: no
+    n_unique: 31111
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 440.3675
+      95%: 3386.2125
+      99%: 9924.348
+    cv: 4.311796
+    dist_form: heavy_tailed
+  decimo_tercero:
+    name: decimo_tercero
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 90383.0
+    mean: 594.359775
+    sd: 857.130226
+    skewness: 19.631756
+    is_integer_like: no
+    n_unique: 42997
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 116.67
+      50%: 424.94
+      75%: 816.9775
+      95%: 1745.6
+      99%: 3416.1156
+    cv: 1.442104
+    dist_form: heavy_tailed
+  decimo_cuarto:
+    name: decimo_cuarto
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 39996.0
+    mean: 267.719192
+    sd: 269.557614
+    skewness: 73.949482
+    is_integer_like: no
+    n_unique: 5949
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 71.7
+      50%: 394.0
+      75%: 400.0
+      95%: 402.5
+      99%: 566.67
+    cv: 1.006863
+    dist_form: heavy_tailed
+  partic_utilidades:
+    name: partic_utilidades
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 55357.22
+    mean: 385.88861
+    sd: 1526.432252
+    skewness: 9.932751
+    is_integer_like: no
+    n_unique: 22257
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 123.0775
+      95%: 1932.19
+      99%: 6254.5851
+    cv: 3.955619
+    dist_form: heavy_tailed
+  reb_esp_discap:
+    name: reb_esp_discap
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 22630.0
+    mean: 109.592837
+    sd: 1256.310673
+    skewness: 11.88053
+    is_integer_like: no
+    n_unique: 161
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 11.463333
+    dist_form: heavy_tailed
+  reb_esp_ter_edad:
+    name: reb_esp_ter_edad
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 11315.0
+    mean: 20.107512
+    sd: 465.742187
+    skewness: 23.686679
+    is_integer_like: no
+    n_unique: 46
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 23.161445
+    dist_form: heavy_tailed
+  sub_total:
+    name: sub_total
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  imp_renta_empleador:
+    name: imp_renta_empleador
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 62135.51
+    mean: 5.537855
+    sd: 302.272004
+    skewness: 130.727733
+    is_integer_like: no
+    n_unique: 331
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 54.573009
+    dist_form: heavy_tailed
+  fondo_reserva:
+    name: fondo_reserva
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 1684326.0
+    mean: 537.5811
+    sd: 5445.489156
+    skewness: 296.028576
+    is_integer_like: no
+    n_unique: 35929
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 377.63
+      75%: 731.7675
+      95%: 1675.32
+      99%: 3323.1849
+    cv: 10.129595
+    dist_form: heavy_tailed
+  desahucio_otras_remun:
+    name: desahucio_otras_remun
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  deduccion_vivienda:
+    name: deduccion_vivienda
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 6630.0
+    mean: 217.85014
+    sd: 706.95323
+    skewness: 3.663723
+    is_integer_like: no
+    n_unique: 2213
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 1940.6465
+      99%: 3675.75
+    cv: 3.245121
+    dist_form: heavy_tailed
+  deduccion_salud:
+    name: deduccion_salud
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 14709.5
+    mean: 202.404072
+    sd: 689.171911
+    skewness: 5.513631
+    is_integer_like: no
+    n_unique: 2643
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 1500.0
+      99%: 3600.0
+    cv: 3.404914
+    dist_form: heavy_tailed
+  deduccion_educacion:
+    name: deduccion_educacion
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  deduccion_alimentacion:
+    name: deduccion_alimentacion
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 6604.22
+    mean: 321.529014
+    sd: 872.916714
+    skewness: 2.781069
+    is_integer_like: no
+    n_unique: 2342
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 2800.0
+      99%: 3677.37
+    cv: 2.714884
+    dist_form: heavy_tailed
+  deduccion_vestimenta:
+    name: deduccion_vestimenta
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 6094.75
+    mean: 158.378371
+    sd: 501.828597
+    skewness: 4.086094
+    is_integer_like: no
+    n_unique: 2118
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 1161.05
+      99%: 2600.0
+    cv: 3.168522
+    dist_form: heavy_tailed
+  numero_meses_trab_empleador:
+    name: numero_meses_trab_empleador
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  ingresos_otros_empleadores:
+    name: ingresos_otros_empleadores
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 348930.61
+    mean: 58.180344
+    sd: 1644.671086
+    skewness: 115.468619
+    is_integer_like: no
+    n_unique: 510
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 28.268015
+    dist_form: heavy_tailed
+  deduccion_otros_empleadores:
+    name: deduccion_otros_empleadores
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  rebajas_otros_empleadores:
+    name: rebajas_otros_empleadores
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  valor_imp_renta_anterior:
+    name: valor_imp_renta_anterior
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  imp_renta_causado:
+    name: imp_renta_causado
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 98868.88
+    mean: 101.39462
+    sd: 1359.4133
+    skewness: 38.003298
+    is_integer_like: no
+    n_unique: 6659
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 111.231
+      99%: 2132.4529
+    cv: 13.407022
+    dist_form: heavy_tailed
+  salario_digno:
+    name: salario_digno
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 8310.04
+    mean: 1.578338
+    sd: 74.432464
+    skewness: 79.7168
+    is_integer_like: no
+    n_unique: 400
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 1.0
+    cv: 47.12891
+    dist_form: heavy_tailed
+  ingreso_grav_otr_empleador:
+    name: ingreso_grav_otr_empleador
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 401380.22
+    mean: 251.325696
+    sd: 3597.114226
+    skewness: 50.77519
+    is_integer_like: no
+    n_unique: 8437
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 419.481
+      99%: 3642.0305
+    cv: 14.312504
+    dist_form: heavy_tailed
+  aporte_iess_otr_empleador:
+    name: aporte_iess_otr_empleador
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 25491.38
+    mean: 5.124794
+    sd: 132.405491
+    skewness: 94.667714
+    is_integer_like: no
+    n_unique: 448
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 25.831217
+    dist_form: heavy_tailed
+  valor_imp_ret_otr_empleador:
+    name: valor_imp_ret_otr_empleador
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 97383.17
+    mean: 3.104131
+    sd: 378.701855
+    skewness: 202.706399
+    is_integer_like: no
+    n_unique: 78
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 121.960037
+    dist_form: heavy_tailed
+  valor_imp_asum_empleado:
+    name: valor_imp_asum_empleado
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 62135.51
+    mean: 7.052772
+    sd: 357.426755
+    skewness: 113.930544
+    is_integer_like: no
+    n_unique: 367
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 50.67172
+    dist_form: heavy_tailed
+  trabajador_discapacitado:
+    name: trabajador_discapacitado
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 1.0
+    max: 4.0
+    mean: 1.01497
+    sd: 0.134633
+    skewness: 10.347857
+    is_integer_like: yes
+    n_unique: 4
+    quantiles:
+      1%: 1.0
+      5%: 1.0
+      25%: 1.0
+      50%: 1.0
+      75%: 1.0
+      95%: 1.0
+      99%: 2.0
+    cv: 0.132517
+    dist_form: categorical
+    categories:
+      - 1.0
+      - 2.0
+      - 3.0
+      - 4.0
+    category_probs:
+      '1': 0.98656
+      '2': 0.01207
+      '3': 0.00121
+      '4': 0.00016
+  cod_tipo_id_discapacitado:
+    name: cod_tipo_id_discapacitado
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 1
+      - 1
+    is_numeric_string: no
+    n_unique: 3
+    fixed_length: yes
+    dist_form: categorical_string
+    categories:
+      - C
+      - 'N'
+      - P
+    category_probs:
+      C: 0.00135
+      'N': 0.99863
+      P: 2.0e-05
+  porcen_discapa_trabaj:
+    name: porcen_discapa_trabaj
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 1
+      - 3
+    is_numeric_string: yes
+    n_unique: 72
+    fixed_length: no
+    dist_form: categorical_string
+    categories:
+      - '0'
+      - '100'
+      - '30'
+      - '31'
+      - '32'
+      - '33'
+      - '34'
+      - '35'
+      - '36'
+      - '37'
+      - '38'
+      - '39'
+      - '40'
+      - '41'
+      - '42'
+      - '43'
+      - '44'
+      - '45'
+      - '46'
+      - '47'
+      - '48'
+      - '49'
+      - '50'
+      - '51'
+      - '52'
+      - '53'
+      - '54'
+      - '55'
+      - '56'
+      - '57'
+      - '58'
+      - '59'
+      - '60'
+      - '61'
+      - '62'
+      - '63'
+      - '64'
+      - '65'
+      - '66'
+      - '67'
+      - '68'
+      - '69'
+      - '70'
+      - '71'
+      - '72'
+      - '73'
+      - '74'
+      - '75'
+      - '76'
+      - '77'
+      - '78'
+      - '79'
+      - '80'
+      - '81'
+      - '82'
+      - '83'
+      - '84'
+      - '85'
+      - '86'
+      - '87'
+      - '88'
+      - '89'
+      - '90'
+      - '91'
+      - '92'
+      - '93'
+      - '94'
+      - '95'
+      - '96'
+      - '97'
+      - '98'
+      - '99'
+    category_probs:
+      '0': 0.98657
+      '100': 8.0e-05
+      '30': 0.00174
+      '31': 0.00021
+      '32': 0.00023
+      '33': 0.00019
+      '34': 0.00022
+      '35': 0.00054
+      '36': 0.00019
+      '37': 0.00016
+      '38': 0.00023
+      '39': 0.00014
+      '40': 0.00153
+      '41': 0.00024
+      '42': 0.00029
+      '43': 0.00031
+      '44': 0.00023
+      '45': 0.00071
+      '46': 0.00019
+      '47': 0.00015
+      '48': 0.0003
+      '49': 0.0002
+      '50': 0.00075
+      '51': 0.00011
+      '52': 0.00016
+      '53': 0.00012
+      '54': 0.0001
+      '55': 0.00027
+      '56': 8.0e-05
+      '57': 9.0e-05
+      '58': 8.0e-05
+      '59': 7.0e-05
+      '60': 0.00067
+      '61': 4.0e-05
+      '62': 8.0e-05
+      '63': 8.0e-05
+      '64': 7.0e-05
+      '65': 0.00023
+      '66': 5.0e-05
+      '67': 6.0e-05
+      '68': 9.0e-05
+      '69': 5.0e-05
+      '70': 0.00063
+      '71': 6.0e-05
+      '72': 5.0e-05
+      '73': 1.0e-05
+      '74': 2.0e-05
+      '75': 0.00034
+      '76': 3.0e-05
+      '77': 6.0e-05
+      '78': 8.0e-05
+      '79': 7.0e-05
+      '80': 0.00023
+      '81': 5.0e-05
+      '82': 4.0e-05
+      '83': 4.0e-05
+      '84': 1.0e-05
+      '85': 7.0e-05
+      '86': 1.0e-05
+      '87': 1.0e-05
+      '88': 3.0e-05
+      '89': 1.0e-05
+      '90': 6.0e-05
+      '91': 4.0e-05
+      '92': 1.0e-05
+      '93': 4.0e-05
+      '94': 3.0e-05
+      '95': 3.0e-05
+      '96': 1.0e-05
+      '97': 1.0e-05
+      '98': 1.0e-05
+      '99': 1.0e-05
+  conv_doble_imp_pago:
+    name: conv_doble_imp_pago
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 2
+      - 2
+    is_numeric_string: no
+    n_unique: 3
+    fixed_length: yes
+    dist_form: categorical_string
+    categories:
+      - NA
+      - 'NO'
+      - SI
+    category_probs:
+      NA: 0.9995
+      'NO': 0.0004
+      SI: 0.0001
+  pais_residencia:
+    name: pais_residencia
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 3
+      - 3
+    is_numeric_string: yes
+    n_unique: 17
+    fixed_length: yes
+    dist_form: numeric_id
+    id_min: 103.0
+    id_max: 593.0
+    id_length: 3
+  residencia:
+    name: residencia
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 2
+      - 2
+    is_numeric_string: yes
+    n_unique: 2
+    fixed_length: yes
+    dist_form: numeric_id
+    id_min: 1.0
+    id_max: 2.0
+    id_length: 2
+  beneficio_galapagos:
+    name: beneficio_galapagos
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 2
+      - 2
+    is_numeric_string: no
+    n_unique: 2
+    fixed_length: yes
+    dist_form: categorical_string
+    categories:
+      - 'NO'
+      - SI
+    category_probs:
+      'NO': 0.99402
+      SI: 0.00598
+  deduccion_arte_cultura:
+    name: deduccion_arte_cultura
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  enfermedad_catastrofica:
+    name: enfermedad_catastrofica
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 2
+      - 2
+    is_numeric_string: no
+    n_unique: 2
+    fixed_length: yes
+    dist_form: categorical_string
+    categories:
+      - 'NO'
+      - SI
+    category_probs:
+      'NO': 0.99764
+      SI: 0.00236
+  deduccion_educacion_arte:
+    name: deduccion_educacion_arte
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 6500.0
+    mean: 199.808037
+    sd: 664.444827
+    skewness: 3.86695
+    is_integer_like: no
+    n_unique: 1953
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 1580.0
+      99%: 3675.75
+    cv: 3.325399
+    dist_form: heavy_tailed
+  deduccion_turismo:
+    name: deduccion_turismo
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 2000.0
+    mean: 0.02671
+    sd: 6.53213
+    skewness: 291.567868
+    is_integer_like: yes
+    n_unique: 6
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 235.731868
+    dist_form: categorical
+    categories:
+      - 0.0
+      - 1.0
+      - 50.0
+      - 120.0
+      - 500.0
+      - 2000.0
+    category_probs:
+      '0': 0.99995
+      '1': 1.0e-05
+      '50': 1.0e-05
+      '120': 1.0e-05
+      '500': 1.0e-05
+      '2000': 1.0e-05
+  rebaja_gastos_personales:
+    name: rebaja_gastos_personales
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  impuesto_renta_rebaja_gp:
+    name: impuesto_renta_rebaja_gp
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  tipo_empleador:
+    name: tipo_empleador
+    class: character
+    n_original: 100000
+    missing_prop: 0.99992
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%13s'
+    type: character
+    str_lengths:
+      - 13
+      - 13
+    is_numeric_string: no
+    n_unique: 1
+    fixed_length: yes
+    dist_form: categorical_string
+    categories: PRIVADO_MIXTO
+    category_probs:
+      PRIVADO_MIXTO: 1.0
+  ente_seguirdad_social:
+    name: ente_seguirdad_social
+    class: character
+    n_original: 100000
+    missing_prop: 0.99992
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 4
+      - 4
+    is_numeric_string: no
+    n_unique: 1
+    fixed_length: yes
+    dist_form: categorical_string
+    categories: IESS
+    category_probs:
+      IESS: 1.0
+  numero_cargas_familiares:
+    name: numero_cargas_familiares
+    class: numeric
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 0.0
+    mean: 0.0
+    sd: 0.0
+    skewness: 0.0
+    is_integer_like: yes
+    n_unique: 1
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 0.0
+    dist_form: categorical
+    categories: 0.0
+    category_probs:
+      '0': 1.0
+  e_catastrofica:
+    name: e_catastrofica
+    class:
+      - haven_labelled
+      - vctrs_vctr
+      - double
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: yes
+    is_char_labelled: no
+    stata_label:
+      - 0.0
+      - 1.0
+    value_labels:
+      'NO': 0.0
+      SI: 1.0
+    stata_format: '%10.0g'
+    type: numeric
+    min: 0.0
+    max: 1.0
+    mean: 0.00236
+    sd: 0.048523
+    skewness: 20.511425
+    is_integer_like: yes
+    n_unique: 2
+    quantiles:
+      1%: 0.0
+      5%: 0.0
+      25%: 0.0
+      50%: 0.0
+      75%: 0.0
+      95%: 0.0
+      99%: 0.0
+    cv: 14.441284
+    dist_form: categorical
+    categories:
+      - 0.0
+      - 1.0
+    category_probs:
+      '0': 0.99764
+      '1': 0.00236
+  RUC_PK_empleador:
+    name: RUC_PK_empleador
+    class: character
+    n_original: 100000
+    missing_prop: 0.0
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10s'
+    type: character
+    str_lengths:
+      - 2
+      - 10
+    is_numeric_string: no
+    n_unique: 27695
+    fixed_length: no
+    dist_form: alphanumeric_id
+    has_digits: yes
+    has_letters: yes
+    has_upper: yes
+    has_lower: no
+  RUC_PK_empleado:
+    name: RUC_PK_empleado
+    class: character
+    n_original: 100000
+    missing_prop: 0.42815
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%10s'
+    type: character
+    str_lengths:
+      - 5
+      - 10
+    is_numeric_string: no
+    n_unique: 56927
+    fixed_length: no
+    dist_form: alphanumeric_id
+    has_digits: yes
+    has_letters: yes
+    has_upper: yes
+    has_lower: no
+  CEDULA_PK_empleado:
+    name: CEDULA_PK_empleado
+    class: character
+    n_original: 100000
+    missing_prop: 0.00498
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%9s'
+    type: character
+    str_lengths:
+      - 4
+      - 9
+    is_numeric_string: no
+    n_unique: 99091
+    fixed_length: no
+    dist_form: alphanumeric_id
+    has_digits: yes
+    has_letters: yes
+    has_upper: yes
+    has_lower: no
+  id_otros:
+    name: id_otros
+    class: character
+    n_original: 100000
+    missing_prop: 0.99502
+    is_labelled: no
+    is_char_labelled: no
+    stata_format: '%23s'
+    type: character
+    str_lengths:
+      - 14
+      - 23
+    is_numeric_string: no
+    n_unique: 498
+    fixed_length: no
+    dist_form: alphanumeric_id
+    has_digits: yes
+    has_letters: yes
+    has_upper: yes
+    has_lower: no
+

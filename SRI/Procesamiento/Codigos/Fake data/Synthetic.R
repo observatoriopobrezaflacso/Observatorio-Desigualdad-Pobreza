@@ -1,307 +1,3 @@
-# =============================================================================
-# SYNTHETIC DATA GENERATION FROM SPECIFICATION
-# =============================================================================
-# This script generates synthetic datasets from a data specification object
-# WITHOUT requiring access to the original data at runtime.
-#
-# Two main workflows:
-# 1. Extract data_spec from original data (one-time, optional)
-# 2. Generate synthetic data from data_spec (can be shared/reused)
-# =============================================================================
-
-lapply(c("haven", "dplyr", "purrr", "vctrs", "tibble"), function(p) {
-  if (!require(p, character.only = TRUE)) install.packages(p)
-  library(p, character.only = TRUE)
-})
-
-# -----------------------------------------------------------------------------
-# Helper Functions for Synthetic Generation
-# -----------------------------------------------------------------------------
-
-#' Null-coalescing operator (return first non-NULL value)
-`%||%` <- function(x, y) if (is.null(x)) y else x
-
-#' Calculate skewness
-#' @param x numeric vector
-calc_skewness <- function(x) {
-  x <- x[!is.na(x)]
-  if (length(x) < 3) return(0)
-  n <- length(x)
-  m <- mean(x)
-  s <- sd(x)
-  if (s == 0) return(0)
-  sum((x - m)^3) / (n * s^3)
-}
-
-#' Detect if a numeric variable is likely categorical (few unique values)
-#' @param x numeric vector
-#' @param threshold maximum proportion of unique values to total for categorical
-is_likely_categorical <- function(x, threshold = 0.05) {
-  x_clean <- x[!is.na(x)]
-  if (length(x_clean) == 0) return(TRUE)
-  n_unique <- length(unique(x_clean))
-  (n_unique / length(x_clean) < threshold) | (n_unique <= 30)
-}
-
-#' Check if underlying data of a haven_labelled variable is character
-#' @param x variable to check
-is_character_labelled <- function(x) {
-  if (!inherits(x, "haven_labelled")) return(FALSE)
-  underlying <- vctrs::vec_data(x)
-  is.character(underlying)
-}
-
-# -----------------------------------------------------------------------------
-# DATA SPECIFICATION EXTRACTION (from original data - one-time step)
-# -----------------------------------------------------------------------------
-
-#' Detect if a variable is high-cardinality (likely an ID or unique identifier)
-#' @param n_unique number of unique values
-#' @param n_total total number of non-missing observations
-#' @param max_categories maximum number of categories to store (default 100)
-#' @return TRUE if high-cardinality
-is_high_cardinality <- function(n_unique, n_total, max_categories = 100) {
-  if (n_total == 0) return(FALSE)
-  # High cardinality if: more than max_categories unique values OR
-  
-  # uniqueness ratio > 50% (most values are unique, suggesting IDs)
-  (n_unique > max_categories) || (n_unique / n_total > 0.5)
-}
-
-#' Extract specification for a single variable
-#' @param x variable to analyze
-#' @param var_name name of the variable
-#' @param max_categories maximum number of categories to store (default 100)
-#' @return list with complete variable specification
-extract_variable_spec <- function(x, var_name, max_categories = 100) {
-  spec <- list(
-    name = var_name,
-    class = class(x),
-    n_original = length(x),
-    missing_prop = mean(is.na(x)),
-    is_labelled = inherits(x, "haven_labelled"),
-    is_char_labelled = is_character_labelled(x),
-    stata_label = attr(x, "label"),
-    value_labels = attr(x, "labels"),
-    stata_format = attr(x, "format.stata")
-  )
-  
-  # Determine distribution type and extract relevant parameters
-  if (spec$is_char_labelled) {
-    # Character-labelled variables
-    spec$type <- "character_labelled"
-    x_raw <- vctrs::vec_data(x)
-    x_clean <- x_raw[!is.na(x_raw)]
-    
-    if (length(x_clean) > 0) {
-      spec$n_unique <- length(unique(x_clean))
-      spec$str_lengths <- range(nchar(x_clean))
-      
-      # Check if high-cardinality (ID-like)
-      if (is_high_cardinality(spec$n_unique, length(x_clean), max_categories)) {
-        # Treat as ID - don't store all values
-        spec$dist_form <- "high_cardinality_id"
-        spec$is_numeric_string <- all(grepl("^[0-9]+$", x_clean))
-        
-        if (spec$is_numeric_string) {
-          orig_nums <- as.numeric(x_clean)
-          spec$id_min <- min(orig_nums)
-          spec$id_max <- max(orig_nums)
-          spec$id_length <- spec$str_lengths[1]
-        }
-        # Don't store categories - will generate random IDs
-      } else {
-        # Low cardinality - store categories
-        spec$dist_form <- "categorical"
-        freq_table <- table(x_clean)
-        spec$categories <- names(freq_table)
-        spec$category_probs <- as.numeric(freq_table) / sum(freq_table)
-      }
-    }
-    
-  } else if (is.numeric(x)) {
-    x_clean <- x[!is.na(x)]
-    spec$type <- "numeric"
-    
-    if (length(x_clean) > 0) {
-      # Basic statistics
-      spec$min <- min(x_clean)
-      spec$max <- max(x_clean)
-      spec$mean <- mean(x_clean)
-      spec$sd <- sd(x_clean)
-      spec$skewness <- calc_skewness(x_clean)
-      spec$is_integer_like <- all(x_clean == floor(x_clean))
-      spec$n_unique <- length(unique(x_clean))
-      
-      # Quantiles for non-normal distributions
-      spec$quantiles <- quantile(x_clean, probs = c(0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99))
-      
-      # Coefficient of variation
-      spec$cv <- spec$sd / (abs(spec$mean) + 0.001)
-      
-      # Check if this is a numeric ID (high cardinality integer)
-      if (spec$is_integer_like && is_high_cardinality(spec$n_unique, length(x_clean), max_categories)) {
-        spec$dist_form <- "numeric_id"
-        # Only store range, not all values
-      } else if (spec$is_labelled || is_likely_categorical(x)) {
-        spec$dist_form <- "categorical"
-        freq_table <- table(x_clean)
-        spec$categories <- as.numeric(names(freq_table))
-        spec$category_probs <- as.numeric(freq_table) / sum(freq_table)
-      } else if (spec$cv > 2 || abs(spec$skewness) > 3) {
-        spec$dist_form <- "heavy_tailed"
-      } else if (abs(spec$skewness) > 1) {
-        if (spec$min >= 0 && spec$skewness > 0) {
-          spec$dist_form <- "lognormal"
-          # Store log-scale parameters
-          shift <- ifelse(spec$min == 0, 1, 0)
-          x_shifted <- x_clean + shift
-          spec$log_mean <- mean(log(x_shifted))
-          spec$log_sd <- sd(log(x_shifted))
-          spec$log_shift <- shift
-        } else {
-          spec$dist_form <- "skewed_empirical"
-        }
-      } else {
-        spec$dist_form <- "normal"
-      }
-    } else {
-      spec$dist_form <- "empty"
-    }
-    
-  } else if (is.character(x)) {
-    spec$type <- "character"
-    x_clean <- x[!is.na(x)]
-    
-    if (length(x_clean) > 0) {
-      spec$str_lengths <- range(nchar(x_clean))
-      spec$is_numeric_string <- all(grepl("^[0-9]+$", x_clean))
-      spec$n_unique <- length(unique(x_clean))
-      
-      # For ID-like strings with fixed length
-      unique_lengths <- unique(nchar(x_clean))
-      spec$fixed_length <- length(unique_lengths) == 1
-      
-      # Check if high-cardinality (ID-like variable)
-      if (is_high_cardinality(spec$n_unique, length(x_clean), max_categories)) {
-        # High cardinality - treat as ID, don't store all values
-        if (spec$is_numeric_string) {
-          spec$dist_form <- "numeric_id"
-          orig_nums <- as.numeric(x_clean)
-          spec$id_min <- min(orig_nums)
-          spec$id_max <- max(orig_nums)
-          spec$id_length <- spec$str_lengths[1]
-        } else {
-          # Alphanumeric high-cardinality - store pattern info only
-          spec$dist_form <- "alphanumeric_id"
-          # Analyze character composition for generation
-          all_chars <- unlist(strsplit(x_clean, ""))
-          spec$has_digits <- any(grepl("[0-9]", all_chars))
-          spec$has_letters <- any(grepl("[a-zA-Z]", all_chars))
-          spec$has_upper <- any(grepl("[A-Z]", all_chars))
-          spec$has_lower <- any(grepl("[a-z]", all_chars))
-        }
-      } else if (spec$fixed_length && spec$is_numeric_string && spec$str_lengths[1] <= 9) {
-        # Low cardinality numeric string
-        spec$dist_form <- "numeric_id"
-        orig_nums <- as.numeric(x_clean)
-        spec$id_min <- min(orig_nums)
-        spec$id_max <- max(orig_nums)
-        spec$id_length <- spec$str_lengths[1]
-      } else {
-        # Low cardinality - store categories
-        spec$dist_form <- "categorical_string"
-        freq_table <- table(x_clean)
-        spec$categories <- names(freq_table)
-        spec$category_probs <- as.numeric(freq_table) / sum(freq_table)
-      }
-    } else {
-      spec$dist_form <- "empty"
-    }
-    
-  } else {
-    spec$type <- "other"
-    spec$dist_form <- "unknown"
-  }
-  
-  return(spec)
-}
-
-#' Extract complete data specification from a dataset
-#' @param data data frame or path to data file
-#' @param verbose print progress messages
-#' @return list containing specifications for all variables
-extract_data_spec <- function(data, verbose = TRUE) {
-  
-  # Load data if path is provided
-  if (is.character(data) && length(data) == 1 && file.exists(data)) {
-    if (verbose) message("Loading data from: ", data)
-    
-    ext <- tolower(tools::file_ext(data))
-    data <- switch(ext,
-                   "dta" = haven::read_dta(data),
-                   "sav" = haven::read_sav(data),
-                   "csv" = readr::read_csv(data, show_col_types = FALSE),
-                   "rds" = readRDS(data),
-                   stop("Unsupported file format: ", ext)
-    )
-  }
-  
-  if (!is.data.frame(data)) {
-    stop("Input must be a data frame, tibble, or path to a data file.")
-  }
-  
-  var_names <- names(data)
-  n_vars <- length(var_names)
-  
-  if (verbose) {
-    message("Extracting specification from ", nrow(data), " rows x ", n_vars, " columns...")
-    pb <- txtProgressBar(min = 0, max = n_vars, style = 3)
-  }
-  
-  specs <- vector("list", n_vars)
-  names(specs) <- var_names
-  
-  for (i in seq_along(var_names)) {
-    specs[[var_names[i]]] <- extract_variable_spec(data[[var_names[i]]], var_names[i])
-    if (verbose) setTxtProgressBar(pb, i)
-  }
-  
-  if (verbose) close(pb)
-  
-  # Create data_spec object
-  data_spec <- list(
-    variables = specs,
-    n_original = nrow(data),
-    n_vars = n_vars,
-    var_names = var_names,
-    extraction_date = Sys.time()
-  )
-  
-  class(data_spec) <- c("data_spec", "list")
-  
-  if (verbose) message("Specification extracted successfully!")
-  
-  return(data_spec)
-}
-
-#' Save data specification to file
-#' @param data_spec data specification object
-#' @param file path to save the specification
-save_data_spec <- function(data_spec, file) {
-  saveRDS(data_spec, file)
-  message("Data specification saved to: ", file)
-}
-
-#' Load data specification from file
-#' @param file path to the specification file
-load_data_spec <- function(file) {
-  data_spec <- readRDS(file)
-  if (!inherits(data_spec, "data_spec")) {
-    warning("Loaded object may not be a valid data_spec")
-  }
-  return(data_spec)
-}
 
 # -----------------------------------------------------------------------------
 # SYNTHETIC DATA GENERATION FROM SPECIFICATION
@@ -314,7 +10,7 @@ generate_categorical_from_spec <- function(spec, n) {
   if (is.null(spec$categories) || length(spec$categories) == 0) {
     return(rep(NA, n))
   }
-
+  
   # Handle single category case (sample doesn't work with size=1 and prob)
   if (length(spec$categories) == 1) {
     synthetic <- rep(spec$categories[1], n)
@@ -325,11 +21,11 @@ generate_categorical_from_spec <- function(spec, n) {
       # Use uniform probabilities if mismatch
       probs <- rep(1 / length(spec$categories), length(spec$categories))
     }
-
+    
     # Generate synthetic values
     synthetic <- sample(spec$categories, size = n, replace = TRUE, prob = probs)
   }
-
+  
   # Add NAs
   if (spec$missing_prop > 0) {
     na_count <- round(n * spec$missing_prop)
@@ -338,7 +34,7 @@ generate_categorical_from_spec <- function(spec, n) {
       synthetic[na_indices] <- NA
     }
   }
-
+  
   return(synthetic)
 }
 
@@ -422,17 +118,17 @@ generate_continuous_from_spec <- function(spec, n) {
 #' @param spec variable specification
 #' @param n number of values to generate
 generate_id_from_spec <- function(spec, n) {
-
+  
   if (spec$dist_form == "empty") {
     return(rep(NA_character_, n))
   }
-
+  
   if (spec$dist_form == "numeric_id") {
     # Generate numeric IDs within range
     id_min <- spec$id_min %||% 1
     id_max <- spec$id_max %||% (10^spec$id_length - 1)
     id_length <- spec$id_length %||% spec$str_lengths[1] %||% 10
-
+    
     # For large ranges or long IDs, generate digit by digit
     range_size <- id_max - id_min + 1
     if (range_size > 1e9 || id_length > 15) {
@@ -453,7 +149,7 @@ generate_id_from_spec <- function(spec, n) {
       synthetic_nums <- sample(seq(id_min, id_max), size = n, replace = TRUE)
       synthetic <- sprintf(paste0("%0", id_length, "d"), as.integer(synthetic_nums))
     }
-
+    
   } else if (spec$dist_form == "alphanumeric_id") {
     # Generate random alphanumeric IDs matching pattern
     str_len <- spec$str_lengths[1] %||% 10
@@ -493,7 +189,7 @@ generate_id_from_spec <- function(spec, n) {
 #' @param spec variable specification
 #' @param n number of values to generate
 generate_char_labelled_from_spec <- function(spec, n) {
-
+  
   # Handle high-cardinality ID-like variables
   if (spec$dist_form == "high_cardinality_id") {
     # Generate IDs without storing all original values
@@ -501,7 +197,7 @@ generate_char_labelled_from_spec <- function(spec, n) {
       # Numeric string IDs - handle large ranges
       id_length <- spec$id_length %||% spec$str_lengths[1] %||% 10
       range_size <- spec$id_max - spec$id_min + 1
-
+      
       if (range_size > 1e9 || id_length > 15) {
         # Very large IDs: generate each digit randomly
         synthetic <- replicate(n, {
@@ -846,130 +542,11 @@ create_data_spec <- function(..., n_original = NULL) {
 # EXAMPLE USAGE
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# Example 1: Manually define a data specification
-# -----------------------------------------------------------------------------
-
-# Define specifications for example variables
-example_spec <- create_data_spec(
-  
-  # Numeric ID variable (e.g., person ID)
-  create_var_spec(
-    name = "id",
-    type = "character",
-    dist_form = "numeric_id",
-    id_min = 1000,
-    id_max = 9999,
-    id_length = 4,
-    str_lengths = c(4, 4),
-    missing_prop = 0
-  ),
-  
-  # Continuous normal variable (e.g., age)
-  create_var_spec(
-    name = "age",
-    type = "numeric",
-    dist_form = "normal",
-    mean = 42,
-    sd = 15,
-    min = 18,
-    max = 85,
-    is_integer_like = TRUE,
-    missing_prop = 0.02
-  ),
-  
-  # Right-skewed variable (e.g., income)
-  create_var_spec(
-    name = "income",
-    type = "numeric",
-    dist_form = "lognormal",
-    mean = 45000,
-    sd = 30000,
-    min = 0,
-    max = 500000,
-    log_mean = 10.2,
-    log_sd = 0.8,
-    log_shift = 1,
-    is_integer_like = FALSE,
-    missing_prop = 0.15,
-    quantiles = c(`1%` = 8000, `5%` = 12000, `25%` = 25000,
-                  `50%` = 38000, `75%` = 55000, `95%` = 95000, `99%` = 150000)
-  ),
-  
-  # Categorical labelled variable (e.g., education level)
-  create_var_spec(
-    name = "education",
-    type = "numeric",
-    dist_form = "categorical",
-    categories = c(1, 2, 3, 4, 5),
-    category_probs = c(0.10, 0.25, 0.35, 0.20, 0.10),
-    missing_prop = 0.05,
-    is_labelled = TRUE,
-    value_labels = c("Primary" = 1, "Secondary" = 2, "Technical" = 3,
-                     "University" = 4, "Postgrad" = 5),
-    stata_label = "Highest education level completed"
-  ),
-  
-  # Binary variable (e.g., employed)
-  create_var_spec(
-    name = "employed",
-    type = "numeric",
-    dist_form = "categorical",
-    categories = c(0, 1),
-    category_probs = c(0.35, 0.65),
-    missing_prop = 0.01,
-    is_labelled = TRUE,
-    value_labels = c("No" = 0, "Yes" = 1),
-    stata_label = "Currently employed"
-  ),
-  
-  # Character categorical variable (e.g., region)
-  create_var_spec(
-    name = "region",
-    type = "character",
-    dist_form = "categorical_string",
-    categories = c("North", "South", "East", "West", "Central"),
-    category_probs = c(0.15, 0.25, 0.20, 0.18, 0.22),
-    missing_prop = 0.03
-  ),
-  
-  n_original = 5000
-)
-
-# Generate synthetic data from the manual specification
-# fake_data <- fake_data_creation(example_spec, n = 1000)
-# print(fake_data)
-# validate_synthetic_from_spec(fake_data, example_spec)
-
-# -----------------------------------------------------------------------------
-# Example 2: Extract specification from real data, then generate
-# -----------------------------------------------------------------------------
-
-# Step 1: Extract specification (one-time, requires original data)
-data_spec <- extract_data_spec("path/to/original_data.dta")
-save_data_spec(data_spec, "my_data_spec.rds")
-
-# Step 2: Generate synthetic data (can be done without original data)
-data_spec <- load_data_spec("my_data_spec.rds")
-fake_data <- fake_data_creation(data_spec, n = 1000)
-
-# -----------------------------------------------------------------------------
-# Full workflow example with the empleo2024 dataset (commented out)
-# -----------------------------------------------------------------------------
-
 setwd("/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI")
 
-# One-time: Extract and save specification
-data_spec <- extract_data_spec(
-  "/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamiento/Bases/empleo2024.dta"
-)
+fake_data <- fake_data_creation(data_spec2, n = data_spec$n_original, seed = 42)
 
-save_data_spec(data_spec, "Procesamiento/Bases/empleo2024_spec.rds")
-
-# # Later: Generate synthetic data from saved specification
-data_spec <- load_data_spec("Procesamiento/Bases/empleo2024_spec.rds")
-fake_data <- fake_data_creation(data_spec, n = data_spec$n_original, seed = 42)
-
-# # Validate
+# Validate
 validate_synthetic_from_spec(fake_data, data_spec)
+
 
