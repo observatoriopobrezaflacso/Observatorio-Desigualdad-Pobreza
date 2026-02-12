@@ -140,9 +140,12 @@ foreach yr of local years_both {
         if (freserva_correc > 0 & freserva_correc < .)     ///
          & (coef_fres_r > 0.0833 & coef_fres_r != .)
 
+    * --- Ingreso de trabajo (F107) ---
+    gen ingreso_trabajo = base_imponible + decimo_tercero_dep ///
+        + decimo_cuarto_dep + freserva_correc
+
     * Colapsar por persona (puede haber varios empleadores)
-    collapse (sum) base_imponible decimo_tercero_dep ///
-        decimo_cuarto_dep freserva_correc, by(CEDULA_PK_empleado)
+    collapse (sum) ingreso_trabajo, by(CEDULA_PK_empleado)
     rename CEDULA_PK_empleado CEDULA_PK
 
     tempfile f107_yr
@@ -241,3 +244,4 @@ foreach yr of local years_both {
 
 di as result _n "01_limpieza_merge.do completado."
 
+2
