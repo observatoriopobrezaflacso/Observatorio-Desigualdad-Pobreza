@@ -1,0 +1,970 @@
+
+. /****************************************************************************
+> ***
+> * PROGRAMA SRI — Declaración de Renta
+> * Estadísticas descriptivas de ingresos por percentiles
+> *
+> * Genera tablas de distribución del ingreso para:
+> *   - Ingresos de trabajo
+> *   - Ingresos de capital
+> *   - Ingreso total
+> *
+> * Automatizado para todos los años con datos en F107 y F102.
+> * Basado en la lógica de renta2010.do
+> *
+> * Salida: Tablas_Renta.xlsx  (una hoja por concepto)
+> *         resultados_renta_percentiles.dta (formato largo)
+> *****************************************************************************
+> **/
+. 
+. clear all
+
+. set more off
+
+. set maxvar 10000
+
+
+. 
+. * ===========================================================================
+> =
+. * 1. CONFIGURACIÓN DE RUTAS
+. * ===========================================================================
+> =
+. 
+. global basedir "/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail
+> .com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SR
+> I/Procesamiento"
+
+. 
+. global dir_f107 "$basedir/Bases/Fake/F107"
+
+. global dir_f102 "$basedir/Bases/Fake/F102"
+
+. global dir_out  "$basedir/Resultados"
+
+. 
+. capture mkdir "$dir_out"
+
+. 
+. * ===========================================================================
+> =
+. * 2. SALARIO BÁSICO UNIFICADO POR AÑO (para tope de décimo cuarto)
+. * ===========================================================================
+> =
+. 
+. local sbu_2008 200
+
+. local sbu_2009 218
+
+. local sbu_2010 240
+
+. local sbu_2011 264
+
+. local sbu_2012 292
+
+. local sbu_2013 318
+
+. local sbu_2014 340
+
+. local sbu_2015 354
+
+. local sbu_2016 366
+
+. local sbu_2017 375
+
+. local sbu_2018 386
+
+. local sbu_2019 394
+
+. local sbu_2020 400
+
+. local sbu_2021 400
+
+. local sbu_2022 425
+
+. local sbu_2023 450
+
+. local sbu_2024 460
+
+. 
+. * ===========================================================================
+> =
+. * 3. DETECTAR AÑOS DISPONIBLES
+. * ===========================================================================
+> =
+. 
+. * --- Años con F107 ---
+. local years_107 ""
+
+. local files_107 : dir "$dir_f107" files "F107_*.dta"
+
+. foreach f of local files_107 {
+  2.     if regexm("`f'", "F107_([0-9]+)\.dta") {
+  3.         local yr = regexs(1)
+  4.         local years_107 "`years_107' `yr'"
+  5.     }
+  6. }
+
+. 
+. * --- Años con F102 ---
+. local years_102 ""
+
+. local files_102 : dir "$dir_f102" files "F102_*.dta"
+
+. foreach f of local files_102 {
+  2.     if regexm("`f'", "F102_([0-9]+)\.dta") {
+  3.         local yr = regexs(1)
+  4.         local years_102 "`years_102' `yr'"
+  5.     }
+  6. }
+
+. 
+. * --- Intersección: años con ambos formularios ---
+. local years_both ""
+
+. foreach yr of local years_107 {
+  2.     local found 0
+  3.     foreach yr2 of local years_102 {
+  4.         if `yr' == `yr2' local found 1
+  5.     }
+  6.     if `found' local years_both "`years_both' `yr'"
+  7. }
+
+. local years_both : list sort years_both
+
+. 
+. di as text _n "Años F107 disponibles : `years_107'"
+
+Años F107 disponibles :  2024 2018 2019 2022 2023 2021 2020 2011 2010 2012 2013
+>  2017 2016 2014 2015
+
+. di as text    "Años F102 disponibles : `years_102'"
+Años F102 disponibles :  2012 2013 2011 2010 2014 2015 2017 2016 2024 2018 2019
+>  2020
+
+. di as text    "Años a procesar       : `years_both'" _n
+Años a procesar       : 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 
+> 2024
+
+
+. 
+. * ===========================================================================
+> =
+. * 4. PREPARAR POSTFILE PARA RESULTADOS
+. * ===========================================================================
+> =
+. 
+. tempname results
+
+. tempfile results_file
+
+. 
+. postfile `results'                            ///
+>     int(anio)                                 ///
+>     str30(concepto)                           ///
+>     str10(percentil)                          ///
+>     double(suma media mediana vmin vmax pct_total) ///
+>     long(N)                                   ///
+>     using "`results_file'", replace
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000002 no
+> t found)
+
+. 
+. * ===========================================================================
+> =
+. * 5. LOOP PRINCIPAL — UNA ITERACIÓN POR AÑO
+. * ===========================================================================
+> =
+. 
+. foreach yr of local years_both {
+  2. 
+.     di as result _n "========== Procesando año `yr' =========="
+  3. 
+.     * ------------------------------------------------------------------
+.     * 5.1  FORMULARIO 107 — Ingreso de trabajo (relación de dependencia)
+.     * ------------------------------------------------------------------
+. 
+.     use CEDULA_PK_empleado                  ///
+>         ingresos_liq_pagados                ///
+>         sob_suel_com_remu                   ///
+>         partic_utilidades                   ///
+>         decimo_tercero                      ///
+>         decimo_cuarto                       ///
+>         fondo_reserva                       ///
+>         base_imponible                      ///
+>         using "$dir_f107/F107_`yr'.dta", clear
+  4. 
+.     * Asegurar tipo numérico (datos reales pueden venir como string)
+.     foreach v of varlist ingresos_liq_pagados sob_suel_com_remu  ///
+>         partic_utilidades decimo_tercero decimo_cuarto           ///
+>         fondo_reserva base_imponible {
+  5.         capture destring `v', replace force
+  6.     }
+  7. 
+.     * --- Tope décimo cuarto ---
+.     *     Máximo legal = (SBU/12)*9 + SBU = SBU * 1.75
+.     local sbu = `sbu_`yr''
+  8.     local tope_d14 = (`sbu' / 12) * 9 + `sbu'
+  9.     gen decimo_cuarto_dep = min(decimo_cuarto, `tope_d14')
+ 10. 
+.     * --- Tope décimo tercero ---
+.     *     Máximo = ingreso mensual promedio
+.     gen decimo_tercero_dep = min(decimo_tercero, ///
+>         (ingresos_liq_pagados + sob_suel_com_remu) / 12)
+ 11. 
+.     * --- Depuración de fondo de reserva ---
+.     *     Teórico = (ingresos + sobresueldos + utilidades) * 8,33 %
+.     egen fondo_reserva_teo = rowtotal(ingresos_liq_pagados ///
+>         sob_suel_com_remu partic_utilidades)
+ 12.     replace fondo_reserva_teo = fondo_reserva_teo * 0.0833
+ 13. 
+.     gen coef_fres = fondo_reserva /                         ///
+>         (ingresos_liq_pagados + sob_suel_com_remu + partic_utilidades)
+ 14.     gen coef_fres_r = round(coef_fres, 0.0001)
+ 15. 
+.     gen freserva_correc = fondo_reserva
+ 16.     replace freserva_correc = fondo_reserva_teo             ///
+>         if (freserva_correc > 0 & freserva_correc < .)     ///
+>          & (coef_fres_r > 0.0833 & coef_fres_r != .)
+ 17. 
+.     * --- Ingreso de trabajo (F107) ---
+.     gen ingreso_trabajo = base_imponible + decimo_tercero_dep ///
+>         + decimo_cuarto_dep + freserva_correc
+ 18. 
+.     * Colapsar por persona (puede haber varios empleadores)
+.     collapse (sum) ingreso_trabajo, by(CEDULA_PK_empleado)
+ 19.     rename CEDULA_PK_empleado CEDULA_PK
+ 20. 
+.     tempfile f107_yr
+ 21.     save "`f107_yr'", replace
+ 22. 
+.     * ------------------------------------------------------------------
+.     * 5.2  FORMULARIO 102 — Ingresos de trabajo (autónomo/empresarial)
+.     *                        e ingresos de capital
+.     * ------------------------------------------------------------------
+. 
+.     use CEDULA_PK                             ///
+>         total_ingresos_1440                   ///
+>         ing_libre_eje_profesional_2990        ///
+>         ing_ocupacion_liberal_3010            ///
+>         ingresos_aem_rie_1280                 ///
+>         ing_arriendo_inmuebles_3040           ///
+>         ing_arriendo_otros_act_3080           ///
+>         rim_pgr_ant_anio_2008_3160            ///
+>         ingresos_regalias_3170                ///
+>         rendimientos_financieros_3190         ///
+>         dividend_recib_soc_resid_5120         ///
+>         div_recib_soc_no_resid_5130           ///
+>         ingr_enaj_drc_no_iru_5110             ///
+>         ingresos_otr_rgr_3193                 ///
+>         otr_ing_gravados_exterior_3180        ///
+>         using "$dir_f102/F102_`yr'.dta", clear
+ 23. 
+.     * Corregir variables numéricas con formato string (artefacto del fake dat
+> a)
+.     foreach v of varlist _all {
+ 24.         capture confirm numeric variable `v'
+ 25.         if !_rc {
+ 26.             local fmt : format `v'
+ 27.             if regexm("`fmt'", "s$") {
+ 28.                 format `v' %12.0g
+ 29.             }
+ 30.         }
+ 31.     }
+ 32. 
+.     foreach v of varlist total_ingresos_1440               ///
+>         ing_libre_eje_profesional_2990                     ///
+>         ing_ocupacion_liberal_3010 ingresos_aem_rie_1280   ///
+>         ing_arriendo_inmuebles_3040                        ///
+>         ing_arriendo_otros_act_3080                        ///
+>         rim_pgr_ant_anio_2008_3160 ingresos_regalias_3170  ///
+>         rendimientos_financieros_3190                      ///
+>         dividend_recib_soc_resid_5120                      ///
+>         div_recib_soc_no_resid_5130                        ///
+>         ingr_enaj_drc_no_iru_5110 ingresos_otr_rgr_3193    ///
+>         otr_ing_gravados_exterior_3180 {
+ 33.         capture destring `v', replace force
+ 34.     }
+ 35. 
+.     * Ingreso de trabajo — actividad empresarial (obligados a llevar contab.)
+.     rename total_ingresos_1440 ING_TRAB_OBLIGADOS
+ 36. 
+.     * Ingreso de trabajo — autónomo / no obligado
+.     egen ING_TRAB_NO_OBLIGADOS = rowtotal(            ///
+>         ing_libre_eje_profesional_2990                ///
+>         ing_ocupacion_liberal_3010                    ///
+>         ingresos_aem_rie_1280)
+ 37. 
+.     * Ingreso de capital
+.     egen INGRESOS_CAPITAL = rowtotal(                 ///
+>         ing_arriendo_inmuebles_3040                   ///
+>         ing_arriendo_otros_act_3080                   ///
+>         rim_pgr_ant_anio_2008_3160                    ///
+>         ingresos_regalias_3170                        ///
+>         rendimientos_financieros_3190                 ///
+>         dividend_recib_soc_resid_5120                 ///
+>         div_recib_soc_no_resid_5130                   ///
+>         ingr_enaj_drc_no_iru_5110                     ///
+>         ingresos_otr_rgr_3193                         ///
+>         otr_ing_gravados_exterior_3180)
+ 38. 
+.     keep CEDULA_PK ING_TRAB_OBLIGADOS ING_TRAB_NO_OBLIGADOS INGRESOS_CAPITAL
+ 39. 
+.     * Colapsar por persona (por si hay declaraciones sustitutivas)
+.     collapse (sum) ING_TRAB_OBLIGADOS ING_TRAB_NO_OBLIGADOS ///
+>         INGRESOS_CAPITAL, by(CEDULA_PK)
+ 40. 
+.     tempfile f102_yr
+ 41.     save "`f102_yr'", replace
+ 42. 
+.     * ------------------------------------------------------------------
+.     * 5.3  MERGE  F107 ← F102   (por CEDULA_PK)
+.     * ------------------------------------------------------------------
+. 
+.     use "`f107_yr'", clear
+ 43.     merge 1:1 CEDULA_PK using "`f102_yr'", nogen
+ 44. 
+.     * Totales de ingreso (rowtotal trata missing como 0)
+.     egen INGRESOS_TRAB_TOTAL    = rowtotal(ingreso_trabajo ///
+>         ING_TRAB_OBLIGADOS ING_TRAB_NO_OBLIGADOS)
+ 45.     egen INGRESOS_CAPITAL_TOTAL = rowtotal(INGRESOS_CAPITAL)
+ 46.     egen INGRESOS_TOTAL         = rowtotal(INGRESOS_TRAB_TOTAL ///
+>         INGRESOS_CAPITAL_TOTAL)
+ 47. 
+.     * ------------------------------------------------------------------
+.     * 5.4  CEROS → MISSING  (sólo para estadísticas descriptivas)
+.     * ------------------------------------------------------------------
+. 
+.     foreach var in INGRESOS_TRAB_TOTAL INGRESOS_CAPITAL_TOTAL INGRESOS_TOTAL 
+> {
+ 48.         gen `var'_s = `var'
+ 49.         replace `var'_s = . if `var'_s == 0
+ 50.     }
+ 51. 
+.     * ------------------------------------------------------------------
+.     * 5.5  ESTADÍSTICAS POR GRUPO DE PERCENTIL
+.     * ------------------------------------------------------------------
+. 
+.     local concepts      INGRESOS_TRAB_TOTAL  INGRESOS_CAPITAL_TOTAL  INGRESOS
+> _TOTAL
+ 52.     local concepts_lbl `""Ingresos de trabajo" "Ingresos de capital" "Ingr
+> eso total""'
+ 53. 
+.     local c 1
+ 54.     foreach concept of local concepts {
+ 55. 
+.         local lbl : word `c' of `concepts_lbl'
+ 56.         local svar "`concept'_s"
+ 57. 
+.         * Verificar que hay suficientes observaciones
+.         quietly count if `svar' != .
+ 58.         if r(N) < 2 {
+ 59.             di as text "  NOTA: `lbl' — menos de 2 obs no-missing; se omit
+> e."
+ 60.             local ++c
+ 61.             continue
+ 62.         }
+ 63. 
+.         * Calcular puntos de corte
+.         quietly _pctile `svar', percentiles(50 60 70 80 90 95 99)
+ 64.         local p50 = r(r1)
+ 65.         local p60 = r(r2)
+ 66.         local p70 = r(r3)
+ 67.         local p80 = r(r4)
+ 68.         local p90 = r(r5)
+ 69.         local p95 = r(r6)
+ 70.         local p99 = r(r7)
+ 71. 
+.         quietly summarize `svar'
+ 72.         local total_sum = r(sum)
+ 73.         if `total_sum' == 0 local total_sum 1
+ 74. 
+.         * --- Definir 9 grupos ---
+.         quietly {
+ 75.             gen byte _g1 = (`svar' >= `p99' & `svar' != .)
+ 76.             gen byte _g2 = (`svar' >= `p95' & `svar' != .)
+ 77.             gen byte _g3 = (`svar' >= `p90' & `svar' != .)
+ 78.             gen byte _g4 = (`svar' >= `p80' & `svar' < `p90' & `svar' != .
+> )
+ 79.             gen byte _g5 = (`svar' >= `p70' & `svar' < `p80' & `svar' != .
+> )
+ 80.             gen byte _g6 = (`svar' >= `p60' & `svar' < `p70' & `svar' != .
+> )
+ 81.             gen byte _g7 = (`svar' >= `p50' & `svar' < `p60' & `svar' != .
+> )
+ 82.             gen byte _g8 = (`svar' <= `p50' & `svar' != .)
+ 83.             gen byte _g9 = (`svar' != .)
+ 84.         }
+ 85. 
+.         local gname1 "P99-P100"
+ 86.         local gname2 "P95-P100"
+ 87.         local gname3 "P90-P100"
+ 88.         local gname4 "P80-P90"
+ 89.         local gname5 "P70-P80"
+ 90.         local gname6 "P60-P70"
+ 91.         local gname7 "P50-P60"
+ 92.         local gname8 "P1-P50"
+ 93.         local gname9 "Total"
+ 94. 
+.         forvalues g = 1/9 {
+ 95.             quietly summarize `svar' if _g`g' == 1, detail
+ 96.             if r(N) > 0 {
+ 97.                 post `results' (`yr') ("`lbl'") ("`gname`g''")    ///
+>                     (r(sum)) (r(mean)) (r(p50)) (r(min)) (r(max)) ///
+>                     ((r(sum) / `total_sum') * 100) (r(N))
+ 98.             }
+ 99.             else {
+100.                 post `results' (`yr') ("`lbl'") ("`gname`g''") ///
+>                     (0) (.) (.) (.) (.) (0) (0)
+101.             }
+102.         }
+103. 
+.         drop _g1-_g9
+104.         local ++c
+105.     }
+106. }
+
+========== Procesando año 2010 ==========
+(9,962 real changes made)
+(38 missing values generated)
+(38 missing values generated)
+(2,960 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000003 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000003 saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000004 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000004 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,976
+        from master                     4,478  
+        from using                      3,498  
+
+    matched                             5,472  
+    -----------------------------------------
+(13 real changes made, 13 to missing)
+(4,668 real changes made, 4,668 to missing)
+(1 real change made, 1 to missing)
+
+========== Procesando año 2011 ==========
+(9,953 real changes made)
+(47 missing values generated)
+(47 missing values generated)
+(3,066 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000005 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000005 saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000006 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000006 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,956
+        from master                     4,486  
+        from using                      3,470  
+
+    matched                             5,482  
+    -----------------------------------------
+(17 real changes made, 17 to missing)
+(4,590 real changes made, 4,590 to missing)
+(0 real changes made)
+
+========== Procesando año 2012 ==========
+(9,966 real changes made)
+(34 missing values generated)
+(34 missing values generated)
+(3,063 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000007 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000007 saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000008 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000008 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,917
+        from master                     4,472  
+        from using                      4,445  
+
+    matched                             5,465  
+    -----------------------------------------
+(31 real changes made, 31 to missing)
+(4,602 real changes made, 4,602 to missing)
+(2 real changes made, 2 to missing)
+
+========== Procesando año 2013 ==========
+(9,947 real changes made)
+(53 missing values generated)
+(53 missing values generated)
+(3,117 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000009 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.000009 saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000a no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000a saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,924
+        from master                     4,469  
+        from using                      4,455  
+
+    matched                             5,461  
+    -----------------------------------------
+(28 real changes made, 28 to missing)
+(4,576 real changes made, 4,576 to missing)
+(1 real change made, 1 to missing)
+
+========== Procesando año 2014 ==========
+(9,966 real changes made)
+(34 missing values generated)
+(34 missing values generated)
+(3,092 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000b no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000b saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000c no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000c saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,925
+        from master                     4,469  
+        from using                      3,456  
+
+    matched                             5,461  
+    -----------------------------------------
+(26 real changes made, 26 to missing)
+(4,580 real changes made, 4,580 to missing)
+(2 real changes made, 2 to missing)
+
+========== Procesando año 2015 ==========
+(9,964 real changes made)
+(36 missing values generated)
+(36 missing values generated)
+(3,441 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000d no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000d saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000e no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000e saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,908
+        from master                     4,469  
+        from using                      4,439  
+
+    matched                             5,463  
+    -----------------------------------------
+(43 real changes made, 43 to missing)
+(4,612 real changes made, 4,612 to missing)
+(0 real changes made)
+
+========== Procesando año 2016 ==========
+(10,000 real changes made)
+(3,637 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000f no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000f saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000g no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000g saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,954
+        from master                     4,466  
+        from using                      3,488  
+
+    matched                             5,459  
+    -----------------------------------------
+(43 real changes made, 43 to missing)
+(4,552 real changes made, 4,552 to missing)
+(0 real changes made)
+
+========== Procesando año 2017 ==========
+(10,000 real changes made)
+(3,578 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000h no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000h saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000i no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000i saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,962
+        from master                     4,446  
+        from using                      3,516  
+
+    matched                             5,433  
+    -----------------------------------------
+(42 real changes made, 42 to missing)
+(4,485 real changes made, 4,485 to missing)
+(0 real changes made)
+
+========== Procesando año 2018 ==========
+(9,960 real changes made)
+(40 missing values generated)
+(40 missing values generated)
+(3,787 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000j no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000j saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000k no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000k saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,920
+        from master                     4,462  
+        from using                      4,458  
+
+    matched                             5,454  
+    -----------------------------------------
+(69 real changes made, 69 to missing)
+(4,482 real changes made, 4,482 to missing)
+(0 real changes made)
+
+========== Procesando año 2019 ==========
+(9,961 real changes made)
+(39 missing values generated)
+(39 missing values generated)
+(3,839 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000l no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000l saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000m no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000m saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,974
+        from master                     4,454  
+        from using                      3,520  
+
+    matched                             5,444  
+    -----------------------------------------
+(62 real changes made, 62 to missing)
+(4,479 real changes made, 4,479 to missing)
+(0 real changes made)
+
+========== Procesando año 2020 ==========
+(9,955 real changes made)
+(45 missing values generated)
+(45 missing values generated)
+(4,096 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000n no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000n saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000o no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000o saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,919
+        from master                     4,467  
+        from using                      4,452  
+
+    matched                             5,460  
+    -----------------------------------------
+(101 real changes made, 101 to missing)
+(4,532 real changes made, 4,532 to missing)
+(2 real changes made, 2 to missing)
+
+========== Procesando año 2024 ==========
+(9,947 real changes made)
+(53 missing values generated)
+(53 missing values generated)
+(3,919 real changes made)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000p no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000p saved
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000q no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23403.00000q saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,947
+        from master                     4,492  
+        from using                      4,455  
+
+    matched                             5,490  
+    -----------------------------------------
+(102 real changes made, 102 to missing)
+(4,591 real changes made, 4,591 to missing)
+(0 real changes made)
+
+. 
+. postclose `results'
+
+. 
+. * ===========================================================================
+> =
+. * 6. GUARDAR RESULTADOS EN FORMATO LARGO
+. * ===========================================================================
+> =
+. 
+. use "`results_file'", clear
+
+. label var anio      "Año"
+
+. label var concepto  "Concepto de ingreso"
+
+. label var percentil "Grupo de percentil"
+
+. label var suma      "Suma total"
+
+. label var media     "Media"
+
+. label var mediana   "Mediana"
+
+. label var vmin      "Mínimo"
+
+. label var vmax      "Máximo"
+
+. label var pct_total "% del ingreso total"
+
+. label var N         "Número de observaciones"
+
+. 
+. save "$dir_out/resultados_renta_percentiles.dta", replace
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Resultados/resultados_renta_percentiles.dta saved
+
+. 
+. * ===========================================================================
+> =
+. * 7. EXPORTAR A EXCEL — UNA HOJA POR CONCEPTO DE INGRESO
+. * ===========================================================================
+> =
+. 
+. local outfile "$dir_out/Tablas_Renta.xlsx"
+
+. 
+. * Nombres de percentil en orden deseado
+. local pnames `""P99-P100" "P95-P100" "P90-P100" "P80-P90" "P70-P80" "P60-P70"
+>  "P50-P60" "P1-P50" "Total""'
+
+. local npctiles 9
+
+. 
+. * Conceptos y nombres de hoja (el nombre de hoja replica el formato del Excel
+>  original)
+. local sheet_concepts `""Ingresos de trabajo" "Ingresos de capital" "Ingreso t
+> otal""'
+
+. local sheet_names    `""Ingresos de trabajo" "Ingresos de capital" "Total ing
+> reso""'
+
+. 
+. local sc 1
+
+. foreach concept of local sheet_concepts {
+  2. 
+.     local shname : word `sc' of `sheet_names'
+  3. 
+.     use "$dir_out/resultados_renta_percentiles.dta", clear
+  4.     keep if concepto == "`concept'"
+  5. 
+.     * Asignar orden numérico a los grupos de percentil
+.     gen pctil_order = .
+  6.     forvalues p = 1/`npctiles' {
+  7.         local pn : word `p' of `pnames'
+  8.         replace pctil_order = `p' if percentil == "`pn'"
+  9.     }
+ 10. 
+.     drop concepto percentil
+ 11. 
+.     * Reshape: una fila por año, columnas = stat × percentil
+.     reshape wide suma media N mediana vmin vmax pct_total, ///
+>         i(anio) j(pctil_order)
+ 12. 
+.     * Ordenar columnas: Año | (Suma Media N Mediana % Min Max) × cada grupo
+.     local ordered "anio"
+ 13.     forvalues p = 1/`npctiles' {
+ 14.         local ordered "`ordered' suma`p' media`p' N`p' mediana`p' pct_tota
+> l`p' vmin`p' vmax`p'"
+ 15.     }
+ 16.     order `ordered'
+ 17. 
+.     * Etiquetar variables
+.     label var anio "Año"
+ 18.     forvalues p = 1/`npctiles' {
+ 19.         local pn : word `p' of `pnames'
+ 20.         label var suma`p'      "`pn': Suma total"
+ 21.         label var media`p'     "`pn': Media"
+ 22.         label var N`p'         "`pn': N"
+ 23.         label var mediana`p'   "`pn': Mediana"
+ 24.         label var pct_total`p' "`pn': % del total"
+ 25.         label var vmin`p'      "`pn': Min"
+ 26.         label var vmax`p'      "`pn': Max"
+ 27.     }
+ 28. 
+.     * Formatear números
+.     format suma* %15.2fc
+ 29.     format media* mediana* vmin* vmax* %12.2fc
+ 30.     format pct_total* %6.2f
+ 31.     format N* %12.0fc
+ 32. 
+.     sort anio
+ 33. 
+.     * Exportar
+.     if `sc' == 1 {
+ 34.         export excel using "`outfile'", ///
+>             sheet("`shname'") firstrow(varlabel) replace
+ 35.     }
+ 36.     else {
+ 37.         export excel using "`outfile'", ///
+>             sheet("`shname'") firstrow(varlabel) sheetmodify
+ 38.     }
+ 39. 
+.     di as text "  Hoja exportada: `shname'"
+ 40.     local ++sc
+ 41. }
+(216 observations deleted)
+(108 missing values generated)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(note: j = 1 2 3 4 5 6 7 8 9)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                      108   ->      12
+Number of variables                   9   ->      64
+j variable (9 values)       pctil_order   ->   (dropped)
+xij variables:
+                                   suma   ->   suma1 suma2 ... suma9
+                                  media   ->   media1 media2 ... media9
+                                      N   ->   N1 N2 ... N9
+                                mediana   ->   mediana1 mediana2 ... mediana9
+                                   vmin   ->   vmin1 vmin2 ... vmin9
+                                   vmax   ->   vmax1 vmax2 ... vmax9
+                              pct_total   ->   pct_total1 pct_total2 ... pct_to
+> tal9
+-----------------------------------------------------------------------------
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Resultados/Tablas_Renta.xlsx saved
+  Hoja exportada: Ingresos de trabajo
+(216 observations deleted)
+(108 missing values generated)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(note: j = 1 2 3 4 5 6 7 8 9)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                      108   ->      12
+Number of variables                   9   ->      64
+j variable (9 values)       pctil_order   ->   (dropped)
+xij variables:
+                                   suma   ->   suma1 suma2 ... suma9
+                                  media   ->   media1 media2 ... media9
+                                      N   ->   N1 N2 ... N9
+                                mediana   ->   mediana1 mediana2 ... mediana9
+                                   vmin   ->   vmin1 vmin2 ... vmin9
+                                   vmax   ->   vmax1 vmax2 ... vmax9
+                              pct_total   ->   pct_total1 pct_total2 ... pct_to
+> tal9
+-----------------------------------------------------------------------------
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Resultados/Tablas_Renta.xlsx saved
+  Hoja exportada: Ingresos de capital
+(216 observations deleted)
+(108 missing values generated)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(12 real changes made)
+(note: j = 1 2 3 4 5 6 7 8 9)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                      108   ->      12
+Number of variables                   9   ->      64
+j variable (9 values)       pctil_order   ->   (dropped)
+xij variables:
+                                   suma   ->   suma1 suma2 ... suma9
+                                  media   ->   media1 media2 ... media9
+                                      N   ->   N1 N2 ... N9
+                                mediana   ->   mediana1 mediana2 ... mediana9
+                                   vmin   ->   vmin1 vmin2 ... vmin9
+                                   vmax   ->   vmax1 vmax2 ... vmax9
+                              pct_total   ->   pct_total1 pct_total2 ... pct_to
+> tal9
+-----------------------------------------------------------------------------
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Resultados/Tablas_Renta.xlsx saved
+  Hoja exportada: Total ingreso
+
+. 
+. * ===========================================================================
+> =
+. * 8. FIN
+. * ===========================================================================
+> =
+. 
+. di as result _n "============================================="
+
+=============================================
+
+. di as result    "  Proceso completado"
+  Proceso completado
+
+. di as result    "============================================="
+=============================================
+
+. di as text "Archivos generados:"
+Archivos generados:
+
+. di as text "  $dir_out/resultados_renta_percentiles.dta"
+  /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/T
+> rabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamiento/
+> Resultados/resultados_renta_percentiles.dta
+
+. di as text "  `outfile'"
+  /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/T
+> rabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamiento/
+> Resultados/Tablas_Renta.xlsx
+
+. di as text ""
+
+
+. 
+end of do-file

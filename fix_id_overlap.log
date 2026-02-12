@@ -1,0 +1,1572 @@
+
+. /****************************************************************************
+> ***
+> * Fix fake-data ID overlap
+> *
+> * Ensures:
+> *   - Within each year, ≥ 50 % of CEDULA_PK match between F107 and F102
+> *   - Across years,     ≥ 70 % of all unique IDs appear in more than one year
+> *
+> * Strategy:
+> *   1. Generate a global pool of 15 000 synthetic 10-character IDs.
+> *   2. For each year, draw IDs for F107 and F102 from the pool, forcing
+> *      at least 55 % overlap within year.
+> *   3. Because the pool is 15 000 and each year draws ~10 000, virtually all
+> *      IDs appear in multiple years (pigeonhole principle).
+> *   4. Replace CEDULA_PK in every .dta file with the new IDs.
+> *****************************************************************************
+> **/
+. 
+. clear all
+
+. set more off
+
+. set seed 42
+
+. 
+. * ===========================================================================
+> =
+. * 1. CONFIGURACIÓN
+. * ===========================================================================
+> =
+. 
+. global basedir "/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail
+> .com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SR
+> I/Procesamiento"
+
+. 
+. global dir_f107 "$basedir/Bases/Fake/F107"
+
+. global dir_f102 "$basedir/Bases/Fake/F102"
+
+. 
+. local pool_size   15000
+
+. local id_len      10
+
+. local min_shared  0.55      // target within-year shared fraction (> 50 %)
+
+. 
+. * ===========================================================================
+> =
+. * 2. GENERAR POOL DE IDs
+. * ===========================================================================
+> =
+. 
+. di as result "Generando pool de `pool_size' IDs..."
+Generando pool de 15000 IDs...
+
+. 
+. clear
+
+. set obs `pool_size'
+number of observations (_N) was 0, now 15,000
+
+. gen long pool_idx = _n
+
+. 
+. * Generar IDs alfanuméricos aleatorios de `id_len' caracteres
+. local chars "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+. local nchars = strlen("`chars'")
+
+. 
+. gen str`id_len' pool_id = ""
+(15,000 missing values generated)
+
+. forvalues i = 1/`id_len' {
+  2.     gen byte _pos = ceil(runiform() * `nchars')
+  3.     replace pool_id = pool_id + substr("`chars'", _pos, 1)
+  4.     drop _pos
+  5. }
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+(15,000 real changes made)
+
+. 
+. * Verificar unicidad (extremadamente improbable con 36^10 combinaciones)
+. duplicates report pool_id
+
+Duplicates in terms of pool_id
+
+--------------------------------------
+   copies | observations       surplus
+----------+---------------------------
+        1 |        15000             0
+--------------------------------------
+
+. quietly duplicates tag pool_id, gen(_dup)
+
+. quietly count if _dup > 0
+
+. if r(N) > 0 {
+.     di as error "¡Se encontraron IDs duplicados en el pool! Cambiar el seed."
+.     exit 198
+. }
+
+. drop _dup
+
+. 
+. tempfile pool
+
+. save "`pool'"
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000001 saved
+
+. 
+. di as text "  Pool generado: `pool_size' IDs únicos de `id_len' caracteres"
+  Pool generado: 15000 IDs únicos de 10 caracteres
+
+. 
+. * ===========================================================================
+> =
+. * 3. DETECTAR AÑOS DISPONIBLES
+. * ===========================================================================
+> =
+. 
+. local years_107 ""
+
+. local files_107 : dir "$dir_f107" files "F107_*.dta"
+
+. foreach f of local files_107 {
+  2.     if regexm("`f'", "F107_([0-9]+)\.dta") {
+  3.         local years_107 "`years_107' `=regexs(1)'"
+  4.     }
+  5. }
+
+. 
+. local years_102 ""
+
+. local files_102 : dir "$dir_f102" files "F102_*.dta"
+
+. foreach f of local files_102 {
+  2.     if regexm("`f'", "F102_([0-9]+)\.dta") {
+  3.         local years_102 "`years_102' `=regexs(1)'"
+  4.     }
+  5. }
+
+. 
+. local all_years : list years_107 | years_102
+
+. local all_years : list sort all_years
+
+. 
+. di as text "F107: `years_107'"
+F107:  2024 2018 2019 2022 2023 2021 2020 2011 2010 2012 2013 2017 2016 2014 20
+> 15
+
+. di as text "F102: `years_102'"
+F102:  2012 2013 2011 2010 2014 2015 2017 2016 2024 2018 2019 2020
+
+. di as text "Todos: `all_years'"
+Todos: 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 20
+> 24
+
+. 
+. * ===========================================================================
+> =
+. * 4. LOOP: REASIGNAR IDs POR AÑO
+. * ===========================================================================
+> =
+. 
+. foreach yr of local all_years {
+  2. 
+.     di as result _n "========== Año `yr' =========="
+  3. 
+.     local has_107 : list posof "`yr'" in years_107
+  4.     local has_102 : list posof "`yr'" in years_102
+  5. 
+.     * ------------------------------------------------------------------
+.     * 4.1  Contar IDs únicos en cada formulario
+.     * ------------------------------------------------------------------
+. 
+.     local n107 0
+  6.     local n102 0
+  7. 
+.     if `has_107' {
+  8.         use CEDULA_PK_empleado using "$dir_f107/F107_`yr'.dta", clear
+  9.         drop if CEDULA_PK_empleado == ""
+ 10.         bysort CEDULA_PK_empleado: keep if _n == 1
+ 11.         local n107 = _N
+ 12.         gen long seq = _n
+ 13.         rename CEDULA_PK_empleado old_id
+ 14.         tempfile uniq_107
+ 15.         save "`uniq_107'"
+ 16.     }
+ 17. 
+.     if `has_102' {
+ 18.         * Corregir formatos numéricos con display string (artefacto fake d
+> ata)
+.         use CEDULA_PK using "$dir_f102/F102_`yr'.dta", clear
+ 19.         drop if CEDULA_PK == ""
+ 20.         bysort CEDULA_PK: keep if _n == 1
+ 21.         local n102 = _N
+ 22.         gen long seq = _n
+ 23.         rename CEDULA_PK old_id
+ 24.         tempfile uniq_102
+ 25.         save "`uniq_102'"
+ 26.     }
+ 27. 
+.     di as text "  F107 IDs únicos: `n107'"
+ 28.     di as text "  F102 IDs únicos: `n102'"
+ 29. 
+.     * ------------------------------------------------------------------
+.     * 4.2  Calcular cuántos IDs compartidos / exclusivos
+.     * ------------------------------------------------------------------
+. 
+.     local n_shared = ceil(`min_shared' * max(`n107', `n102'))
+ 30.     if `n_shared' > `n107' local n_shared = `n107'
+ 31.     if `n_shared' > `n102' local n_shared = `n102'
+ 32.     * Si solo existe un formulario, no hay compartidos
+.     if `n107' == 0 | `n102' == 0  local n_shared 0
+ 33. 
+.     local n_f107_only = `n107' - `n_shared'
+ 34.     local n_f102_only = `n102' - `n_shared'
+ 35.     local total_needed = `n_shared' + `n_f107_only' + `n_f102_only'
+ 36. 
+.     di as text "  Compartidos: `n_shared'  |  Solo F107: `n_f107_only'  |  So
+> lo F102: `n_f102_only'"
+ 37. 
+.     if `total_needed' > `pool_size' {
+ 38.         di as error "  Año `yr': necesita `total_needed' IDs pero el pool 
+> tiene `pool_size'"
+ 39.         exit 198
+ 40.     }
+ 41. 
+.     * ------------------------------------------------------------------
+.     * 4.3  Sortear IDs del pool
+.     * ------------------------------------------------------------------
+. 
+.     use "`pool'", clear
+ 42.     gen double _sort = runiform()
+ 43.     sort _sort
+ 44.     drop _sort
+ 45. 
+.     * Asignar roles: shared → f107_only → f102_only
+.     gen byte _role = 0              // 0 = no asignado
+ 46.     replace _role = 1 if _n <= `n_shared'                                 
+>       // shared
+ 47.     replace _role = 2 if _n >  `n_shared' & _n <= `n_shared' + `n_f107_onl
+> y'    // f107 only
+ 48.     replace _role = 3 if _n >  `n_shared' + `n_f107_only' & _n <= `total_n
+> eeded' // f102 only
+ 49.     keep if _role > 0
+ 50. 
+.     * --- Mapping para F107: shared (1) + f107-only (2) ---
+.     if `n107' > 0 {
+ 51.         preserve
+ 52.         keep if _role == 1 | _role == 2
+ 53.         gen double _s2 = runiform()
+ 54.         sort _s2
+ 55.         gen long seq = _n
+ 56.         rename pool_id new_id
+ 57.         keep seq new_id
+ 58.         tempfile map_107
+ 59.         save "`map_107'"
+ 60.         restore
+ 61.     }
+ 62. 
+.     * --- Mapping para F102: shared (1) + f102-only (3) ---
+.     if `n102' > 0 {
+ 63.         preserve
+ 64.         keep if _role == 1 | _role == 3
+ 65.         gen double _s2 = runiform()
+ 66.         sort _s2
+ 67.         gen long seq = _n
+ 68.         rename pool_id new_id
+ 69.         keep seq new_id
+ 70.         tempfile map_102
+ 71.         save "`map_102'"
+ 72.         restore
+ 73.     }
+ 74. 
+.     * ------------------------------------------------------------------
+.     * 4.4  Aplicar mapping a F107
+.     * ------------------------------------------------------------------
+. 
+.     if `has_107' {
+ 75.         * Unir old_id (seq) con new_id
+.         use "`uniq_107'", clear
+ 76.         merge 1:1 seq using "`map_107'", nogen
+ 77.         keep old_id new_id
+ 78.         tempfile f107_remap
+ 79.         save "`f107_remap'"
+ 80. 
+.         * Aplicar al archivo completo
+.         use "$dir_f107/F107_`yr'.dta", clear
+ 81.         rename CEDULA_PK_empleado old_id
+ 82.         merge m:1 old_id using "`f107_remap'", keep(master match) nogen
+ 83.         * Observaciones con old_id == "" no matchean → mantener vacías
+.         gen str`id_len' CEDULA_PK_empleado = cond(new_id != "", new_id, old_i
+> d)
+ 84.         drop old_id new_id
+ 85.         order CEDULA_PK_empleado, first
+ 86.         * Actualizar RUC_PK_empleado si existe
+.         capture replace RUC_PK_empleado = CEDULA_PK_empleado
+ 87. 
+.         save "$dir_f107/F107_`yr'.dta", replace
+ 88.         di as text "  F107_`yr'.dta  ✓  (`n107' IDs remapeados)"
+ 89.     }
+ 90. 
+.     * ------------------------------------------------------------------
+.     * 4.5  Aplicar mapping a F102
+.     * ------------------------------------------------------------------
+. 
+.     if `has_102' {
+ 91.         use "`uniq_102'", clear
+ 92.         merge 1:1 seq using "`map_102'", nogen
+ 93.         keep old_id new_id
+ 94.         tempfile f102_remap
+ 95.         save "`f102_remap'"
+ 96. 
+.         use "$dir_f102/F102_`yr'.dta", clear
+ 97. 
+.         * Corregir formatos numéricos con display string
+.         foreach v of varlist _all {
+ 98.             capture confirm numeric variable `v'
+ 99.             if !_rc {
+100.                 local fmt : format `v'
+101.                 if regexm("`fmt'", "s$") {
+102.                     format `v' %12.0g
+103.                 }
+104.             }
+105.         }
+106. 
+.         rename CEDULA_PK old_id
+107.         merge m:1 old_id using "`f102_remap'", keep(master match) nogen
+108.         gen str`id_len' CEDULA_PK = cond(new_id != "", new_id, old_id)
+109.         drop old_id new_id
+110.         order CEDULA_PK, first
+111.         capture replace RUC_PK = CEDULA_PK
+112. 
+.         save "$dir_f102/F102_`yr'.dta", replace
+113.         di as text "  F102_`yr'.dta  ✓  (`n102' IDs remapeados)"
+114.     }
+115. }
+
+========== Año 2010 ==========
+(26 observations deleted)
+(25 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000002 saved
+(64 observations deleted)
+(967 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000003 saved
+  F107 IDs únicos: 9949
+  F102 IDs únicos: 8969
+  Compartidos: 5472  |  Solo F107: 4477  |  Solo F102: 3497
+(5,472 real changes made)
+(4,477 real changes made)
+(3,497 real changes made)
+(1,554 observations deleted)
+(3,497 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000005 saved
+(4,477 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000007 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,949  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000008 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            26
+        from master                        26  
+        from using                          0  
+
+    matched                             9,974  
+    -----------------------------------------
+(26 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2010.dta saved
+  F107_2010.dta  ✓  (9949 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             8,969  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000009 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            64
+        from master                        64  
+        from using                          0  
+
+    matched                             9,936  
+    -----------------------------------------
+(64 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2010.dta saved
+  F102_2010.dta  ✓  (8969 IDs remapeados)
+
+========== Año 2011 ==========
+(33 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000a saved
+(60 observations deleted)
+(989 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000b saved
+  F107 IDs únicos: 9967
+  F102 IDs únicos: 8951
+  Compartidos: 5482  |  Solo F107: 4485  |  Solo F102: 3469
+(5,482 real changes made)
+(4,485 real changes made)
+(3,469 real changes made)
+(1,564 observations deleted)
+(3,469 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000d saved
+(4,485 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000f saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,967  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000g saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            33
+        from master                        33  
+        from using                          0  
+
+    matched                             9,967  
+    -----------------------------------------
+(33 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2011.dta saved
+  F107_2011.dta  ✓  (9967 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             8,951  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000h saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            60
+        from master                        60  
+        from using                          0  
+
+    matched                             9,940  
+    -----------------------------------------
+(60 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2011.dta saved
+  F102_2011.dta  ✓  (8951 IDs remapeados)
+
+========== Año 2012 ==========
+(37 observations deleted)
+(27 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000i saved
+(59 observations deleted)
+(32 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000j saved
+  F107 IDs únicos: 9936
+  F102 IDs únicos: 9909
+  Compartidos: 5465  |  Solo F107: 4471  |  Solo F102: 4444
+(5,465 real changes made)
+(4,471 real changes made)
+(4,444 real changes made)
+(620 observations deleted)
+(4,444 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000l saved
+(4,471 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000n saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,936  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000o saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            37
+        from master                        37  
+        from using                          0  
+
+    matched                             9,963  
+    -----------------------------------------
+(37 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2012.dta saved
+  F107_2012.dta  ✓  (9936 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,909  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000p saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            59
+        from master                        59  
+        from using                          0  
+
+    matched                             9,941  
+    -----------------------------------------
+(59 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2012.dta saved
+  F102_2012.dta  ✓  (9909 IDs remapeados)
+
+========== Año 2013 ==========
+(41 observations deleted)
+(30 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000q saved
+(65 observations deleted)
+(20 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000r saved
+  F107 IDs únicos: 9929
+  F102 IDs únicos: 9915
+  Compartidos: 5461  |  Solo F107: 4468  |  Solo F102: 4454
+(5,461 real changes made)
+(4,468 real changes made)
+(4,454 real changes made)
+(617 observations deleted)
+(4,454 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000t saved
+(4,468 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000v saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,929  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000w saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            41
+        from master                        41  
+        from using                          0  
+
+    matched                             9,959  
+    -----------------------------------------
+(41 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2013.dta saved
+  F107_2013.dta  ✓  (9929 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,915  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00000x saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            65
+        from master                        65  
+        from using                          0  
+
+    matched                             9,935  
+    -----------------------------------------
+(65 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2013.dta saved
+  F102_2013.dta  ✓  (9915 IDs remapeados)
+
+========== Año 2014 ==========
+(46 observations deleted)
+(25 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000010 saved
+(61 observations deleted)
+(1,023 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000011 saved
+  F107 IDs únicos: 9929
+  F102 IDs únicos: 8916
+  Compartidos: 5461  |  Solo F107: 4468  |  Solo F102: 3455
+(5,461 real changes made)
+(4,468 real changes made)
+(3,455 real changes made)
+(1,616 observations deleted)
+(3,455 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000013 saved
+(4,468 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000015 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,929  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000016 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            46
+        from master                        46  
+        from using                          0  
+
+    matched                             9,954  
+    -----------------------------------------
+(46 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2014.dta saved
+  F107_2014.dta  ✓  (9929 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             8,916  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000017 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            61
+        from master                        61  
+        from using                          0  
+
+    matched                             9,939  
+    -----------------------------------------
+(61 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2014.dta saved
+  F102_2014.dta  ✓  (8916 IDs remapeados)
+
+========== Año 2015 ==========
+(69 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000018 saved
+(65 observations deleted)
+(34 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000019 saved
+  F107 IDs únicos: 9931
+  F102 IDs únicos: 9901
+  Compartidos: 5463  |  Solo F107: 4468  |  Solo F102: 4438
+(5,463 real changes made)
+(4,468 real changes made)
+(4,438 real changes made)
+(631 observations deleted)
+(4,438 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001b saved
+(4,468 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001d saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,931  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001e saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            69
+        from master                        69  
+        from using                          0  
+
+    matched                             9,931  
+    -----------------------------------------
+(69 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2015.dta saved
+  F107_2015.dta  ✓  (9931 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,901  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001f saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            65
+        from master                        65  
+        from using                          0  
+
+    matched                             9,935  
+    -----------------------------------------
+(65 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2015.dta saved
+  F102_2015.dta  ✓  (9901 IDs remapeados)
+
+========== Año 2016 ==========
+(76 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001g saved
+(58 observations deleted)
+(996 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001h saved
+  F107 IDs únicos: 9924
+  F102 IDs únicos: 8946
+  Compartidos: 5459  |  Solo F107: 4465  |  Solo F102: 3487
+(5,459 real changes made)
+(4,465 real changes made)
+(3,487 real changes made)
+(1,589 observations deleted)
+(3,487 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001j saved
+(4,465 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001l saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,924  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001m saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            76
+        from master                        76  
+        from using                          0  
+
+    matched                             9,924  
+    -----------------------------------------
+(76 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2016.dta saved
+  F107_2016.dta  ✓  (9924 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             8,946  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001n saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            58
+        from master                        58  
+        from using                          0  
+
+    matched                             9,942  
+    -----------------------------------------
+(58 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2016.dta saved
+  F102_2016.dta  ✓  (8946 IDs remapeados)
+
+========== Año 2017 ==========
+(91 observations deleted)
+(31 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001o saved
+(61 observations deleted)
+(991 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001p saved
+  F107 IDs únicos: 9878
+  F102 IDs únicos: 8948
+  Compartidos: 5433  |  Solo F107: 4445  |  Solo F102: 3515
+(5,433 real changes made)
+(4,445 real changes made)
+(3,515 real changes made)
+(1,607 observations deleted)
+(3,515 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001r saved
+(4,445 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001t saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,878  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001u saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            91
+        from master                        91  
+        from using                          0  
+
+    matched                             9,909  
+    -----------------------------------------
+(91 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2017.dta saved
+  F107_2017.dta  ✓  (9878 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             8,948  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001v saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            61
+        from master                        61  
+        from using                          0  
+
+    matched                             9,939  
+    -----------------------------------------
+(61 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2017.dta saved
+  F102_2017.dta  ✓  (8948 IDs remapeados)
+
+========== Año 2018 ==========
+(85 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001w saved
+(64 observations deleted)
+(25 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00001x saved
+  F107 IDs únicos: 9915
+  F102 IDs únicos: 9911
+  Compartidos: 5454  |  Solo F107: 4461  |  Solo F102: 4457
+(5,454 real changes made)
+(4,461 real changes made)
+(4,457 real changes made)
+(628 observations deleted)
+(4,457 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000021 saved
+(4,461 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000023 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,915  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000024 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            85
+        from master                        85  
+        from using                          0  
+
+    matched                             9,915  
+    -----------------------------------------
+(85 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2018.dta saved
+  F107_2018.dta  ✓  (9915 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,911  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000025 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            64
+        from master                        64  
+        from using                          0  
+
+    matched                             9,936  
+    -----------------------------------------
+(64 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2018.dta saved
+  F102_2018.dta  ✓  (9911 IDs remapeados)
+
+========== Año 2019 ==========
+(72 observations deleted)
+(31 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000026 saved
+(77 observations deleted)
+(960 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000027 saved
+  F107 IDs únicos: 9897
+  F102 IDs únicos: 8963
+  Compartidos: 5444  |  Solo F107: 4453  |  Solo F102: 3519
+(5,444 real changes made)
+(4,453 real changes made)
+(3,519 real changes made)
+(1,584 observations deleted)
+(3,519 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000029 saved
+(4,453 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002b saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,897  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002c saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            72
+        from master                        72  
+        from using                          0  
+
+    matched                             9,928  
+    -----------------------------------------
+(72 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2019.dta saved
+  F107_2019.dta  ✓  (9897 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             8,963  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002d saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            77
+        from master                        77  
+        from using                          0  
+
+    matched                             9,923  
+    -----------------------------------------
+(77 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2019.dta saved
+  F102_2019.dta  ✓  (8963 IDs remapeados)
+
+========== Año 2020 ==========
+(50 observations deleted)
+(24 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002e saved
+(57 observations deleted)
+(32 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002f saved
+  F107 IDs únicos: 9926
+  F102 IDs únicos: 9911
+  Compartidos: 5460  |  Solo F107: 4466  |  Solo F102: 4451
+(5,460 real changes made)
+(4,466 real changes made)
+(4,451 real changes made)
+(623 observations deleted)
+(4,451 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002h saved
+(4,466 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002j saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,926  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002k saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            50
+        from master                        50  
+        from using                          0  
+
+    matched                             9,950  
+    -----------------------------------------
+(50 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2020.dta saved
+  F107_2020.dta  ✓  (9926 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,911  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002l saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            57
+        from master                        57  
+        from using                          0  
+
+    matched                             9,943  
+    -----------------------------------------
+(57 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2020.dta saved
+  F102_2020.dta  ✓  (9911 IDs remapeados)
+
+========== Año 2021 ==========
+(38 observations deleted)
+(1 observation deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002m saved
+  F107 IDs únicos: 9961
+  F102 IDs únicos: 0
+  Compartidos: 0  |  Solo F107: 9961  |  Solo F102: 0
+(0 real changes made)
+(9,961 real changes made)
+(0 real changes made)
+(5,039 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002o saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,961  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002p saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            38
+        from master                        38  
+        from using                          0  
+
+    matched                             9,962  
+    -----------------------------------------
+(38 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2021.dta saved
+  F107_2021.dta  ✓  (9961 IDs remapeados)
+
+========== Año 2022 ==========
+(27 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002q saved
+  F107 IDs únicos: 9973
+  F102 IDs únicos: 0
+  Compartidos: 0  |  Solo F107: 9973  |  Solo F102: 0
+(0 real changes made)
+(9,973 real changes made)
+(0 real changes made)
+(5,027 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002s saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,973  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002t saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            27
+        from master                        27  
+        from using                          0  
+
+    matched                             9,973  
+    -----------------------------------------
+(27 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2022.dta saved
+  F107_2022.dta  ✓  (9973 IDs remapeados)
+
+========== Año 2023 ==========
+(24 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002u saved
+  F107 IDs únicos: 9976
+  F102 IDs únicos: 0
+  Compartidos: 0  |  Solo F107: 9976  |  Solo F102: 0
+(0 real changes made)
+(9,976 real changes made)
+(0 real changes made)
+(5,024 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002w saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,976  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00002x saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            24
+        from master                        24  
+        from using                          0  
+
+    matched                             9,976  
+    -----------------------------------------
+(24 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2023.dta saved
+  F107_2023.dta  ✓  (9976 IDs remapeados)
+
+========== Año 2024 ==========
+(17 observations deleted)
+(2 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000030 saved
+(26 observations deleted)
+(30 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000031 saved
+  F107 IDs únicos: 9981
+  F102 IDs únicos: 9944
+  Compartidos: 5490  |  Solo F107: 4491  |  Solo F102: 4454
+(5,490 real changes made)
+(4,491 real changes made)
+(4,454 real changes made)
+(565 observations deleted)
+(4,454 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000033 saved
+(4,491 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000035 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,981  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000036 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            17
+        from master                        17  
+        from using                          0  
+
+    matched                             9,983  
+    -----------------------------------------
+(17 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F107/F107_2024.dta saved
+  F107_2024.dta  ✓  (9981 IDs remapeados)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,944  
+    -----------------------------------------
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000037 saved
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                            26
+        from master                        26  
+        from using                          0  
+
+    matched                             9,974  
+    -----------------------------------------
+(26 missing values generated)
+file /Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unida
+> d/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamien
+> to/Bases/Fake/F102/F102_2024.dta saved
+  F102_2024.dta  ✓  (9944 IDs remapeados)
+
+. 
+. * ===========================================================================
+> =
+. * 5. VERIFICACIÓN
+. * ===========================================================================
+> =
+. 
+. di as result _n "========== Verificación =========="
+
+========== Verificación ==========
+
+. 
+. * --- 5.1  Overlap dentro de cada año ---
+. di as text _n "Within-year overlap (F107 ∩ F102):"
+
+Within-year overlap (F107 ∩ F102):
+
+. 
+. local years_both ""
+
+. foreach yr of local years_107 {
+  2.     local found : list posof "`yr'" in years_102
+  3.     if `found' local years_both "`years_both' `yr'"
+  4. }
+
+. local years_both : list sort years_both
+
+. 
+. foreach yr of local years_both {
+  2.     * IDs únicos de F107
+.     use CEDULA_PK_empleado using "$dir_f107/F107_`yr'.dta", clear
+  3.     drop if CEDULA_PK_empleado == ""
+  4.     bysort CEDULA_PK_empleado: keep if _n == 1
+  5.     local n107 = _N
+  6.     rename CEDULA_PK_empleado CEDULA_PK
+  7.     tempfile v107
+  8.     save "`v107'"
+  9. 
+.     * IDs únicos de F102
+.     use CEDULA_PK using "$dir_f102/F102_`yr'.dta", clear
+ 10.     drop if CEDULA_PK == ""
+ 11.     bysort CEDULA_PK: keep if _n == 1
+ 12.     local n102 = _N
+ 13. 
+.     * Merge para contar overlap
+.     merge 1:1 CEDULA_PK using "`v107'"
+ 14.     quietly count if _merge == 3
+ 15.     local overlap = r(N)
+ 16.     local pct107 = `overlap' / `n107' * 100
+ 17.     local pct102 = `overlap' / `n102' * 100
+ 18.     local ok = cond(`pct107' >= 50 & `pct102' >= 50, "✓", "✗")
+ 19. 
+.     di as text "  `yr': overlap = " %6.0fc `overlap' ///
+>         "   F107 = " %4.1f `pct107' "%   F102 = " %4.1f `pct102' "%   `ok'"
+ 20. }
+(26 observations deleted)
+(25 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000038 saved
+(64 observations deleted)
+(967 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,974
+        from master                     3,497  (_merge==1)
+        from using                      4,477  (_merge==2)
+
+    matched                             5,472  (_merge==3)
+    -----------------------------------------
+  2010: overlap =  5,472   F107 = 55.0%   F102 = 61.0%   ✓
+(33 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.000039 saved
+(60 observations deleted)
+(989 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,954
+        from master                     3,469  (_merge==1)
+        from using                      4,485  (_merge==2)
+
+    matched                             5,482  (_merge==3)
+    -----------------------------------------
+  2011: overlap =  5,482   F107 = 55.0%   F102 = 61.2%   ✓
+(37 observations deleted)
+(27 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003a saved
+(59 observations deleted)
+(32 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,915
+        from master                     4,444  (_merge==1)
+        from using                      4,471  (_merge==2)
+
+    matched                             5,465  (_merge==3)
+    -----------------------------------------
+  2012: overlap =  5,465   F107 = 55.0%   F102 = 55.2%   ✓
+(41 observations deleted)
+(30 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003b saved
+(65 observations deleted)
+(20 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,922
+        from master                     4,454  (_merge==1)
+        from using                      4,468  (_merge==2)
+
+    matched                             5,461  (_merge==3)
+    -----------------------------------------
+  2013: overlap =  5,461   F107 = 55.0%   F102 = 55.1%   ✓
+(46 observations deleted)
+(25 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003c saved
+(61 observations deleted)
+(1,023 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,923
+        from master                     3,455  (_merge==1)
+        from using                      4,468  (_merge==2)
+
+    matched                             5,461  (_merge==3)
+    -----------------------------------------
+  2014: overlap =  5,461   F107 = 55.0%   F102 = 61.2%   ✓
+(69 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003d saved
+(65 observations deleted)
+(34 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,906
+        from master                     4,438  (_merge==1)
+        from using                      4,468  (_merge==2)
+
+    matched                             5,463  (_merge==3)
+    -----------------------------------------
+  2015: overlap =  5,463   F107 = 55.0%   F102 = 55.2%   ✓
+(76 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003e saved
+(58 observations deleted)
+(996 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,952
+        from master                     3,487  (_merge==1)
+        from using                      4,465  (_merge==2)
+
+    matched                             5,459  (_merge==3)
+    -----------------------------------------
+  2016: overlap =  5,459   F107 = 55.0%   F102 = 61.0%   ✓
+(91 observations deleted)
+(31 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003f saved
+(61 observations deleted)
+(991 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,960
+        from master                     3,515  (_merge==1)
+        from using                      4,445  (_merge==2)
+
+    matched                             5,433  (_merge==3)
+    -----------------------------------------
+  2017: overlap =  5,433   F107 = 55.0%   F102 = 60.7%   ✓
+(85 observations deleted)
+(0 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003g saved
+(64 observations deleted)
+(25 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,918
+        from master                     4,457  (_merge==1)
+        from using                      4,461  (_merge==2)
+
+    matched                             5,454  (_merge==3)
+    -----------------------------------------
+  2018: overlap =  5,454   F107 = 55.0%   F102 = 55.0%   ✓
+(72 observations deleted)
+(31 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003h saved
+(77 observations deleted)
+(960 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         7,972
+        from master                     3,519  (_merge==1)
+        from using                      4,453  (_merge==2)
+
+    matched                             5,444  (_merge==3)
+    -----------------------------------------
+  2019: overlap =  5,444   F107 = 55.0%   F102 = 60.7%   ✓
+(50 observations deleted)
+(24 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003i saved
+(57 observations deleted)
+(32 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,917
+        from master                     4,451  (_merge==1)
+        from using                      4,466  (_merge==2)
+
+    matched                             5,460  (_merge==3)
+    -----------------------------------------
+  2020: overlap =  5,460   F107 = 55.0%   F102 = 55.1%   ✓
+(17 observations deleted)
+(2 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003j saved
+(26 observations deleted)
+(30 observations deleted)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         8,945
+        from master                     4,454  (_merge==1)
+        from using                      4,491  (_merge==2)
+
+    matched                             5,490  (_merge==3)
+    -----------------------------------------
+  2024: overlap =  5,490   F107 = 55.0%   F102 = 55.2%   ✓
+
+. 
+. * --- 5.2  Overlap entre años ---
+. di as text _n "Across-year overlap:"
+
+Across-year overlap:
+
+. 
+. * Recolectar todos los IDs de todos los años con su año
+. clear
+
+. tempfile all_ids
+
+. gen str10 CEDULA_PK = ""
+
+. gen int anio = .
+
+. save "`all_ids'", replace emptyok
+(note: dataset contains 0 observations)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+
+. 
+. foreach yr of local all_years {
+  2.     local has_107 : list posof "`yr'" in years_107
+  3.     local has_102 : list posof "`yr'" in years_102
+  4. 
+.     if `has_107' {
+  5.         use CEDULA_PK_empleado using "$dir_f107/F107_`yr'.dta", clear
+  6.         drop if CEDULA_PK_empleado == ""
+  7.         rename CEDULA_PK_empleado CEDULA_PK
+  8.         gen int anio = `yr'
+  9.         append using "`all_ids'"
+ 10.         save "`all_ids'", replace
+ 11.     }
+ 12.     if `has_102' {
+ 13.         use CEDULA_PK using "$dir_f102/F102_`yr'.dta", clear
+ 14.         drop if CEDULA_PK == ""
+ 15.         gen int anio = `yr'
+ 16.         append using "`all_ids'"
+ 17.         save "`all_ids'", replace
+ 18.     }
+ 19. }
+(26 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(64 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(33 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(60 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(37 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(59 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(41 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(65 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(46 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(61 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(69 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(65 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(76 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(58 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(91 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(61 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(85 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(64 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(72 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(77 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(50 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(57 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(38 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(27 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(24 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(17 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+(26 observations deleted)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St23969.00003k saved
+
+. 
+. use "`all_ids'", clear
+
+. * Quedarse con combinaciones únicas id × año
+. bysort CEDULA_PK anio: keep if _n == 1
+(71,839 observations deleted)
+
+. * Contar en cuántos años aparece cada ID
+. bysort CEDULA_PK: gen n_years = _N
+
+. bysort CEDULA_PK: keep if _n == 1
+(181,712 observations deleted)
+
+. 
+. quietly count
+
+. local total_unique = r(N)
+
+. quietly count if n_years > 1
+
+. local multi_year = r(N)
+
+. local pct = `multi_year' / `total_unique' * 100
+
+. local ok = cond(`pct' >= 70, "✓", "✗")
+
+. 
+. di as text "  Total IDs únicos:  " %7.0fc `total_unique'
+  Total IDs únicos:   15,000
+
+. di as text "  IDs en 2+ años:   " %7.0fc `multi_year' " (" %4.1f `pct' "%)"
+  IDs en 2+ años:    15,000 (100.0%)
+
+. di as text "  Target ≥ 70 %:    `ok'"
+  Target ≥ 70 %:    ✓
+
+. 
+. * ===========================================================================
+> =
+. * 6. FIN
+. * ===========================================================================
+> =
+. 
+. di as result _n "========== Proceso completado =========="
+
+========== Proceso completado ==========
+
+. 
+end of do-file

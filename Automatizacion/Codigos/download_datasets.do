@@ -1,7 +1,9 @@
 ****************************************************
 * 1. Set URL and filenames
 ****************************************************
-local url      "https://www.ecuadorencifras.gob.ec/documentos/web-inec/EMPLEO/2025/Junio_2025/1_BDD_ENEMDU_2025_06_SPSS.zip"
+local url 
+
+forval year = 2017/2018 {     "https://www.ecuadorencifras.gob.ec/documentos/web-inec/EMPLEO/2025/Junio_2025/1_BDD_ENEMDU_2025_06_SPSS.zip"
 local zipfile  "1_BDD_ENEMDU_2025_06_SPSS.zip"
 local savfile  "enemdu_persona_2025_06.sav"
 
