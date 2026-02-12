@@ -25,11 +25,27 @@ options("RStata.StataVersion" = 18)
 stata("Codigos/Fake data/fix_id_overlap.do", data.in = NULL, data.out = FALSE)
 
 
+stata("Codigos/Renta/01_limpieza_merge.do", data.in = NULL, data.out = FALSE)
+
+stata("Codigos/Renta/02_variables_ingreso.do", data.in = NULL, data.out = FALSE)
+
 a <- read_dta("Bases/Fake/F102/F102_2010.dta")
+a1 <- read_dta("Bases/Fake/F107/F107_2010.dta")
 b <- read_dta("Bases/Fake/F102/F102_2011.dta")
+b1 <- read_dta("Bases/Fake/F107/F107_2011.dta")
 c <- read_dta("Bases/Fake/F102/F102_2012.dta")
+c1 <- read_dta("Bases/Fake/F107/F107_2012.dta")
 d <- read_dta("Bases/Fake/F102/F102_2013.dta")
+d1 <- read_dta("Bases/Fake/F107/F107_2013.dta")
 
 table(a$CEDULA_PK %in% b$CEDULA_PK)
 table(b$CEDULA_PK %in% c$CEDULA_PK)
 table(c$CEDULA_PK %in% d$CEDULA_PK)
+
+
+a_j <- left_join(a, a1 %>% mutate(a = 1), by = c("CEDULA_PK" = "CEDULA_PK_empleado"))
+
+table(is.na(a_j$a))
+
+
+table(a$CEDULA_PK == "")
