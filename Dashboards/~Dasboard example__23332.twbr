@@ -1,0 +1,2520 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20253.26.0109.0333                               -->
+<workbook original-version='18.1' source-build='2025.3.2 (20253.26.0109.0333)' source-platform='win' version='18.1' xml:base='https://localhost:8080' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <AccessibleZoneTabOrder />
+    <AnimationOnByDefault />
+    <AutoCreateAndUpdateDSDPhoneLayouts />
+    <BasicButtonObject />
+    <BasicButtonObjectTextSupport />
+    <MapboxVectorStylesAndLayers />
+    <MarkAnimation />
+    <ObjectModelEncapsulateLegacy />
+    <ObjectModelExtractV2 />
+    <ObjectModelTableType />
+    <SchemaViewerObjectModel />
+    <SetMembershipControl />
+    <SheetIdentifierTracking />
+    <_.fcp.VConnDownstreamExtractsWithWarnings.true...VConnDownstreamExtractsWithWarnings />
+    <WindowsPersistSimpleIdentifiers />
+    <WorksheetBackgroundTransparency />
+    <ZoneBackgroundTransparency />
+  </document-format-change-manifest>
+  <repository-location derived-from='https://public.tableau.com/workbooks/WID_riqueza?rev=1.2' id='WID_riqueza' path='/workbooks' revision='1.2' />
+  <preferences>
+    <preference name='ui.encoding.shelf.height' value='24' />
+    <preference name='ui.shelf.height' value='26' />
+  </preferences>
+  <datasources>
+    <datasource caption='Data (impuesto_renta_clean_tableau)' inline='true' name='federated.0oosyfx04t0nar14ydeet0ur010w' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='impuesto_renta_clean_tableau' name='excel-direct.103lylv0cwahmp10w9sb513g32gy'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' interpretationMode='0' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.103lylv0cwahmp10w9sb513g32gy' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:E11:no:A1:E11:0' header='yes' outcome='6'>
+            <column datatype='integer' name='Año' ordinal='0' />
+            <column datatype='real' name='limite_inf_rango_superior' ordinal='1' />
+            <column datatype='real' name='dolares_2015' ordinal='2' />
+            <column datatype='real' name='tasa_impositiva' ordinal='3' />
+            <column datatype='real' name='valor_mensual_rango_sup' ordinal='4' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>2</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:E11:no:A1:E11:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>6</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Año</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[Año]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Año</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;I8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C104A10F7F254BFCB1C972FFCF722B13]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>limite_inf_rango_superior</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[limite_inf_rango_superior]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>limite_inf_rango_superior</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C104A10F7F254BFCB1C972FFCF722B13]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>dolares_2015</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[dolares_2015]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>dolares_2015</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C104A10F7F254BFCB1C972FFCF722B13]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>tasa_impositiva</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[tasa_impositiva]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>tasa_impositiva</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C104A10F7F254BFCB1C972FFCF722B13]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>valor_mensual_rango_sup</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[valor_mensual_rango_sup]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>valor_mensual_rango_sup</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C104A10F7F254BFCB1C972FFCF722B13]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column datatype='integer' name='[Año]' role='dimension' type='quantitative' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_C104A10F7F254BFCB1C972FFCF722B13]' role='measure' type='quantitative' />
+      <column caption='Dolares 2015' datatype='real' name='[dolares_2015]' role='measure' type='quantitative' />
+      <column caption='Limite Inf Rango Superior' datatype='real' name='[limite_inf_rango_superior]' role='measure' type='quantitative' />
+      <column caption='Tasa Impositiva' datatype='real' name='[tasa_impositiva]' role='measure' type='quantitative' />
+      <column caption='Valor Mensual Rango Sup' datatype='real' name='[valor_mensual_rango_sup]' role='measure' type='quantitative' />
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp 1/#TableauTemp_1kcwt5j0lq7p6r1b6os1p0rmw7hw.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/14/2026 12:04:05 AM' username=''>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>Año</remote-name>
+              <remote-type>20</remote-type>
+              <local-name>[Año]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Año</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>integer</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>10</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>limite_inf_rango_superior</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[limite_inf_rango_superior]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>limite_inf_rango_superior</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>10</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>dolares_2015</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[dolares_2015]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>dolares_2015</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>10</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>tasa_impositiva</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[tasa_impositiva]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>tasa_impositiva</remote-alias>
+              <ordinal>3</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>5</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>valor_mensual_rango_sup</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[valor_mensual_rango_sup]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>valor_mensual_rango_sup</remote-alias>
+              <ordinal>4</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>10</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_C104A10F7F254BFCB1C972FFCF722B13'>
+            <properties context=''>
+              <relation connection='excel-direct.103lylv0cwahmp10w9sb513g32gy' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:E11:no:A1:E11:0' header='yes' outcome='6'>
+                  <column datatype='integer' name='Año' ordinal='0' />
+                  <column datatype='real' name='limite_inf_rango_superior' ordinal='1' />
+                  <column datatype='real' name='dolares_2015' ordinal='2' />
+                  <column datatype='real' name='tasa_impositiva' ordinal='3' />
+                  <column datatype='real' name='valor_mensual_rango_sup' ordinal='4' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+    <datasource caption='Data (Varias conexiones)' inline='true' name='federated.0nwm93m07juoug10huw881u3xo1e' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='brechas_etnia_tableau' name='excel-direct.0t7jlul1rk0hc214wotss1nxgl64'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' interpretationMode='0' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.0t7jlul1rk0hc214wotss1nxgl64' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:D13:no:A1:D13:0' header='yes' outcome='6'>
+            <column datatype='integer' name='Año' ordinal='0' />
+            <column datatype='real' name='Ing_Indigena_real' ordinal='1' />
+            <column datatype='real' name='Ing_NoIndigena_real' ordinal='2' />
+            <column datatype='real' name='brecha_etnia' ordinal='3' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>0</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:D13:no:A1:D13:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>6</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Año</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[Año]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Año</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;I8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_6A59551E2CAE44199C1499B06933717C]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Ing_Indigena_real</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[Ing_Indigena_real]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Ing_Indigena_real</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_6A59551E2CAE44199C1499B06933717C]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Ing_NoIndigena_real</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[Ing_NoIndigena_real]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Ing_NoIndigena_real</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_6A59551E2CAE44199C1499B06933717C]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>brecha_etnia</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[brecha_etnia]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>brecha_etnia</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_6A59551E2CAE44199C1499B06933717C]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column datatype='integer' name='[Año]' role='dimension' type='quantitative' />
+      <column caption='Ing Indigena real' datatype='real' name='[Ing_Indigena_real]' role='measure' type='quantitative' />
+      <column caption='Ing NoIndigena real' datatype='real' name='[Ing_NoIndigena_real]' role='measure' type='quantitative' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_6A59551E2CAE44199C1499B06933717C]' role='measure' type='quantitative' />
+      <column caption='Brecha Etnia' datatype='real' name='[brecha_etnia]' role='measure' type='quantitative' />
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp 1/#TableauTemp_0xqxyu00s4m71z17vmvf21v0shfc.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/14/2026 12:04:34 AM' username=''>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>Año</remote-name>
+              <remote-type>20</remote-type>
+              <local-name>[Año]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Año</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>integer</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>Ing_Indigena_real</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[Ing_Indigena_real]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Ing_Indigena_real</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>Ing_NoIndigena_real</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[Ing_NoIndigena_real]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Ing_NoIndigena_real</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>brecha_etnia</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[brecha_etnia]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>brecha_etnia</remote-alias>
+              <ordinal>3</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_6A59551E2CAE44199C1499B06933717C'>
+            <properties context=''>
+              <relation connection='excel-direct.0t7jlul1rk0hc214wotss1nxgl64' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:D13:no:A1:D13:0' header='yes' outcome='6'>
+                  <column datatype='integer' name='Año' ordinal='0' />
+                  <column datatype='real' name='Ing_Indigena_real' ordinal='1' />
+                  <column datatype='real' name='Ing_NoIndigena_real' ordinal='2' />
+                  <column datatype='real' name='brecha_etnia' ordinal='3' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+    <datasource caption='Data (brechas_educacion_tableau)' inline='true' name='federated.0h55o0f1ujgy9s1906gwi0kl3x8p' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='brechas_educacion_tableau' name='excel-direct.16sbcyw0054g4f1decvxq122trri'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' interpretationMode='0' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.16sbcyw0054g4f1decvxq122trri' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:G13:no:A1:G13:0' header='yes' outcome='6'>
+            <column datatype='integer' name='Año' ordinal='0' />
+            <column datatype='real' name='Ing_no_Univ_real' ordinal='1' />
+            <column datatype='real' name='Ing_Univ_real' ordinal='2' />
+            <column datatype='real' name='brecha_calificados' ordinal='3' />
+            <column datatype='real' name='brecha_publico' ordinal='4' />
+            <column datatype='real' name='brecha_sexo' ordinal='5' />
+            <column datatype='real' name='brecha_etnia' ordinal='6' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>0</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:G13:no:A1:G13:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>6</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Año</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[Año]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Año</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;I8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_304B3E39CB604D7988884544637DE46A]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Ing_no_Univ_real</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[Ing_no_Univ_real]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Ing_no_Univ_real</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_304B3E39CB604D7988884544637DE46A]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Ing_Univ_real</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[Ing_Univ_real]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Ing_Univ_real</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_304B3E39CB604D7988884544637DE46A]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>brecha_calificados</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[brecha_calificados]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>brecha_calificados</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_304B3E39CB604D7988884544637DE46A]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>brecha_publico</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[brecha_publico]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>brecha_publico</remote-alias>
+            <ordinal>4</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_304B3E39CB604D7988884544637DE46A]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>brecha_sexo</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[brecha_sexo]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>brecha_sexo</remote-alias>
+            <ordinal>5</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_304B3E39CB604D7988884544637DE46A]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>brecha_etnia</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[brecha_etnia]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>brecha_etnia</remote-alias>
+            <ordinal>6</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_304B3E39CB604D7988884544637DE46A]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column datatype='integer' name='[Año]' role='dimension' type='quantitative' />
+      <column caption='Ing Univ real' datatype='real' name='[Ing_Univ_real]' role='measure' type='quantitative' />
+      <column caption='Ing no Univ real' datatype='real' name='[Ing_no_Univ_real]' role='measure' type='quantitative' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_304B3E39CB604D7988884544637DE46A]' role='measure' type='quantitative' />
+      <column caption='Brecha Calificados' datatype='real' name='[brecha_calificados]' role='measure' type='quantitative' />
+      <column caption='Brecha Etnia' datatype='real' name='[brecha_etnia]' role='measure' type='quantitative' />
+      <column caption='Brecha Publico' datatype='real' name='[brecha_publico]' role='measure' type='quantitative' />
+      <column caption='Brecha Sexo' datatype='real' name='[brecha_sexo]' role='measure' type='quantitative' />
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp 1/#TableauTemp_1hy18jc17sz90919pw2w91xe5r8a.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/14/2026 12:04:48 AM' username=''>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>Año</remote-name>
+              <remote-type>20</remote-type>
+              <local-name>[Año]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Año</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>integer</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>Ing_no_Univ_real</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[Ing_no_Univ_real]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Ing_no_Univ_real</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>Ing_Univ_real</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[Ing_Univ_real]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Ing_Univ_real</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>brecha_calificados</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[brecha_calificados]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>brecha_calificados</remote-alias>
+              <ordinal>3</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>brecha_publico</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[brecha_publico]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>brecha_publico</remote-alias>
+              <ordinal>4</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>brecha_sexo</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[brecha_sexo]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>brecha_sexo</remote-alias>
+              <ordinal>5</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>brecha_etnia</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[brecha_etnia]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>brecha_etnia</remote-alias>
+              <ordinal>6</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_304B3E39CB604D7988884544637DE46A'>
+            <properties context=''>
+              <relation connection='excel-direct.16sbcyw0054g4f1decvxq122trri' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:G13:no:A1:G13:0' header='yes' outcome='6'>
+                  <column datatype='integer' name='Año' ordinal='0' />
+                  <column datatype='real' name='Ing_no_Univ_real' ordinal='1' />
+                  <column datatype='real' name='Ing_Univ_real' ordinal='2' />
+                  <column datatype='real' name='brecha_calificados' ordinal='3' />
+                  <column datatype='real' name='brecha_publico' ordinal='4' />
+                  <column datatype='real' name='brecha_sexo' ordinal='5' />
+                  <column datatype='real' name='brecha_etnia' ordinal='6' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+    <datasource caption='Data (endi_long_tableau)' inline='true' name='federated.08gqgw015y3o4p1gfnedi1u15tzh' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='endi_long_tableau' name='excel-direct.1eywbmq0er0gr71ebykxb1s8dc24'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' interpretationMode='0' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.1eywbmq0er0gr71ebykxb1s8dc24' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:D91:no:A1:D91:0' header='yes' outcome='6'>
+            <column datatype='string' name='grupo_poblacion' ordinal='0' />
+            <column datatype='string' name='categoria' ordinal='1' />
+            <column datatype='string' name='indicador' ordinal='2' />
+            <column datatype='real' name='valor' ordinal='3' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>0</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:D91:no:A1:D91:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>6</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>grupo_poblacion</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[grupo_poblacion]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>grupo_poblacion</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C4E0425A03904B89AEA409F8272BE0BD]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>categoria</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[categoria]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>categoria</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C4E0425A03904B89AEA409F8272BE0BD]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>indicador</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[indicador]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>indicador</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C4E0425A03904B89AEA409F8272BE0BD]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>valor</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[valor]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>valor</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_C4E0425A03904B89AEA409F8272BE0BD]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_C4E0425A03904B89AEA409F8272BE0BD]' role='measure' type='quantitative' />
+      <column caption='Categoria' datatype='string' name='[categoria]' role='dimension' type='nominal' />
+      <column caption='Grupo Poblacion' datatype='string' name='[grupo_poblacion]' role='dimension' type='nominal' />
+      <column caption='Indicador' datatype='string' name='[indicador]' role='dimension' type='nominal' />
+      <column caption='Valor' datatype='real' name='[valor]' role='measure' type='quantitative' />
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp 1/#TableauTemp_1up5kfh16vqiqm0zookus0auob71.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/14/2026 12:04:58 AM' username=''>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>grupo_poblacion</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[grupo_poblacion]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>grupo_poblacion</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>5</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>categoria</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[categoria]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>categoria</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>15</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>indicador</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[indicador]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>indicador</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>6</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>valor</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[valor]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>valor</remote-alias>
+              <ordinal>3</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>90</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_C4E0425A03904B89AEA409F8272BE0BD'>
+            <properties context=''>
+              <relation connection='excel-direct.1eywbmq0er0gr71ebykxb1s8dc24' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:D91:no:A1:D91:0' header='yes' outcome='6'>
+                  <column datatype='string' name='grupo_poblacion' ordinal='0' />
+                  <column datatype='string' name='categoria' ordinal='1' />
+                  <column datatype='string' name='indicador' ordinal='2' />
+                  <column datatype='real' name='valor' ordinal='3' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+    <datasource caption='Data (keynesian_long_tableau)' inline='true' name='federated.1hrndn71mq131x1836tgj0lipy9u' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='keynesian_long_tableau' name='excel-direct.06wg7cy1c30x8i1gtyrn814agj62'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' interpretationMode='0' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.06wg7cy1c30x8i1gtyrn814agj62' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:D19:no:A1:D19:0' header='yes' outcome='6'>
+            <column datatype='string' name='Periodo' ordinal='0' />
+            <column datatype='integer' name='Delta_PIB' ordinal='1' />
+            <column datatype='string' name='componente' ordinal='2' />
+            <column datatype='real' name='valor_pct' ordinal='3' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>0</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:D19:no:A1:D19:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>6</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Periodo</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[Periodo]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Periodo</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_F1720271080E4EB088D595F8F96C9CD4]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Delta_PIB</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[Delta_PIB]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Delta_PIB</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;I8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_F1720271080E4EB088D595F8F96C9CD4]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>componente</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[componente]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>componente</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_F1720271080E4EB088D595F8F96C9CD4]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>valor_pct</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[valor_pct]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>valor_pct</remote-alias>
+            <ordinal>3</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_F1720271080E4EB088D595F8F96C9CD4]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column caption='Delta PIB' datatype='integer' name='[Delta_PIB]' role='measure' type='quantitative' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_F1720271080E4EB088D595F8F96C9CD4]' role='measure' type='quantitative' />
+      <column caption='Componente' datatype='string' name='[componente]' role='dimension' type='nominal' />
+      <column caption='Valor Pct' datatype='real' name='[valor_pct]' role='measure' type='quantitative' />
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp 1/#TableauTemp_0hf9at603qb8gw14ui1fu197o8fc.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/14/2026 12:05:11 AM' username=''>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>Periodo</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[Periodo]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Periodo</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>6</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>Delta_PIB</remote-name>
+              <remote-type>20</remote-type>
+              <local-name>[Delta_PIB]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Delta_PIB</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>integer</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>1</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>componente</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[componente]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>componente</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>3</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>valor_pct</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[valor_pct]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>valor_pct</remote-alias>
+              <ordinal>3</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>18</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_F1720271080E4EB088D595F8F96C9CD4'>
+            <properties context=''>
+              <relation connection='excel-direct.06wg7cy1c30x8i1gtyrn814agj62' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:D19:no:A1:D19:0' header='yes' outcome='6'>
+                  <column datatype='string' name='Periodo' ordinal='0' />
+                  <column datatype='integer' name='Delta_PIB' ordinal='1' />
+                  <column datatype='string' name='componente' ordinal='2' />
+                  <column datatype='real' name='valor_pct' ordinal='3' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+    <datasource caption='Data (gic_deciles_long_tableau)' inline='true' name='federated.0wv0ik30elwfzo12vnn9w003dvrx' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='gic_deciles_long_tableau' name='excel-direct.0mp9y080mqglrr1dfu55k1wfh6nb'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' interpretationMode='0' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.0mp9y080mqglrr1dfu55k1wfh6nb' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:C45:no:A1:C45:0' header='yes' outcome='2'>
+            <column datatype='string' name='Percentil' ordinal='0' />
+            <column datatype='string' name='periodo' ordinal='1' />
+            <column datatype='real' name='crecimiento' ordinal='2' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>0</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:C45:no:A1:C45:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>2</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Percentil</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[Percentil]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Percentil</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_19666EB7356F4E95B8CAF6B663A6B0D1]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>periodo</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[periodo]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>periodo</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_19666EB7356F4E95B8CAF6B663A6B0D1]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>crecimiento</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[crecimiento]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>crecimiento</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_19666EB7356F4E95B8CAF6B663A6B0D1]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_19666EB7356F4E95B8CAF6B663A6B0D1]' role='measure' type='quantitative' />
+      <column caption='Crecimiento' datatype='real' name='[crecimiento]' role='measure' type='quantitative' />
+      <column caption='Periodo' datatype='string' name='[periodo]' role='dimension' type='nominal' />
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp 1/#TableauTemp_0fp09h40rmo1ml1cc0izc0f1vt38.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/14/2026 12:05:25 AM' username=''>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>Percentil</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[Percentil]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Percentil</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>11</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>periodo</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[periodo]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>periodo</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>4</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>crecimiento</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[crecimiento]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>crecimiento</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>39</approx-count>
+              <contains-null>true</contains-null>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_19666EB7356F4E95B8CAF6B663A6B0D1'>
+            <properties context=''>
+              <relation connection='excel-direct.0mp9y080mqglrr1dfu55k1wfh6nb' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:C45:no:A1:C45:0' header='yes' outcome='2'>
+                  <column datatype='string' name='Percentil' ordinal='0' />
+                  <column datatype='string' name='periodo' ordinal='1' />
+                  <column datatype='real' name='crecimiento' ordinal='2' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+    <datasource caption='Data (gini_panel_tableau)' inline='true' name='federated.16u8eo60q57orx199l1qo0d26s76' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='gini_panel_tableau' name='excel-direct.16adcfo0ck2u0810b2ylm0ki1gu4'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' filename='/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/Boletín 1/Data/gini_panel_tableau.xlsx' interpretationMode='0' password='' server='' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.16adcfo0ck2u0810b2ylm0ki1gu4' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:C110:no:A1:C110:0' header='yes' outcome='6'>
+            <column datatype='integer' name='Año' ordinal='0' />
+            <column datatype='string' name='categoria' ordinal='1' />
+            <column datatype='real' name='valor' ordinal='2' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>2</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:C110:no:A1:C110:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>6</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Año</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[Año]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Año</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;I8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_07CA8C73D7A3462586DC770BD62B3205]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>categoria</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[categoria]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>categoria</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_07CA8C73D7A3462586DC770BD62B3205]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>valor</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[valor]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>valor</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_07CA8C73D7A3462586DC770BD62B3205]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column datatype='integer' name='[Año]' role='measure' type='ordinal' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_07CA8C73D7A3462586DC770BD62B3205]' role='measure' type='quantitative' />
+      <column caption='Valor' datatype='real' name='[valor]' role='measure' type='quantitative' />
+      <column-instance column='[Año]' derivation='None' name='[none:Año:ok]' pivot='key' type='ordinal' />
+      <group caption='Acción (Año)' hidden='true' name='[Action (Año)]' name-style='unqualified' user:auto-column='sheet_link'>
+        <groupfilter function='crossjoin'>
+          <groupfilter function='level-members' level='[none:Año:ok]' />
+        </groupfilter>
+      </group>
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp/#TableauTemp_01gjfqw1vlzc0r19qebbf0fhi10u.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/14/2026 12:51:14 AM' username='tableau_internal_user'>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>Año</remote-name>
+              <remote-type>20</remote-type>
+              <local-name>[Año]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Año</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>integer</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>35</approx-count>
+              <contains-null>true</contains-null>
+              <object-id>[Data_07CA8C73D7A3462586DC770BD62B3205]</object-id>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>categoria</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[categoria]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>categoria</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>4</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+              <object-id>[Data_07CA8C73D7A3462586DC770BD62B3205]</object-id>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>valor</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[valor]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>valor</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>98</approx-count>
+              <contains-null>true</contains-null>
+              <object-id>[Data_07CA8C73D7A3462586DC770BD62B3205]</object-id>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_07CA8C73D7A3462586DC770BD62B3205'>
+            <properties context=''>
+              <relation connection='excel-direct.16adcfo0ck2u0810b2ylm0ki1gu4' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:C110:no:A1:C110:0' header='yes' outcome='6'>
+                  <column datatype='integer' name='Año' ordinal='0' />
+                  <column datatype='string' name='categoria' ordinal='1' />
+                  <column datatype='real' name='valor' ordinal='2' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+    <datasource caption='Data (WID_riqueza_ALC_tableau)' inline='true' name='federated.1wm0u1n03ltpno1a56et51rj14qd' version='18.1'>
+      <connection class='federated'>
+        <named-connections>
+          <named-connection caption='WID_riqueza_ALC_tableau' name='excel-direct.0dflosq18arrxl14s748s0huxmbd'>
+            <connection class='excel-direct' cleaning='no' compat='no' dataRefreshTime='' interpretationMode='0' validate='no' workgroup-auth-mode='as-is' />
+          </named-connection>
+        </named-connections>
+        <relation connection='excel-direct.0dflosq18arrxl14s748s0huxmbd' name='Data' table='[Data$]' type='table'>
+          <columns gridOrigin='A1:C61:no:A1:C61:0' header='yes' outcome='6'>
+            <column datatype='integer' name='Año' ordinal='0' />
+            <column datatype='string' name='pais' ordinal='1' />
+            <column datatype='real' name='valor' ordinal='2' />
+          </columns>
+        </relation>
+        <metadata-records>
+          <metadata-record class='capability'>
+            <remote-name />
+            <remote-type>0</remote-type>
+            <parent-name>[Data]</parent-name>
+            <remote-alias />
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='integer' name='context'>0</attribute>
+              <attribute datatype='string' name='gridOrigin'>&quot;A1:C61:no:A1:C61:0&quot;</attribute>
+              <attribute datatype='boolean' name='header'>true</attribute>
+              <attribute datatype='integer' name='outcome'>6</attribute>
+            </attributes>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>Año</remote-name>
+            <remote-type>20</remote-type>
+            <local-name>[Año]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>Año</remote-alias>
+            <ordinal>0</ordinal>
+            <local-type>integer</local-type>
+            <aggregation>Sum</aggregation>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;I8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_F0FE8BBCC9734CC69DC8BFA46B9619AE]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>pais</remote-name>
+            <remote-type>130</remote-type>
+            <local-name>[pais]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>pais</remote-alias>
+            <ordinal>1</ordinal>
+            <local-type>string</local-type>
+            <aggregation>Count</aggregation>
+            <contains-null>true</contains-null>
+            <collation flag='1' name='LES_REC_S2' />
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;WSTR&quot;</attribute>
+            </attributes>
+            <object-id>[Data_F0FE8BBCC9734CC69DC8BFA46B9619AE]</object-id>
+          </metadata-record>
+          <metadata-record class='column'>
+            <remote-name>valor</remote-name>
+            <remote-type>5</remote-type>
+            <local-name>[valor]</local-name>
+            <parent-name>[Data]</parent-name>
+            <remote-alias>valor</remote-alias>
+            <ordinal>2</ordinal>
+            <local-type>real</local-type>
+            <aggregation>Sum</aggregation>
+            <precision>15</precision>
+            <contains-null>true</contains-null>
+            <attributes>
+              <attribute datatype='string' name='DebugRemoteType'>&quot;R8&quot;</attribute>
+            </attributes>
+            <object-id>[Data_F0FE8BBCC9734CC69DC8BFA46B9619AE]</object-id>
+          </metadata-record>
+        </metadata-records>
+      </connection>
+      <aliases enabled='yes' />
+      <column datatype='integer' name='[Año]' role='dimension' type='quantitative' />
+      <column caption='Data' datatype='table' name='[__tableau_internal_object_id__].[Data_F0FE8BBCC9734CC69DC8BFA46B9619AE]' role='measure' type='quantitative' />
+      <column caption='Pais' datatype='string' name='[pais]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+      <column caption='Valor' datatype='real' name='[valor]' role='measure' type='quantitative' />
+      <column-instance column='[pais]' derivation='None' name='[none:pais:nk]' pivot='key' type='nominal' />
+      <extract _.fcp.VConnDownstreamExtractsWithWarnings.true...user-specific='false' count='-1' enabled='true' object-id='' units='records'>
+        <connection access_mode='readonly' author-locale='es_ES' class='hyper' dbname='Data/tableau-temp/#TableauTemp_0it2n2p1ofivdl13g5uf50n4gm2k.hyper' default-settings='hyper' schema='Extract' sslmode='' tablename='Extract' update-time='02/02/2026 03:51:45 AM' username=''>
+          <relation name='Extract' table='[Extract].[Extract]' type='table' />
+          <metadata-records>
+            <metadata-record class='column'>
+              <remote-name>Año</remote-name>
+              <remote-type>20</remote-type>
+              <local-name>[Año]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>Año</remote-alias>
+              <ordinal>0</ordinal>
+              <family>Data</family>
+              <local-type>integer</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>5</approx-count>
+              <contains-null>true</contains-null>
+              <object-id>[Data_F0FE8BBCC9734CC69DC8BFA46B9619AE]</object-id>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>pais</remote-name>
+              <remote-type>129</remote-type>
+              <local-name>[pais]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>pais</remote-alias>
+              <ordinal>1</ordinal>
+              <family>Data</family>
+              <local-type>string</local-type>
+              <aggregation>Count</aggregation>
+              <approx-count>12</approx-count>
+              <contains-null>true</contains-null>
+              <collation flag='1' name='LES_REC_S2' />
+              <object-id>[Data_F0FE8BBCC9734CC69DC8BFA46B9619AE]</object-id>
+            </metadata-record>
+            <metadata-record class='column'>
+              <remote-name>valor</remote-name>
+              <remote-type>5</remote-type>
+              <local-name>[valor]</local-name>
+              <parent-name>[Extract]</parent-name>
+              <remote-alias>valor</remote-alias>
+              <ordinal>2</ordinal>
+              <family>Data</family>
+              <local-type>real</local-type>
+              <aggregation>Sum</aggregation>
+              <approx-count>56</approx-count>
+              <contains-null>true</contains-null>
+              <object-id>[Data_F0FE8BBCC9734CC69DC8BFA46B9619AE]</object-id>
+            </metadata-record>
+          </metadata-records>
+        </connection>
+      </extract>
+      <layout dim-ordering='alphabetic' measure-ordering='alphabetic' show-structure='true' />
+      <style>
+        <style-rule element='mark'>
+          <encoding attr='color' field='[none:pais:nk]' type='palette'>
+            <map to='#499894'>
+              <bucket>&quot;Mexico&quot;</bucket>
+            </map>
+            <map to='#4e79a7'>
+              <bucket>&quot;ALC&quot;</bucket>
+            </map>
+            <map to='#59a14f'>
+              <bucket>&quot;Chile&quot;</bucket>
+            </map>
+            <map to='#86bcb6'>
+              <bucket>&quot;Paraguay&quot;</bucket>
+            </map>
+            <map to='#8cd17d'>
+              <bucket>&quot;Colombia&quot;</bucket>
+            </map>
+            <map to='#a0cbe8'>
+              <bucket>&quot;Argentina&quot;</bucket>
+            </map>
+            <map to='#b6992d'>
+              <bucket>&quot;Costa Rica&quot;</bucket>
+            </map>
+            <map to='#e15759'>
+              <bucket>&quot;Perú&quot;</bucket>
+            </map>
+            <map to='#f1ce63'>
+              <bucket>&quot;Ecuador&quot;</bucket>
+            </map>
+            <map to='#f28e2b'>
+              <bucket>&quot;Bolivia&quot;</bucket>
+            </map>
+            <map to='#ff9d9a'>
+              <bucket>&quot;Uruguay&quot;</bucket>
+            </map>
+            <map to='#ffbe7d'>
+              <bucket>&quot;Brasil&quot;</bucket>
+            </map>
+          </encoding>
+        </style-rule>
+      </style>
+      <semantic-values>
+        <semantic-value key='[Country].[Name]' value='&quot;EC&quot;' />
+      </semantic-values>
+      <date-options start-of-week='monday' />
+      <object-graph>
+        <objects>
+          <object caption='Data' id='Data_F0FE8BBCC9734CC69DC8BFA46B9619AE'>
+            <properties context=''>
+              <relation connection='excel-direct.0dflosq18arrxl14s748s0huxmbd' name='Data' table='[Data$]' type='table'>
+                <columns gridOrigin='A1:C61:no:A1:C61:0' header='yes' outcome='6'>
+                  <column datatype='integer' name='Año' ordinal='0' />
+                  <column datatype='string' name='pais' ordinal='1' />
+                  <column datatype='real' name='valor' ordinal='2' />
+                </columns>
+              </relation>
+            </properties>
+            <properties context='extract'>
+              <relation name='Extract' table='[Extract].[Extract]' type='table' />
+            </properties>
+          </object>
+        </objects>
+      </object-graph>
+    </datasource>
+  </datasources>
+  <mapsources>
+    <mapsource name='Tableau' />
+  </mapsources>
+  <worksheets>
+    <worksheet name='Hoja 5'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run fontalignment='1'>Concentración riqueza del 1% más rico</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <repository-location derived-from='https://public.tableau.com/workbooks/WID_riqueza/Hoja5?rev=' id='126472912' path='/workbooks/WID_riqueza' revision='' />
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Data (WID_riqueza_ALC_tableau)' name='federated.1wm0u1n03ltpno1a56et51rj14qd' />
+          </datasources>
+          <mapsources>
+            <mapsource name='Tableau' />
+          </mapsources>
+          <datasource-dependencies datasource='federated.1wm0u1n03ltpno1a56et51rj14qd'>
+            <column datatype='integer' name='[Año]' role='dimension' type='quantitative' />
+            <column-instance column='[Año]' derivation='None' name='[none:Año:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[pais]' derivation='None' name='[none:pais:nk]' pivot='key' type='nominal' />
+            <column caption='Pais' datatype='string' name='[pais]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+            <column-instance column='[valor]' derivation='Sum' name='[sum:valor:qk]' pivot='key' type='quantitative' />
+            <column caption='Valor' datatype='real' name='[valor]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]'>
+            <groupfilter function='union' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate'>
+              <groupfilter function='member' level='[none:pais:nk]' member='&quot;ALC&quot;' />
+              <groupfilter function='member' level='[none:pais:nk]' member='&quot;Bolivia&quot;' />
+              <groupfilter function='member' level='[none:pais:nk]' member='&quot;Colombia&quot;' />
+              <groupfilter function='member' level='[none:pais:nk]' member='&quot;Ecuador&quot;' />
+              <groupfilter function='member' level='[none:pais:nk]' member='&quot;Mexico&quot;' />
+              <groupfilter function='member' level='[none:pais:nk]' member='&quot;Perú&quot;' />
+            </groupfilter>
+          </filter>
+          <slices>
+            <column>[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <encoding attr='space' class='0' domain-expand='false' field='[federated.1wm0u1n03ltpno1a56et51rj14qd].[sum:valor:qk]' field-type='quantitative' major-origin='2.0' major-spacing='0.10000000000000001' scope='rows' type='space' />
+          </style-rule>
+          <style-rule element='header'>
+            <format attr='height-header' value='10' />
+          </style-rule>
+          <style-rule element='map'>
+            <format attr='washout' value='0.0' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <encodings>
+              <color column='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]' />
+            </encodings>
+          </pane>
+        </panes>
+        <rows>[federated.1wm0u1n03ltpno1a56et51rj14qd].[sum:valor:qk]</rows>
+        <cols>[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:Año:qk]</cols>
+      </table>
+      <simple-id uuid='{DE784818-157F-409A-BFA3-A7F7FF0E457D}' />
+    </worksheet>
+    <worksheet name='Hoja 6'>
+      <layout-options>
+        <title>
+          <formatted-text>
+            <run fontalignment='1'>Evolción Gini</run>
+            <run>Æ&#10;</run>
+          </formatted-text>
+        </title>
+      </layout-options>
+      <repository-location derived-from='https://public.tableau.com/workbooks/WID_riqueza/Hoja6?rev=' id='126917263' path='/workbooks/WID_riqueza' revision='' />
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Data (gini_panel_tableau)' name='federated.16u8eo60q57orx199l1qo0d26s76' />
+          </datasources>
+          <datasource-dependencies datasource='federated.16u8eo60q57orx199l1qo0d26s76'>
+            <column datatype='integer' name='[Año]' role='measure' type='ordinal' />
+            <column datatype='string' name='[categoria]' role='dimension' type='nominal' />
+            <column-instance column='[Año]' derivation='None' name='[none:Año:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[categoria]' derivation='None' name='[none:categoria:nk]' pivot='key' type='nominal' />
+            <column-instance column='[valor]' derivation='Sum' name='[sum:valor:qk]' pivot='key' type='quantitative' />
+            <column caption='Valor' datatype='real' name='[valor]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+          <filter class='categorical' column='[federated.16u8eo60q57orx199l1qo0d26s76].[none:categoria:nk]'>
+            <groupfilter function='member' level='[none:categoria:nk]' member='&quot;Ecuador (Urbano)&quot;' user:ui-domain='database' user:ui-enumeration='inclusive' user:ui-marker='enumerate' />
+          </filter>
+          <slices>
+            <column>[federated.16u8eo60q57orx199l1qo0d26s76].[none:categoria:nk]</column>
+          </slices>
+          <aggregation value='true' />
+        </view>
+        <style>
+          <style-rule element='axis'>
+            <format attr='height' field='[federated.16u8eo60q57orx199l1qo0d26s76].[none:Año:qk]' value='54' />
+          </style-rule>
+          <style-rule element='header'>
+            <format attr='background-color' value='#00000000' />
+            <format attr='background-color' data-class='subtotal' value='#00000000' />
+            <format attr='background-color' data-class='total' value='#555555' />
+            <format attr='background-color' scope='cols' value='#00000000' />
+          </style-rule>
+          <style-rule element='pane'>
+            <format attr='background-color' data-class='total' value='#00000000' />
+          </style-rule>
+          <style-rule element='table'>
+            <format attr='background-color' value='#00000000' />
+          </style-rule>
+        </style>
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+            <style>
+              <style-rule element='mark'>
+                <format attr='mark-color' value='#4e79a7' />
+              </style-rule>
+            </style>
+          </pane>
+        </panes>
+        <rows>[federated.16u8eo60q57orx199l1qo0d26s76].[sum:valor:qk]</rows>
+        <cols>[federated.16u8eo60q57orx199l1qo0d26s76].[none:Año:qk]</cols>
+      </table>
+      <simple-id uuid='{403B4418-D410-4647-9B40-0DD4004CEC0B}' />
+    </worksheet>
+    <worksheet name='Hoja 7'>
+      <repository-location derived-from='https://public.tableau.com/workbooks/WID_riqueza/Hoja7?rev=' id='126917264' path='/workbooks/WID_riqueza' revision='' />
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Data (brechas_educacion_tableau)' name='federated.0h55o0f1ujgy9s1906gwi0kl3x8p' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0h55o0f1ujgy9s1906gwi0kl3x8p'>
+            <column datatype='integer' name='[Año]' role='dimension' type='quantitative' />
+            <column caption='Brecha Calificados' datatype='real' name='[brecha_calificados]' role='measure' type='quantitative' />
+            <column caption='Brecha Etnia' datatype='real' name='[brecha_etnia]' role='measure' type='quantitative' />
+            <column caption='Brecha Publico' datatype='real' name='[brecha_publico]' role='measure' type='quantitative' />
+            <column caption='Brecha Sexo' datatype='real' name='[brecha_sexo]' role='measure' type='quantitative' />
+            <column-instance column='[Año]' derivation='None' name='[none:Año:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[brecha_calificados]' derivation='Sum' name='[sum:brecha_calificados:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[brecha_etnia]' derivation='Sum' name='[sum:brecha_etnia:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[brecha_publico]' derivation='Sum' name='[sum:brecha_publico:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[brecha_sexo]' derivation='Sum' name='[sum:brecha_sexo:qk]' pivot='key' type='quantitative' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='1' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_calificados:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='2' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_etnia:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='3' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_publico:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+          <pane id='4' selection-relaxation-option='selection-relaxation-allow' y-axis-name='[federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_sexo:qk]'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+        </panes>
+        <rows>([federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_calificados:qk] + ([federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_etnia:qk] + ([federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_publico:qk] + [federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:brecha_sexo:qk])))</rows>
+        <cols>[federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[none:Año:qk]</cols>
+      </table>
+      <simple-id uuid='{2998BA6D-4498-42AD-A72B-2084CDDEBE63}' />
+    </worksheet>
+    <worksheet name='Hoja 8'>
+      <repository-location derived-from='https://public.tableau.com/workbooks/WID_riqueza/Hoja8?rev=' id='126917265' path='/workbooks/WID_riqueza' revision='' />
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Data (brechas_educacion_tableau)' name='federated.0h55o0f1ujgy9s1906gwi0kl3x8p' />
+          </datasources>
+          <datasource-dependencies datasource='federated.0h55o0f1ujgy9s1906gwi0kl3x8p'>
+            <column datatype='integer' name='[Año]' role='dimension' type='quantitative' />
+            <column caption='Ing no Univ real' datatype='real' name='[Ing_no_Univ_real]' role='measure' type='quantitative' />
+            <column-instance column='[Año]' derivation='None' name='[none:Año:qk]' pivot='key' type='quantitative' />
+            <column-instance column='[Ing_no_Univ_real]' derivation='Sum' name='[sum:Ing_no_Univ_real:qk]' pivot='key' type='quantitative' />
+          </datasource-dependencies>
+          <aggregation value='true' />
+        </view>
+        <style />
+        <panes>
+          <pane selection-relaxation-option='selection-relaxation-allow'>
+            <view>
+              <breakdown value='auto' />
+            </view>
+            <mark class='Automatic' />
+          </pane>
+        </panes>
+        <rows>[federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[sum:Ing_no_Univ_real:qk]</rows>
+        <cols>[federated.0h55o0f1ujgy9s1906gwi0kl3x8p].[none:Año:qk]</cols>
+      </table>
+      <simple-id uuid='{20C28BBF-B6AB-4226-978B-2A39211D490E}' />
+    </worksheet>
+  </worksheets>
+  <dashboards>
+    <dashboard enable-sort-zone-taborder='true' name='Dashboard 1'>
+      <style />
+      <size sizing-mode='automatic' />
+      <datasources>
+        <datasource caption='Data (gini_panel_tableau)' name='federated.16u8eo60q57orx199l1qo0d26s76' />
+        <datasource caption='Data (WID_riqueza_ALC_tableau)' name='federated.1wm0u1n03ltpno1a56et51rj14qd' />
+      </datasources>
+      <datasource-dependencies datasource='federated.16u8eo60q57orx199l1qo0d26s76'>
+        <column datatype='string' name='[categoria]' role='dimension' type='nominal' />
+        <column-instance column='[categoria]' derivation='None' name='[none:categoria:nk]' pivot='key' type='nominal' />
+      </datasource-dependencies>
+      <datasource-dependencies datasource='federated.1wm0u1n03ltpno1a56et51rj14qd'>
+        <column-instance column='[pais]' derivation='None' name='[none:pais:nk]' pivot='key' type='nominal' />
+        <column caption='Pais' datatype='string' name='[pais]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+      </datasource-dependencies>
+      <zones>
+        <zone h='100000' id='4' type-v2='layout-basic' w='100000' x='0' y='0'>
+          <zone h='37562' id='7' param='horz' type-v2='layout-flow' w='99034' x='483' y='10318'>
+            <zone h='37562' id='3' param='horz' type-v2='layout-flow' w='99034' x='483' y='10318'>
+              <zone fixed-size='158' h='37562' id='8' is-fixed='true' name='Hoja 5' param='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]' show-title='false' type-v2='filter' values='relevant' w='10018' x='483' y='10318'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone fixed-size='508' h='37562' id='5' is-fixed='true' name='Hoja 5' w='31141' x='10501' y='10318'>
+                <layout-cache minheight='213' minwidth='155' type-h='scalable' type-w='scalable' />
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+            </zone>
+          </zone>
+          <zone h='45191' id='14' param='horz' type-v2='layout-flow' w='99034' x='483' y='53810'>
+            <zone h='45191' id='16' is-fixed='true' type-v2='layout-basic' w='99034' x='483' y='53810'>
+              <zone h='45191' id='15' param='horz' type-v2='layout-flow' w='99034' x='483' y='53810'>
+                <zone h='45191' id='12' mode='radiolist' name='Hoja 6' param='[federated.16u8eo60q57orx199l1qo0d26s76].[none:categoria:nk]' show-all='false' show-title='false' type-v2='filter' w='10139' x='483' y='53810'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='506' h='45191' id='11' is-fixed='true' name='Hoja 6' w='31020' x='10622' y='53810'>
+                  <layout-cache minheight='197' minwidth='164' type-h='scalable' type-w='scalable' />
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                  </zone-style>
+                </zone>
+              </zone>
+            </zone>
+          </zone>
+          <zone h='5930' id='21' layout-strategy-id='distribute-evenly' param='vert' type-v2='layout-flow' w='99034' x='483' y='47880'>
+            <zone h='5868' id='22' type-v2='text' w='99034' x='483' y='47940'>
+              <formatted-text>
+                <run fontalignment='1' fontsize='22'>Gini</run>
+              </formatted-text>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='4' />
+              </zone-style>
+            </zone>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='background-color' value='#f5f5f5' />
+            </zone-style>
+          </zone>
+          <zone h='9319' id='19' param='horz' type-v2='layout-flow' w='49517' x='483' y='999'>
+            <zone h='8321' id='23' type-v2='dashboard-object' w='49035' x='724' y='1498'>
+              <button action='tabdoc:goto-sheet window-id=&quot;{BF7D2B27-660F-45F1-B8EB-2952BCB51092}&quot;' button-type='text'>
+                <button-visual-state>
+                  <caption>Pobreza</caption>
+                  <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                  <format attr='background-color' value='#4e79a7' />
+                </button-visual-state>
+              </button>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='4' />
+              </zone-style>
+            </zone>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='9319' id='24' type-v2='dashboard-object' w='49517' x='50000' y='999'>
+            <button action='' button-type='text'>
+              <button-visual-state>
+                <caption>Pobreza</caption>
+                <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                <format attr='background-color' value='#f77254' />
+                <format attr='border-style' value='solid' />
+                <format attr='border-width' value='1' />
+                <format attr='border-color' value='#86bcb6' />
+              </button-visual-state>
+            </button>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone-style>
+            <format attr='border-color' value='#000000' />
+            <format attr='border-style' value='none' />
+            <format attr='border-width' value='0' />
+            <format attr='margin' value='8' />
+          </zone-style>
+        </zone>
+      </zones>
+      <devicelayouts>
+        <devicelayout auto-generated='true' name='Phone'>
+          <size maxheight='900' minheight='900' sizing-mode='vscroll' />
+          <zones>
+            <zone h='100000' id='26' type-v2='layout-basic' w='100000' x='0' y='0'>
+              <zone h='97746' id='25' param='vert' type-v2='layout-flow' w='98596' x='702' y='1127'>
+                <zone h='9296' id='24' type-v2='dashboard-object' w='49298' x='50000' y='1127'>
+                  <button action='' button-type='text'>
+                    <button-visual-state>
+                      <caption>Pobreza</caption>
+                      <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                      <format attr='background-color' value='#f77254' />
+                      <format attr='border-style' value='solid' />
+                      <format attr='border-width' value='1' />
+                      <format attr='border-color' value='#86bcb6' />
+                    </button-visual-state>
+                  </button>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='8170' id='23' type-v2='dashboard-object' w='48596' x='1053' y='1690'>
+                  <button action='tabdoc:goto-sheet window-id=&quot;{BF7D2B27-660F-45F1-B8EB-2952BCB51092}&quot;' button-type='text'>
+                    <button-visual-state>
+                      <caption>Pobreza</caption>
+                      <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                      <format attr='background-color' value='#4e79a7' />
+                    </button-visual-state>
+                  </button>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='158' h='37463' id='8' mode='checkdropdown' name='Hoja 5' param='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]' show-title='false' type-v2='filter' values='relevant' w='14574' x='702' y='10423'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='37463' id='5' is-fixed='true' name='Hoja 5' w='45303' x='15276' y='10423'>
+                  <layout-cache minheight='198' minwidth='155' type-h='scalable' type-w='scalable' />
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='5916' id='22' type-v2='text' w='98596' x='702' y='47887'>
+                  <formatted-text>
+                    <run fontalignment='1' fontsize='22'>Gini</run>
+                  </formatted-text>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='45072' id='12' mode='dropdown' name='Hoja 6' param='[federated.16u8eo60q57orx199l1qo0d26s76].[none:categoria:nk]' show-all='false' show-title='false' type-v2='filter' w='14749' x='702' y='53801'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='45072' id='11' is-fixed='true' name='Hoja 6' w='45127' x='15451' y='53801'>
+                  <layout-cache minheight='197' minwidth='155' type-h='scalable' type-w='scalable' />
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+              </zone>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='8' />
+              </zone-style>
+            </zone>
+          </zones>
+        </devicelayout>
+      </devicelayouts>
+      <simple-id uuid='{D5F8583A-4F9D-40BF-99B0-32ED2C669B69}' />
+    </dashboard>
+    <dashboard enable-sort-zone-taborder='true' name='Dashboard 1 (2)'>
+      <style />
+      <size sizing-mode='automatic' />
+      <datasources>
+        <datasource caption='Data (gini_panel_tableau)' name='federated.16u8eo60q57orx199l1qo0d26s76' />
+        <datasource caption='Data (WID_riqueza_ALC_tableau)' name='federated.1wm0u1n03ltpno1a56et51rj14qd' />
+      </datasources>
+      <datasource-dependencies datasource='federated.16u8eo60q57orx199l1qo0d26s76'>
+        <column datatype='string' name='[categoria]' role='dimension' type='nominal' />
+        <column-instance column='[categoria]' derivation='None' name='[none:categoria:nk]' pivot='key' type='nominal' />
+      </datasource-dependencies>
+      <datasource-dependencies datasource='federated.1wm0u1n03ltpno1a56et51rj14qd'>
+        <column-instance column='[pais]' derivation='None' name='[none:pais:nk]' pivot='key' type='nominal' />
+        <column caption='Pais' datatype='string' name='[pais]' role='dimension' semantic-role='[Country].[ISO3166_2]' type='nominal' />
+      </datasource-dependencies>
+      <zones>
+        <zone h='100000' id='4' type-v2='layout-basic' w='100000' x='0' y='0'>
+          <zone h='38451' id='7' param='horz' type-v2='layout-flow' w='98596' x='702' y='9435'>
+            <zone h='38451' id='3' param='horz' type-v2='layout-flow' w='98596' x='702' y='9435'>
+              <zone fixed-size='158' h='38451' id='8' is-fixed='true' name='Hoja 5' param='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]' show-title='false' type-v2='filter' values='relevant' w='14574' x='702' y='9435'>
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+              <zone fixed-size='508' h='38451' id='5' is-fixed='true' name='Hoja 5' w='45303' x='15276' y='9435'>
+                <layout-cache minheight='226' minwidth='155' type-h='scalable' type-w='scalable' />
+                <zone-style>
+                  <format attr='border-color' value='#000000' />
+                  <format attr='border-style' value='none' />
+                  <format attr='border-width' value='0' />
+                  <format attr='margin' value='4' />
+                </zone-style>
+              </zone>
+            </zone>
+          </zone>
+          <zone h='45072' id='14' param='horz' type-v2='layout-flow' w='98596' x='702' y='53801'>
+            <zone h='45072' id='16' is-fixed='true' type-v2='layout-basic' w='98596' x='702' y='53801'>
+              <zone h='45072' id='15' param='horz' type-v2='layout-flow' w='98596' x='702' y='53801'>
+                <zone h='45072' id='12' mode='radiolist' name='Hoja 6' param='[federated.16u8eo60q57orx199l1qo0d26s76].[none:categoria:nk]' show-all='false' show-title='false' type-v2='filter' w='14749' x='702' y='53801'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='506' h='45072' id='11' is-fixed='true' name='Hoja 6' w='45127' x='15451' y='53801'>
+                  <layout-cache minheight='197' minwidth='155' type-h='scalable' type-w='scalable' />
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                  </zone-style>
+                </zone>
+                <zone h='45072' id='20' param='vert' type-v2='layout-flow' w='38720' x='60578' y='53801' />
+              </zone>
+            </zone>
+          </zone>
+          <zone h='8308' id='19' param='horz' type-v2='layout-flow' w='15394' x='83904' y='1127' />
+          <zone h='5915' id='21' layout-strategy-id='distribute-evenly' param='vert' type-v2='layout-flow' w='98596' x='702' y='47886'>
+            <zone h='5916' id='22' type-v2='text' w='98596' x='702' y='47887'>
+              <formatted-text>
+                <run fontalignment='1' fontsize='22'>Gini</run>
+              </formatted-text>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='4' />
+              </zone-style>
+            </zone>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='background-color' value='#f5f5f5' />
+            </zone-style>
+          </zone>
+          <zone h='8308' id='23' type-v2='dashboard-object' w='12291' x='702' y='1127'>
+            <button action='' button-type='text'>
+              <button-visual-state>
+                <caption>Inicio</caption>
+                <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                <format attr='background-color' value='#333333' />
+              </button-visual-state>
+            </button>
+            <zone-style>
+              <format attr='border-color' value='#499894' />
+              <format attr='border-style' value='solid' />
+              <format attr='border-width' value='1' />
+              <format attr='margin' value='4' />
+              <format attr='background-color' value='#f77254' />
+            </zone-style>
+          </zone>
+          <zone h='8308' id='24' type-v2='dashboard-object' w='20281' x='12993' y='1127'>
+            <button action='' button-type='text'>
+              <button-visual-state>
+                <caption>Pobreza</caption>
+                <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                <format attr='background-color' value='#8cd17d' />
+                <format attr='border-style' value='solid' />
+                <format attr='border-width' value='1' />
+                <format attr='border-color' value='#e799b3' />
+              </button-visual-state>
+            </button>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+              <format attr='background-color' value='#f77254' />
+            </zone-style>
+          </zone>
+          <zone h='8308' id='25' type-v2='dashboard-object' w='19842' x='33274' y='1127'>
+            <button action='' button-type='text'>
+              <button-visual-state>
+                <caption>Desigualdad</caption>
+                <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                <format attr='background-color' value='#333333' />
+              </button-visual-state>
+            </button>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='8308' id='26' type-v2='dashboard-object' w='15393' x='53116' y='1127'>
+            <button action='' button-type='text'>
+              <button-visual-state>
+                <caption>Empleo</caption>
+                <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                <format attr='background-color' value='#333333' />
+              </button-visual-state>
+            </button>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone h='8308' id='27' type-v2='dashboard-object' w='15395' x='68509' y='1127'>
+            <button action='' button-type='text'>
+              <button-visual-state>
+                <caption>Tributación</caption>
+                <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                <format attr='background-color' value='#333333' />
+              </button-visual-state>
+            </button>
+            <zone-style>
+              <format attr='border-color' value='#000000' />
+              <format attr='border-style' value='none' />
+              <format attr='border-width' value='0' />
+              <format attr='margin' value='4' />
+            </zone-style>
+          </zone>
+          <zone-style>
+            <format attr='border-color' value='#000000' />
+            <format attr='border-style' value='none' />
+            <format attr='border-width' value='0' />
+            <format attr='margin' value='8' />
+          </zone-style>
+        </zone>
+      </zones>
+      <devicelayouts>
+        <devicelayout auto-generated='true' name='Phone'>
+          <size maxheight='1100' minheight='1100' sizing-mode='vscroll' />
+          <zones>
+            <zone h='100000' id='29' type-v2='layout-basic' w='100000' x='0' y='0'>
+              <zone h='97746' id='28' param='vert' type-v2='layout-flow' w='98596' x='702' y='1127'>
+                <zone h='8308' id='23' type-v2='dashboard-object' w='12291' x='702' y='1127'>
+                  <button action='' button-type='text'>
+                    <button-visual-state>
+                      <caption>Inicio</caption>
+                      <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                      <format attr='background-color' value='#333333' />
+                    </button-visual-state>
+                  </button>
+                  <zone-style>
+                    <format attr='border-color' value='#499894' />
+                    <format attr='border-style' value='solid' />
+                    <format attr='border-width' value='1' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                    <format attr='background-color' value='#f77254' />
+                  </zone-style>
+                </zone>
+                <zone h='8308' id='24' type-v2='dashboard-object' w='20281' x='12993' y='1127'>
+                  <button action='' button-type='text'>
+                    <button-visual-state>
+                      <caption>Pobreza</caption>
+                      <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                      <format attr='background-color' value='#8cd17d' />
+                      <format attr='border-style' value='solid' />
+                      <format attr='border-width' value='1' />
+                      <format attr='border-color' value='#e799b3' />
+                    </button-visual-state>
+                  </button>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                    <format attr='background-color' value='#f77254' />
+                  </zone-style>
+                </zone>
+                <zone h='8308' id='25' type-v2='dashboard-object' w='19842' x='33274' y='1127'>
+                  <button action='' button-type='text'>
+                    <button-visual-state>
+                      <caption>Desigualdad</caption>
+                      <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                      <format attr='background-color' value='#333333' />
+                    </button-visual-state>
+                  </button>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='8308' id='26' type-v2='dashboard-object' w='15393' x='53116' y='1127'>
+                  <button action='' button-type='text'>
+                    <button-visual-state>
+                      <caption>Empleo</caption>
+                      <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                      <format attr='background-color' value='#333333' />
+                    </button-visual-state>
+                  </button>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='8308' id='27' type-v2='dashboard-object' w='15395' x='68509' y='1127'>
+                  <button action='' button-type='text'>
+                    <button-visual-state>
+                      <caption>Tributación</caption>
+                      <button-caption-font-style fontcolor='#ffffff' fontname='Tableau Bold' fontsize='12' />
+                      <format attr='background-color' value='#333333' />
+                    </button-visual-state>
+                  </button>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='158' h='38451' id='8' mode='checkdropdown' name='Hoja 5' param='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]' show-title='false' type-v2='filter' values='relevant' w='14574' x='702' y='9435'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='38451' id='5' is-fixed='true' name='Hoja 5' w='45303' x='15276' y='9435'>
+                  <layout-cache minheight='226' minwidth='155' type-h='scalable' type-w='scalable' />
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='5916' id='22' type-v2='text' w='98596' x='702' y='47887'>
+                  <formatted-text>
+                    <run fontalignment='1' fontsize='22'>Gini</run>
+                  </formatted-text>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone h='45072' id='12' mode='dropdown' name='Hoja 6' param='[federated.16u8eo60q57orx199l1qo0d26s76].[none:categoria:nk]' show-all='false' show-title='false' type-v2='filter' w='14749' x='702' y='53801'>
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+                <zone fixed-size='280' h='45072' id='11' is-fixed='true' name='Hoja 6' w='45127' x='15451' y='53801'>
+                  <layout-cache minheight='197' minwidth='155' type-h='scalable' type-w='scalable' />
+                  <zone-style>
+                    <format attr='border-color' value='#000000' />
+                    <format attr='border-style' value='none' />
+                    <format attr='border-width' value='0' />
+                    <format attr='margin' value='4' />
+                    <format attr='padding' value='0' />
+                  </zone-style>
+                </zone>
+              </zone>
+              <zone-style>
+                <format attr='border-color' value='#000000' />
+                <format attr='border-style' value='none' />
+                <format attr='border-width' value='0' />
+                <format attr='margin' value='8' />
+              </zone-style>
+            </zone>
+          </zones>
+        </devicelayout>
+      </devicelayouts>
+      <simple-id uuid='{A72A7ABC-1621-4048-BCFE-70C9092E8D65}' />
+    </dashboard>
+  </dashboards>
+  <windows source-height='219'>
+    <window class='worksheet' name='Hoja 5'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='title' />
+          </strip>
+        </edge>
+        <edge name='right'>
+          <strip size='174'>
+            <card param='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]' type='filter' values='relevant' />
+            <card pane-specification-id='0' param='[federated.1wm0u1n03ltpno1a56et51rj14qd].[none:pais:nk]' type='color' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{BF7D2B27-660F-45F1-B8EB-2952BCB51092}' />
+    </window>
+    <window class='worksheet' name='Hoja 6'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='title' />
+          </strip>
+        </edge>
+        <edge name='right'>
+          <strip size='174'>
+            <card mode='radiolist' param='[federated.16u8eo60q57orx199l1qo0d26s76].[none:categoria:nk]' show-all='false' type='filter' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{2587742E-7660-47DF-BE6A-55F0FB5D4695}' />
+    </window>
+    <window class='worksheet' maximized='true' name='Hoja 7'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='30'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{1CDDDD91-25FE-4891-9AEA-25953BCE41AE}' />
+    </window>
+    <window class='worksheet' name='Hoja 8'>
+      <cards>
+        <edge name='left'>
+          <strip size='160'>
+            <card type='pages' />
+            <card type='filters' />
+            <card type='marks' />
+          </strip>
+        </edge>
+        <edge name='top'>
+          <strip size='2147483647'>
+            <card type='columns' />
+          </strip>
+          <strip size='2147483647'>
+            <card type='rows' />
+          </strip>
+          <strip size='31'>
+            <card type='title' />
+          </strip>
+        </edge>
+      </cards>
+      <simple-id uuid='{D49BF200-CB45-4EC3-B2B8-36BD52188722}' />
+    </window>
+    <window class='dashboard' name='Dashboard 1'>
+      <viewpoints>
+        <viewpoint name='Hoja 5'>
+          <zoom type='entire-view' />
+        </viewpoint>
+        <viewpoint name='Hoja 6'>
+          <zoom type='entire-view' />
+        </viewpoint>
+      </viewpoints>
+      <active id='23' />
+      <simple-id uuid='{E57B2583-6006-4D9C-AD4D-B937DF38AB43}' />
+    </window>
+    <window class='dashboard' name='Dashboard 1 (2)'>
+      <viewpoints>
+        <viewpoint name='Hoja 5'>
+          <zoom type='entire-view' />
+        </viewpoint>
+        <viewpoint name='Hoja 6'>
+          <zoom type='entire-view' />
+        </viewpoint>
+      </viewpoints>
+      <active id='3' />
+      <simple-id uuid='{7D2712B1-C600-4C97-A37A-F8A0AAE4ECC2}' />
+    </window>
+  </windows>
+</workbook>
