@@ -244,4 +244,3 @@ foreach yr of local years_both {
 
 di as result _n "01_limpieza_merge.do completado."
 
-2
