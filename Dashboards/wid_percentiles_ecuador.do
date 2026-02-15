@@ -37,6 +37,9 @@ global outdir  "$dashdir/Data"
 
 wid, indicators(sptinc) areas(EC) perc(p99.9p100 p99p100 p90p100 p0p50) clear
 
+* Mantener solo equal-split adults (992j), descartar individuos (992i)
+keep if variable == "sptinc992j"
+
 * Limpiar y dar formato
 drop if missing(value)
 
@@ -80,6 +83,9 @@ di as result "Exportado: WID_ingreso_percentiles_tableau.xlsx"
 * Mismos percentiles
 
 wid, indicators(shweal) areas(EC) perc(p99.9p100 p99p100 p90p100 p0p50) clear
+
+* Mantener solo equal-split adults (992j)
+keep if variable == "shweal992j"
 
 * Limpiar y dar formato
 drop if missing(value)
