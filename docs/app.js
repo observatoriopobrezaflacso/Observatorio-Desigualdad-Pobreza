@@ -119,7 +119,7 @@
         const latestNBI = nbiData.length ? nbiData[0] : null;
 
         const cards = [
-            { icon: '📉', label: 'Pobreza', value: pobrezaVal ? pobrezaVal.valor.toFixed(1) + '%' : '—', year: pobrezaVal ? pobrezaVal.anio : '' },
+            { icon: '<img src="/Users/vero/Downloads/poverty.svg" width="30">', label: 'Pobreza', value: pobrezaVal ? pobrezaVal.valor.toFixed(1) + '%' : '—', year: pobrezaVal ? pobrezaVal.anio : '' },
             { icon: '⚠️', label: 'Pobreza Extrema', value: extremaVal ? extremaVal.valor.toFixed(1) + '%' : '—', year: extremaVal ? extremaVal.anio : '' },
             { icon: '🏘️', label: 'NBI', value: latestNBI ? latestNBI.Valor.toFixed(1) + '%' : '—', year: latestNBI ? latestNBI['Año'] : '' },
             { icon: '📊', label: 'Gini (Ecuador)', value: latestGini ? latestGini.valor.toFixed(3) : '—', year: latestGini ? latestGini['Año'] : '' },
@@ -188,7 +188,7 @@
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                scales: { y: { min: 0.3, max: 0.7 } }
+                scales: { y: { min: 0.3, max: 0.9 } }
             }
         });
     }
@@ -463,7 +463,7 @@
     /* ============================================================
        PAGE: AMÉRICA LATINA
        ============================================================ */
-    let selectedCountries = ['Ecuador', 'Colombia', 'Chile', 'Brasil', 'Argentina'];
+    let selectedCountries = ['Ecuador'];
 
     function initLatamFilters() {
         const container = document.getElementById('country-selector');
