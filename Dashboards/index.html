@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observatorio de Desigualdad y Pobreza</title>
+  <meta name="description" content="Dashboard interactivo de indicadores de pobreza y desigualdad en Ecuador — Observatorio de Políticas Públicas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Mobile menu toggle -->
+  <button class="menu-toggle" id="menuToggle" aria-label="Menú">☰</button>
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1>Observatorio de Desigualdad y Pobreza</h1>
+      <div class="subtitle">Ecuador</div>
+    </div>
+    <ul class="nav-items">
+      <li><a href="#" class="active" data-page="inicio"><span class="nav-icon">🏠</span> Inicio</a></li>
+      <li><a href="#" data-page="pobreza"><span class="nav-icon">📊</span> Pobreza</a></li>
+      <li><a href="#" data-page="desigualdad"><span class="nav-icon">📈</span> Desigualdad</a></li>
+      <li><a href="#" data-page="concentracion"><span class="nav-icon">💰</span> Concentración</a></li>
+      <li><a href="#" data-page="latam"><span class="nav-icon">🌎</span> América Latina</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      Datos: INEC, WID · 2024
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ==================== INICIO ==================== -->
+    <section class="page active" id="page-inicio">
+      <div class="hero">
+        <h2>Observatorio de Desigualdad y Pobreza</h2>
+        <p>Un tablero interactivo para monitorear indicadores de pobreza y desigualdad en Ecuador, con datos históricos y comparaciones regionales.</p>
+      </div>
+      <div class="scorecards-grid" id="scorecards"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Evolución de la Pobreza y Pobreza Extrema</div>
+          <div class="chart-container"><canvas id="chart-series-hist"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Coeficiente de Gini — Ecuador</div>
+          <div class="chart-container"><canvas id="chart-gini-home"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== POBREZA ==================== -->
+    <section class="page" id="page-pobreza">
+      <div class="page-header">
+        <h2>Pobreza</h2>
+        <p>Indicadores de pobreza por ingreso, NBI y pobreza multidimensional en Ecuador</p>
+      </div>
+
+      <div class="filters-bar">
+        <div class="filter-group">
+          <label>Indicador</label>
+          <select id="pov-indicator">
+            <option value="Pobreza">Pobreza</option>
+            <option value="Pobreza Extrema">Pobreza Extrema</option>
+            <option value="NBI">NBI</option>
+            <option value="Pobreza Multidimensional">Pobreza Multidimensional</option>
+            <option value="Pobreza Extrema Multidimensional">Pob. Extrema Multidimensional</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Serie Histórica por Nivel</div>
+          <div class="chart-container"><canvas id="chart-pov-nivel"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Pobreza por Etnia</div>
+          <div class="chart-container"><canvas id="chart-pov-etnia"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Pobreza por Sexo</div>
+          <div class="chart-container"><canvas id="chart-pov-sexo"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title" id="prov-table-title">Pobreza Provincial — 2024</div>
+          <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+            <div class="filter-group">
+              <label>Año</label>
+              <select id="prov-year"></select>
+            </div>
+          </div>
+          <div class="prov-table-wrapper">
+            <table class="prov-table" id="prov-table">
+              <thead><tr><th>Provincia</th><th>Pobreza (%)</th><th>Pobreza Extrema (%)</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== DESIGUALDAD ==================== -->
+    <section class="page" id="page-desigualdad">
+      <div class="page-header">
+        <h2>Desigualdad</h2>
+        <p>Coeficiente de Gini: Ecuador vs América Latina</p>
+      </div>
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title">Evolución del Coeficiente de Gini</div>
+          <div class="chart-container tall"><canvas id="chart-gini-full"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== CONCENTRACIÓN ==================== -->
+    <section class="page" id="page-concentracion">
+      <div class="page-header">
+        <h2>Concentración del Ingreso y la Riqueza</h2>
+        <p>Participación de los percentiles en el ingreso y riqueza nacional — Ecuador (WID)</p>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Participación en el Ingreso Nacional</div>
+          <div class="chart-container tall"><canvas id="chart-wid-income-ec"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Participación en la Riqueza Nacional</div>
+          <div class="chart-container tall"><canvas id="chart-wid-wealth-ec"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== AMÉRICA LATINA ==================== -->
+    <section class="page" id="page-latam">
+      <div class="page-header">
+        <h2>Desigualdad en América Latina</h2>
+        <p>Comparación regional de la concentración del ingreso y la riqueza (WID)</p>
+      </div>
+
+      <div class="filters-bar" id="latam-filters">
+        <div class="filter-group">
+          <label>Variable</label>
+          <select id="latam-var">
+            <option value="income">Ingreso</option>
+            <option value="wealth">Riqueza</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Percentil</label>
+          <select id="latam-percentile">
+            <option value="Top 1%">Top 1%</option>
+            <option value="Top 10%">Top 10%</option>
+            <option value="Top 0.1%">Top 0.1%</option>
+            <option value="Bottom 50%">Bottom 50%</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <label>Países</label>
+        <div class="country-selector" id="country-selector"></div>
+      </div>
+
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title" id="latam-chart-title">Participación del Top 1% en el Ingreso Nacional</div>
+          <div class="chart-container tall"><canvas id="chart-latam"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
