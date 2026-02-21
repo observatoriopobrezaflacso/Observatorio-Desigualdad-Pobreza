@@ -1,28 +1,33 @@
-/* ===== Design Tokens ===== */
+/* ===== Design Tokens – Light Theme ===== */
 :root {
-  --bg-primary: #0b1120;
-  --bg-secondary: #111827;
-  --bg-card: rgba(30, 41, 59, 0.6);
-  --bg-card-hover: rgba(30, 41, 59, 0.85);
-  --border-card: rgba(99, 102, 241, 0.15);
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --accent-1: #06b6d4;   /* cyan */
-  --accent-2: #6366f1;   /* indigo */
-  --accent-3: #a855f7;   /* purple */
-  --accent-4: #f59e0b;   /* amber */
-  --accent-5: #ef4444;   /* red */
-  --accent-6: #10b981;   /* emerald */
+  --bg-primary: #f8fafc;                /* very light slate */
+  --bg-secondary: #f1f5f9;              /* soft gray */
+  --bg-card: rgba(255, 255, 255, 0.8);  /* translucent white */
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --border-card: rgba(99, 102, 241, 0.2);
+  
+
+  --text-primary: #0f172a;              /* dark slate */
+  --text-secondary: #334155;            /* medium slate */
+  --text-muted: #64748b;                /* muted gray */
+
+  --accent-1: #0891b2;   /* deeper cyan */
+  --accent-2: #4f46e5;   /* strong indigo */
+  --accent-3: #9333ea;   /* vibrant purple */
+  --accent-4: #d97706;   /* warm amber */
+  --accent-5: #dc2626;   /* strong red */
+  --accent-6: #059669;   /* emerald */
+
   --gradient-primary: linear-gradient(135deg, var(--accent-1), var(--accent-2));
   --gradient-accent: linear-gradient(135deg, var(--accent-2), var(--accent-3));
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.08);
+
+  --shadow-card: 0 4px 20px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.12);
+
   --radius: 16px;
   --radius-sm: 10px;
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 /* ===== Reset & Base ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
