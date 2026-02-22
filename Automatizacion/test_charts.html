@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Chart Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+        .test { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .test h2 { margin-top: 0; color: #333; }
+        .chart-box { height: 300px; margin: 20px 0; }
+        .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; margin-left: 10px; }
+        .pass { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Chart Rendering Test</h1>
+
+    <div class="test">
+        <h2>Test 1: Data Loading <span class="status" id="status1">Testing...</span></h2>
+        <div id="result1"></div>
+    </div>
+
+    <div class="test">
+        <h2>Test 2: Poverty by Education <span class="status" id="status2">Testing...</span></h2>
+        <div class="chart-box"><canvas id="chart1"></canvas></div>
+        <div id="result2"></div>
+    </div>
+
+    <div class="test">
+        <h2>Test 3: Poverty by Age <span class="status" id="status3">Testing...</span></h2>
+        <div class="chart-box"><canvas id="chart2"></canvas></div>
+        <div id="result3"></div>
+    </div>
+
+    <div class="test">
+        <h2>Test 4: Employment Series <span class="status" id="status4">Testing...</span></h2>
+        <div class="chart-box"><canvas id="chart3"></canvas></div>
+        <div id="result4"></div>
+    </div>
+
+    <div class="test">
+        <h2>Test 5: Wage Evolution <span class="status" id="status5">Testing...</span></h2>
+        <div class="chart-box"><canvas id="chart4"></canvas></div>
+        <div id="result5"></div>
+    </div>
+
+    <script src="../docs/data.js"></script>
+    <script>
+        function setStatus(num, pass, message) {
+            const el = document.getElementById('status' + num);
+            el.className = 'status ' + (pass ? 'pass' : 'fail');
+            el.textContent = pass ? 'PASS' : 'FAIL';
+            document.getElementById('result' + num).innerHTML = message;
+        }
+
+        // Test 1: Data Loading
+        try {
+            if (typeof DATA === 'undefined') {
+                throw new Error('DATA object not defined');
+            }
+            const datasetCount = Object.keys(DATA).length;
+            setStatus(1, true, `<pre>✅ DATA object loaded successfully\n✅ Contains ${datasetCount} datasets\n✅ Key datasets: ${Object.keys(DATA).slice(0, 10).join(', ')}...</pre>`);
+        } catch (e) {
+            setStatus(1, false, `<pre>❌ Error: ${e.message}</pre>`);
+        }
+
+        // Test 2: Poverty by Education
+        try {
+            const data = DATA.pobrezaEducacion.filter(r => r.indicador === 'Pobreza' && r.valor != null);
+            const groups = [...new Set(data.map(r => r.nivelEducativo))];
+            const years = [...new Set(data.map(r => r.anio))].sort();
+
+            const datasets = groups.map((g, i) => {
+                const subset = data.filter(r => r.nivelEducativo === g);
+                return {
+                    label: g,
+                    data: years.map(y => {
+                        const row = subset.find(r => r.anio === y);
+                        return row ? row.valor : null;
+                    }),
+                    borderColor: i === 0 ? '#4f46e5' : '#f59e0b',
+                    backgroundColor: i === 0 ? '#4f46e580' : '#f59e0b80',
+                    fill: false
+                };
+            });
+
+            new Chart(document.getElementById('chart1'), {
+                type: 'line',
+                data: { labels: years, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            setStatus(2, true, `<pre>✅ Found ${data.length} rows\n✅ ${groups.length} education levels\n✅ ${years.length} years (${Math.min(...years)}-${Math.max(...years)})</pre>`);
+        } catch (e) {
+            setStatus(2, false, `<pre>❌ Error: ${e.message}\n${e.stack}</pre>`);
+        }
+
+        // Test 3: Poverty by Age
+        try {
+            const data = DATA.pobrezaEdad.filter(r => r.indicador === 'Pobreza' && r.valor != null);
+            const groups = [...new Set(data.map(r => r.grupoEtario))];
+            const years = [...new Set(data.map(r => r.anio))].sort();
+
+            const datasets = groups.map((g, i) => {
+                const subset = data.filter(r => r.grupoEtario === g);
+                return {
+                    label: g,
+                    data: years.map(y => {
+                        const row = subset.find(r => r.anio === y);
+                        return row ? row.valor : null;
+                    }),
+                    borderColor: ['#f43f5e', '#f59e0b', '#4f46e5', '#9333ea'][i],
+                    fill: false
+                };
+            });
+
+            new Chart(document.getElementById('chart2'), {
+                type: 'line',
+                data: { labels: years, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            setStatus(3, data.length > 0, `<pre>✅ Found ${data.length} rows\n⚠️  ${groups.length} age groups (expected 4)\n✅ ${years.length} years\n\n⚠️  WARNING: Only has "${groups[0]}" data\nExpected: Niños, Jóvenes, Adultos, Adultos mayores</pre>`);
+        } catch (e) {
+            setStatus(3, false, `<pre>❌ Error: ${e.message}\n${e.stack}</pre>`);
+        }
+
+        // Test 4: Employment Series
+        try {
+            const data = DATA.empleoSeries.filter(r => r.valor != null);
+            const indicators = [...new Set(data.map(r => r.indicador))];
+            const years = [...new Set(data.map(r => r.anio))].sort();
+
+            const datasets = indicators.map((ind, i) => {
+                const subset = data.filter(r => r.indicador === ind);
+                return {
+                    label: ind,
+                    data: years.map(y => {
+                        const row = subset.find(r => r.anio === y);
+                        return row ? row.valor : null;
+                    }),
+                    borderColor: ['#0891b2', '#f59e0b', '#ef4444'][i],
+                    fill: false
+                };
+            });
+
+            new Chart(document.getElementById('chart3'), {
+                type: 'line',
+                data: { labels: years, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            setStatus(4, true, `<pre>✅ Found ${data.length} rows\n✅ ${indicators.length} indicators\n✅ ${years.length} years</pre>`);
+        } catch (e) {
+            setStatus(4, false, `<pre>❌ Error: ${e.message}\n${e.stack}</pre>`);
+        }
+
+        // Test 5: Wage Evolution
+        try {
+            const data = DATA.salariosSeries.filter(r => r.valor != null);
+            const types = [...new Set(data.map(r => r.tipo))];
+            const years = [...new Set(data.map(r => r.anio))].sort();
+
+            const datasets = types.map((tipo, i) => {
+                const subset = data.filter(r => r.tipo === tipo);
+                return {
+                    label: tipo,
+                    data: years.map(y => {
+                        const row = subset.find(r => r.anio === y);
+                        return row ? row.valor : null;
+                    }),
+                    borderColor: '#4f46e5',
+                    fill: false
+                };
+            });
+
+            new Chart(document.getElementById('chart4'), {
+                type: 'line',
+                data: { labels: years, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            setStatus(5, true, `<pre>✅ Found ${data.length} rows\n✅ ${types.length} wage types\n✅ ${years.length} years</pre>`);
+        } catch (e) {
+            setStatus(5, false, `<pre>❌ Error: ${e.message}\n${e.stack}</pre>`);
+        }
+    </script>
+</body>
+</html>

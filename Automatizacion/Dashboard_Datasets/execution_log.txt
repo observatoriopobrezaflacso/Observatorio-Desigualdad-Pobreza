@@ -1,0 +1,82 @@
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Installing package: Hmisc 
+Installing package into ‘/Users/vero/Library/R/library’
+(as ‘lib’ is unspecified)
+also installing the dependency ‘htmlTable’
+
+trying URL 'https://cloud.r-project.org/bin/macosx/big-sur-arm64/contrib/4.3/htmlTable_2.4.3.tgz'
+Content type 'application/x-gzip' length 418571 bytes (408 KB)
+==================================================
+downloaded 408 KB
+
+trying URL 'https://cloud.r-project.org/bin/macosx/big-sur-arm64/contrib/4.3/Hmisc_5.2-3.tgz'
+Content type 'application/x-gzip' length 3614819 bytes (3.4 MB)
+==================================================
+downloaded 3.4 MB
+
+
+The downloaded binary packages are in
+	/var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//Rtmp3NiSh7/downloaded_packages
+Installing package: WDI 
+Installing package into ‘/Users/vero/Library/R/library’
+(as ‘lib’ is unspecified)
+trying URL 'https://cloud.r-project.org/bin/macosx/big-sur-arm64/contrib/4.3/WDI_2.7.9.tgz'
+Content type 'application/x-gzip' length 669434 bytes (653 KB)
+==================================================
+downloaded 653 KB
+
+
+The downloaded binary packages are in
+	/var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//Rtmp3NiSh7/downloaded_packages
+Warning message:
+package ‘writexl’ was built under R version 4.3.3 
+
+==================================================================
+  DASHBOARD DATASET GENERATION - MASTER SCRIPT
+==================================================================
+
+
+------------------------------------------------------------------
+[ 1 / 10 ] Running: 01_pobreza_educacion.R 
+------------------------------------------------------------------
+Reading 2014 data...
+
+✗ ERROR: Can't select columns that don't exist.
+✖ Column `pobreza` doesn't exist. 
+
+------------------------------------------------------------------
+[ 2 / 10 ] Running: 02_pobreza_edad.R 
+------------------------------------------------------------------
+Reading 2014 data...
+
+✗ ERROR: Can't select columns that don't exist.
+✖ Column `pobreza` doesn't exist. 
+
+------------------------------------------------------------------
+[ 3 / 10 ] Running: 03_pobreza_region.R 
+------------------------------------------------------------------
+Reading 2014 data...
+
+✗ ERROR: ℹ In argument: `region = case_when(...)`.
+Caused by error in `case_when()`:
+! Failed to evaluate the left-hand side of formula 1.
+Caused by error:
+! object 'dominio' not found 
+
+------------------------------------------------------------------
+[ 4 / 10 ] Running: 04_pobreza_multidimensional.R 
+------------------------------------------------------------------
+Reading 2014 data...
+Reading 2015 data...
+Reading 2016 data...
+Reading 2017 data...
