@@ -1,0 +1,74 @@
+Dashboard outline
+Página 1: Inicio
+	•	Scorecards: 
+	•	Pobreza, Pobreza extrema, NBI, Multidimensional
+	•	Empleo no adecuado, desempleo, 
+	•	Gini, concentración del 1% más rico
+Pagina 2: Pobreza (al hacer clic, se divide en dos: último año y serie histórica)
+Pagina 2.1: Último año
+	•	Filtros: 
+	•	Indicador (opciones: pobreza, pobreza extrema, pobreza multidimensional, pobreza por NBI).
+	•	Año
+	•	Gráficos del último año disponible:
+	•	Barras: nacional, urbano, rural. 
+	•	Barras horizontal: etnia (excluye etnia “Otro”).
+	•	Barras: hombre, mujer. 
+	•	Barras: nivel educativo: superior universitario o más vs menos que superior universitario. 
+	•	Barras: grupo etario (niños, jóvenes, adultos y adultos mayores). 
+	•	Barras: costa, sierra y oriente.
+	•	Tabla: pobreza por provincia (utilizar el Excel de los datos de la ENEMDU anual, incluir nota que indique esto). 
+	•	Tabla: variación en el último año vs el año anterior, indicando si la diferencia es estadísticamente significativa. 
+Pagina 2.2: Serie histórica
+	•	Filtro: Indicador (Monetaria, NBI, Multidimensional). 
+	•	Gráficos de pobreza serie histórica (gráfico de líneas):
+	•	Pobreza y pobreza extrema 
+	•	Pobreza nacional, urbana y rural. 
+	•	Pobreza de indígenas y no indígenas.
+	•	Pobreza Costa vs Sierra vs Amazonía.
+	•	Pobreza por nivel educativo: superior universitario o más vs menos que superior universitario.
+
+
+
+	•	Gráfico de líneas con la evolución histórica de Pobreza y Pobreza extrema.
+	•	Gráfico de líneas con la evolución histórica de Pobreza y Pobreza multidimensional.
+Página 4: Desigualdad (dividir en 4.1 y 4.2)
+Página 4.1: Desigualdad: indicadores tradicionales
+	•	Gini antes y después de cada impuesto. 
+	•	Gini (Ecuador, Ecuador (Rural), Ecuador (Urbano)). No incluir LAC aquí.
+	•	Gini (Ecuador vs otros países de AL).
+Página 4.2: Desigualdad: concentración del ingreso y la riqueza
+	•	Números de personas en los percentiles de interés. 
+	•	Ingreso mensual nominal de los percentiles 99.9, 99, 90 y 50 en el ingreso nacional (SRI).
+	•	Participación de los percentiles 99.9, 99, 90 y 50 en el ingreso nacional (WDI).
+	•	Participación de los percentiles 99.9, 99, 90 y 50 en la riqueza nacional (WDI).
+En América Latina (por default solo Ecuador, pero en el filtro permitir añadir más países de AL.):
+	•	Evolución concentración riqueza percentiles 99.9.
+	•	Evolución concentración riqueza percentiles 99.
+	•	Evolución concentración riqueza percentiles 90.
+	•	Evolución concentración riqueza percentiles <50.
+Página 7: Empleo (dividir en dos)
+Página 7.1: Empleo formal
+	•	Filtro: nacional, urbano, rural, indígenas, sexo (hombre, mujer, hombre casado, mujer casada), nivel educativo (ninguno, básica/primaria, media/secundaria, superior, posgrado), grupo etario (jóvenes, adultos, adultos mayores).
+	•	Evolución del empleo formal según el INEC
+	•	Evolución del número de afiliados al IESS.
+	•	Tabla variación del empleo adecuado respecto al último año indicando si es estadísticamente significativo. 
+
+Página 7.2: Salarios y brechas
+	•	Evolución salario básico
+	•	Evolución salario promedio
+Página 7.2: Brechas
+	•	Brecha salarial por nivel educativo.
+	•	Brecha salarial de género.
+	•	Brecha salarial género y estado civil. 
+	•	Brecha salarial por etnia (indígenas vs no indígenas).
+	•	Brecha salarial edad (jóvenes vs adultos vs adultos mayores). 
+Página 8: Distribución crecimiento 
+	•	Utilizar ENEMDU anual en los años que haya y trimestral de diciembre en los que no. Usar una línea vertical para indicar la ruptura de la serie desde que comenzaron las ENEMDU anuales. 
+	•	Filtro etnia (indígenas, no indígenas), área (urbano, rural) y periodos (décadas, periodos políticos), nivel educativo (universitario vs no universitario).
+	•	Gráfico: Crecimiento de los ingresos por deciles (ENEMDU). Growth incidence curves. 
+	•	Crecimiento del empleo adecuado por rama de actividad1990-2000.
+Página 9: Tributación
+	•	Gráfico 16 Boletín 1
+	•	Gráfico 17 Boletín 1.
+
+
