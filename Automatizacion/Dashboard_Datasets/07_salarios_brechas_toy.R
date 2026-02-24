@@ -39,11 +39,10 @@ for (year in years) {
         # Income variable
         ingreso_laboral = ifelse(!is.na(ingrl) & ingrl > 0, ingrl, NA_real_),
         # Demographics
-        sexo = ifelse(p01 == 1, "Hombre", "Mujer"),
-        # Handle p05 variable (marital status) - may be p05a or p05b depending on year
-        p05_combined = coalesce(p05a, p05b),
+        sexo = ifelse(p02 == 1, "Hombre", "Mujer"),
+        # Marital status: p06 (1=Casado, 5=Unión libre → Casado/Unido; rest → Soltero/Otro)
         estado_civil = case_when(
-          p05_combined %in% c(1, 2) ~ "Casado/Unido",
+          p06 %in% c(1, 5) ~ "Casado/Unido",
           TRUE ~ "Soltero/Otro"
         ),
         etnia = case_when(
@@ -52,22 +51,24 @@ for (year in years) {
           TRUE ~ NA_character_
         ),
         nivel_educativo = case_when(
-          p03 <= 6 ~ "Primaria/Básica",
-          p03 %in% 7:8 ~ "Secundaria",
-          p03 == 9 ~ "Superior",
-          p03 >= 10 ~ "Posgrado",
+          p10a %in% c(1, 2, 3, 4, 5) ~ "Primaria/Básica",
+          p10a %in% c(6, 7) ~ "Secundaria",
+          p10a %in% c(8, 9) ~ "Superior",
+          p10a == 10 ~ "Posgrado",
           TRUE ~ NA_character_
         ),
         grupo_edad = case_when(
-          p02 >= 18 & p02 < 30 ~ "Jóvenes (18-29)",
-          p02 >= 30 & p02 < 65 ~ "Adultos (30-64)",
-          p02 >= 65 ~ "Adultos mayores (65+)",
+          p03 >= 18 & p03 < 30 ~ "Jóvenes (18-29)",
+          p03 >= 30 & p03 < 65 ~ "Adultos (30-64)",
+          p03 >= 65 ~ "Adultos mayores (65+)",
           TRUE ~ NA_character_
         )
       ) %>%
       filter(!is.na(ingreso_laboral) & ingreso_laboral > 0) %>%
-      select(anio, ingreso_laboral, sexo, estado_civil, etnia,
-             nivel_educativo, grupo_edad, fw)
+      select(
+        anio, ingreso_laboral, sexo, estado_civil, etnia,
+        nivel_educativo, grupo_edad, fw
+      )
 
     data_list[[as.character(year)]] <- df_processed
   }
@@ -80,8 +81,10 @@ data_combined <- bind_rows(data_list)
 # Minimum wage data from official sources
 salario_basico <- data.frame(
   anio = years,
-  salario_basico = c(170, 170, 200, 218, 240, 264, 292, 318, 340, 354,
-                     366, 375, 386, 394, 400, 400, 400, 425)
+  salario_basico = c(
+    170, 200, 218, 240, 264, 292, 318, 340, 354, 366,
+    375, 386, 394, 400, 400, 425, 450, 460
+  )
 )
 
 # ========== Average wage from ENEMDU ==========
@@ -101,8 +104,9 @@ salarios_series <- salario_basico %>%
     values_to = "valor"
   ) %>%
   mutate(tipo = recode(tipo,
-                       "salario_basico" = "Salario básico",
-                       "salario_promedio" = "Salario promedio"))
+    "salario_basico" = "Salario básico",
+    "salario_promedio" = "Salario promedio"
+  ))
 
 write_xlsx(
   list(Sheet1 = salarios_series),

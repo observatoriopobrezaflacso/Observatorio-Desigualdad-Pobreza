@@ -174,40 +174,6 @@
       </div>
     `).join('');
 
-        // Historical series chart
-        const seriesData = DATA.seriesHistoricas;
-        const byIndicator = groupBy(seriesData, 'indicador');
-        const years = uniqueSorted(seriesData.map(r => r.anio));
-
-        const datasets = [];
-        const colorMap = { 'Pobreza': COLORS.cyan, 'Pobreza extrema': COLORS.red };
-        Object.entries(byIndicator).forEach(([ind, rows]) => {
-            const c = colorMap[ind] || COLORS.indigo;
-            const rowMap = {};
-            rows.forEach(r => rowMap[r.anio] = r.valor);
-            datasets.push({
-                label: ind,
-                data: years.map(y => rowMap[y] != null ? +rowMap[y] : null),
-                borderColor: c.border,
-                backgroundColor: c.bg,
-                fill: true,
-            });
-        });
-
-        makeChart('chart-series-hist', {
-            type: 'line',
-            data: { labels: years, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, ticks: { callback: v => v + '%' } }
-                },
-                plugins: {
-                    tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' } }
-                }
-            }
-        });
-
         // Mini Gini chart
         const giniData = DATA.giniPanel.filter(r => r.categoria === 'Ecuador' && r.valor != null);
         const giniYears = uniqueSorted(giniData.map(r => r.ano));
@@ -536,51 +502,45 @@
         });
     }
 
-    // Statistical significance table
+    // Statistical variation table — national level only
     function setupSigTable() {
-        const dimSel = document.getElementById('sig-dimension');
-        const indSel = document.getElementById('sig-indicator');
-        dimSel.addEventListener('change', renderSigTable);
-        indSel.addEventListener('change', renderSigTable);
         renderSigTable();
     }
 
     function renderSigTable() {
-        const dimension = document.getElementById('sig-dimension').value;
-        const indicator = document.getElementById('sig-indicator').value;
-        const data = DATA.variacionPobrezaSignificancia.filter(r =>
-            r.dimension === dimension && r.indicador === indicator
-        );
-
-        // Sort by year descending, then by nivel
-        data.sort((a, b) => b.anio - a.anio || a.nivel.localeCompare(b.nivel));
+        // Build national-level year-over-year from pobrezaTableau (Nacional)
+        const indicators = ['Pobreza', 'Pobreza Extrema'];
+        const rows = [];
+        indicators.forEach(ind => {
+            const national = DATA.pobrezaTableau
+                .filter(r => r.indicador === ind && r.nivel === 'Nacional' && r.valor != null)
+                .sort((a, b) => a.ano - b.ano);
+            for (let i = 1; i < national.length; i++) {
+                const prev = national[i - 1];
+                const curr = national[i];
+                const varPp = curr.valor - prev.valor;
+                const varPct = prev.valor !== 0 ? (varPp / prev.valor) * 100 : null;
+                rows.push({ anio: curr.ano, indicador: ind, valor: curr.valor, valorAnt: prev.valor, varPp, varPct });
+            }
+        });
+        rows.sort((a, b) => b.anio - a.anio || a.indicador.localeCompare(b.indicador));
 
         const tbody = document.querySelector('#sig-table tbody');
-        tbody.innerHTML = data.map(r => {
-            const sigClass = r.significativo && r.significativo.startsWith('Sí') ? 'sig-yes' :
-                r.significativo === 'No' ? 'sig-no' : 'sig-maybe';
-            return `
-                <tr>
-                    <td>${r.anio}</td>
-                    <td>${r.nivel}</td>
-                    <td>${r.valor != null ? r.valor.toFixed(2) : '—'}</td>
-                    <td>${r.valorAnterior != null ? r.valorAnterior.toFixed(2) : '—'}</td>
-                    <td style="color:${r.variacionPp < 0 ? '#10b981' : '#ef4444'}">${r.variacionPp != null ? (r.variacionPp > 0 ? '+' : '') + r.variacionPp.toFixed(2) : '—'}</td>
-                    <td style="color:${r.variacionPct < 0 ? '#10b981' : '#ef4444'}">${r.variacionPct != null ? (r.variacionPct > 0 ? '+' : '') + r.variacionPct.toFixed(1) + '%' : '—'}</td>
-                    <td><span class="${sigClass}">${r.significativo || '—'}</span></td>
-                </tr>
-            `;
-        }).join('');
+        tbody.innerHTML = rows.map(r => `
+            <tr>
+                <td>${r.anio}</td>
+                <td>${r.indicador}</td>
+                <td>${r.valor.toFixed(2)}</td>
+                <td>${r.valorAnt.toFixed(2)}</td>
+                <td style="color:${r.varPp < 0 ? '#10b981' : '#ef4444'}">${(r.varPp > 0 ? '+' : '') + r.varPp.toFixed(2)}</td>
+                <td style="color:${r.varPct != null && r.varPct < 0 ? '#10b981' : '#ef4444'}">${r.varPct != null ? (r.varPct > 0 ? '+' : '') + r.varPct.toFixed(1) + '%' : '—'}</td>
+            </tr>
+        `).join('');
     }
 
-    // Bind indicator filter
+    // Bind indicator filter — re-render whichever sub-tab is active
     document.getElementById('pov-indicator').addEventListener('change', () => {
-        renderPobrezaNivel();
-        renderPobrezaEtnia();
-        renderPobrezaSexo();
-        renderPobrezaEducacion();
-        renderPobrezaEdad();
-        renderPobrezaRegion();
+        renderPobreza();
     });
 
     // ---- Pobreza Último Año: Bar Charts ----
@@ -609,7 +569,8 @@
 
     function renderPobrezaBarSexo() {
         const indicator = getSelectedPovIndicator();
-        const data = DATA.pobrezaSexoEtnia.filter(r => r.tipoGrupo === 'sexo' && r.indicador === indicator && r.valor != null);
+        const mapInd = indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
+        const data = DATA.pobrezaSexoEtnia.filter(r => r.tipoGrupo === 'sexo' && r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
         if (!latestYear) { makeChart('chart-pov-bar-sexo', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
@@ -630,7 +591,8 @@
 
     function renderPobrezaBarEducacion() {
         const indicator = getSelectedPovIndicator();
-        const data = DATA.pobrezaEducacion.filter(r => r.indicador === indicator && r.valor != null);
+        const mapInd = indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
+        const data = DATA.pobrezaEducacion.filter(r => r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
         if (!latestYear) { makeChart('chart-pov-bar-educacion', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
@@ -651,7 +613,8 @@
 
     function renderPobrezaBarEdad() {
         const indicator = getSelectedPovIndicator();
-        const data = DATA.pobrezaEdad.filter(r => r.indicador === indicator && r.valor != null);
+        const mapInd = indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
+        const data = DATA.pobrezaEdad.filter(r => r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
         if (!latestYear) { makeChart('chart-pov-bar-edad', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
@@ -672,7 +635,8 @@
 
     function renderPobrezaBarRegion() {
         const indicator = getSelectedPovIndicator();
-        const data = DATA.pobrezaRegion.filter(r => r.indicador === indicator && r.valor != null);
+        const mapInd = indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
+        const data = DATA.pobrezaRegion.filter(r => r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
         if (!latestYear) { makeChart('chart-pov-bar-region', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
@@ -1098,53 +1062,81 @@
     let crecimientoRendered = false;
 
     function renderCrecimiento() {
-        if (crecimientoRendered) return;
         renderGIC();
+        if (crecimientoRendered) return;
         renderCrecDemo();
         renderCrecEmpleo();
         crecimientoRendered = true;
     }
 
-    // Growth Incidence Curve
+    // Growth Incidence Curve — by deciles with user-chosen years
+    let gicYearsInitialized = false;
+    function initGICYears() {
+        if (gicYearsInitialized) return;
+        const data = DATA.decilesIngresoAnual;
+        if (!data || !data.length) return;
+        const years = uniqueSorted(data.map(r => r.anio));
+        const startSel = document.getElementById('gic-year-start');
+        const endSel = document.getElementById('gic-year-end');
+        years.forEach(y => {
+            startSel.appendChild(Object.assign(document.createElement('option'), { value: y, textContent: y }));
+            endSel.appendChild(Object.assign(document.createElement('option'), { value: y, textContent: y }));
+        });
+        startSel.value = years[0];
+        endSel.value = years[years.length - 1];
+        startSel.addEventListener('change', renderGIC);
+        endSel.addEventListener('change', renderGIC);
+        gicYearsInitialized = true;
+    }
+
     function renderGIC() {
-        const selectedPeriodo = document.getElementById('gic-periodo').value;
-
-        if (!DATA.crecimientoPercentiles || !DATA.crecimientoPercentiles.percentiles) {
-            makeChart('chart-gic', { type: 'line', data: { labels: [], datasets: [] } });
-            return;
-        }
-
-        // Filter by periodo - match the beginning part before parentheses
-        const data = DATA.crecimientoPercentiles.percentiles.filter(r =>
-            r.periodo && r.periodo.startsWith(selectedPeriodo)
-        );
-
+        initGICYears();
+        const data = DATA.decilesIngresoAnual;
         if (!data || !data.length) {
-            makeChart('chart-gic', { type: 'line', data: { labels: [], datasets: [] } });
+            makeChart('chart-gic', { type: 'bar', data: { labels: [], datasets: [] } });
             return;
         }
 
-        // Sort by percentil
-        data.sort((a, b) => a.percentil - b.percentil);
+        const startYear = +document.getElementById('gic-year-start').value;
+        const endYear = +document.getElementById('gic-year-end').value;
+        if (startYear >= endYear) {
+            makeChart('chart-gic', { type: 'bar', data: { labels: ['Seleccione años distintos'], datasets: [{ data: [0] }] } });
+            return;
+        }
+
+        const nYears = endYear - startYear;
+        const startData = data.filter(r => r.anio === startYear);
+        const endData = data.filter(r => r.anio === endYear);
+
+        // Build GIC by matching deciles
+        const gicPoints = [];
+        for (let d = 1; d <= 10; d++) {
+            const s = startData.find(r => r.decil === d);
+            const e = endData.find(r => r.decil === d);
+            if (s && e && s.ingresoPromedio > 0) {
+                const growth = (Math.pow(e.ingresoPromedio / s.ingresoPromedio, 1 / nYears) - 1) * 100;
+                gicPoints.push({ decil: d, growth });
+            }
+        }
 
         makeChart('chart-gic', {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: data.map(r => 'p' + r.percentil),
+                labels: gicPoints.map(r => 'Decil ' + r.decil),
                 datasets: [{
                     label: 'Crecimiento anualizado (%)',
-                    data: data.map(r => +r.crecimientoAnualizado),
-                    borderColor: COLORS.indigo.border,
-                    backgroundColor: COLORS.indigo.bg,
-                    fill: true,
-                    tension: 0.3,
+                    data: gicPoints.map(r => r.growth),
+                    backgroundColor: gicPoints.map(r => r.growth >= 0 ? COLORS.cyan.border + '99' : COLORS.red.border + '99'),
+                    borderColor: gicPoints.map(r => r.growth >= 0 ? COLORS.cyan.border : COLORS.red.border),
+                    borderWidth: 1,
+                    borderRadius: 6,
                 }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 scales: {
-                    x: { title: { display: true, text: 'Percentil de ingreso' } },
-                    y: { title: { display: true, text: 'Crecimiento anualizado (%)' } }
+                    x: { title: { display: true, text: 'Decil de ingreso' } },
+                    y: { title: { display: true, text: 'Crecimiento anualizado (%)' }, ticks: { callback: v => v.toFixed(1) + '%' } }
                 },
                 plugins: {
                     legend: { display: false },
@@ -1242,7 +1234,6 @@
     }
 
     // Bind filters
-    document.getElementById('gic-periodo').addEventListener('change', renderGIC);
     document.getElementById('crec-empleo-periodo').addEventListener('change', renderCrecEmpleo);
 
     /* ============================================================

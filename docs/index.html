@@ -49,11 +49,7 @@
           y comparaciones regionales.</p>
       </div>
       <div class="scorecards-grid" id="scorecards"></div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Evolución de la Pobreza y Pobreza Extrema</div>
-          <div class="chart-container"><canvas id="chart-series-hist"></canvas></div>
-        </div>
+      <div class="grid-full">
         <div class="card">
           <div class="card-title">Coeficiente de Gini — Ecuador</div>
           <div class="chart-container"><canvas id="chart-gini-home"></canvas></div>
@@ -122,34 +118,17 @@
 
         <div class="grid-full">
           <div class="card">
-            <div class="card-title">Variaciones Año a Año con Significancia Estadística</div>
-            <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
-              <div class="filter-group">
-                <label>Dimensión</label>
-                <select id="sig-dimension">
-                  <option value="Educación">Educación</option>
-                  <option value="Edad">Edad</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <label>Indicador</label>
-                <select id="sig-indicator">
-                  <option value="Pobreza">Pobreza</option>
-                  <option value="Pobreza extrema">Pobreza Extrema</option>
-                </select>
-              </div>
-            </div>
+            <div class="card-title">Variaciones Año a Año — Nivel Nacional</div>
             <div class="prov-table-wrapper">
               <table class="prov-table" id="sig-table">
                 <thead>
                   <tr>
                     <th>Año</th>
-                    <th>Nivel</th>
+                    <th>Indicador</th>
                     <th>Valor Actual (%)</th>
                     <th>Valor Anterior (%)</th>
                     <th>Variación (pp)</th>
                     <th>Variación (%)</th>
-                    <th>Significativo</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -342,16 +321,15 @@
 
       <div class="grid-full">
         <div class="card">
-          <div class="card-title">Curvas de Incidencia del Crecimiento por Período Político</div>
+          <div class="card-title">Curvas de Incidencia del Crecimiento por Decil</div>
           <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
             <div class="filter-group">
-              <label>Período</label>
-              <select id="gic-periodo">
-                <option value="2017-2021">2017-2021 (Moreno)</option>
-                <option value="2007-2017">2007-2017 (Correísmo)</option>
-                <option value="2021-2024">2021-2024 (Lasso/Noboa)</option>
-                <option value="2007-2024">2007-2024 (Completo)</option>
-              </select>
+              <label>Año inicial</label>
+              <select id="gic-year-start"></select>
+            </div>
+            <div class="filter-group">
+              <label>Año final</label>
+              <select id="gic-year-end"></select>
             </div>
           </div>
           <div class="chart-container tall"><canvas id="chart-gic"></canvas></div>
