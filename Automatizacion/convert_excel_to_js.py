@@ -50,6 +50,7 @@ DATASET_MAPPING = {
     "tributacion_graficos.xlsx": "tributacionGraficos",
     "gini_tax_impact.xlsx": "giniTaxImpact",
     "poblacion_percentiles.xlsx": "poblacionPercentiles",
+    "deciles_ingreso_anual.xlsx": "decilesIngresoAnual",
 }
 
 def clean_column_name(name):
