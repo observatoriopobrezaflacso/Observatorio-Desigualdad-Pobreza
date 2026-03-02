@@ -20,4 +20,31 @@ Procesamiento/Bases/
 .Ruserdata
 
 # Claude/Cursor
-.claude/
+.claude/Observatorio GH*
+desktop.ini
+*.xlsx
+*.xls
+*.png
+*.csv
+*.dta
+*.sav
+*.rds
+*.RData
+*.zip
+*.rar
+*.7z
+*.pdf
+Resultados_Finales/
+grafico*
+cge*
+Observatorio GH*
+desktop.ini
+*.xlsx
+*.xls
+*.png
+*.csv
+*.dta
+*.rds
+*.RData
+*.pdf
+Resultados_Finales/
