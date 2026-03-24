@@ -14,7 +14,8 @@ cat("\n========== ANALISIS DE SERIES TEMPORALES ==========\n")
 # Configuracion inicial ----
 
 # Cargar funciones de harmonizacion de variables
-source(file.path(base_dir, "Procesamiento/Codigos/00b_harmonizacion_variables.R"))
+source(file.path(gh_codes, "00b_harmonizacion_variables.R"))
+
 
 # Configuracion de anios a analizar
 # Los datos historicos estan en Procesamiento/Bases/Defunciones/EDG_{year}.sav
@@ -22,7 +23,7 @@ source(file.path(base_dir, "Procesamiento/Codigos/00b_harmonizacion_variables.R"
 # Se esperan datos desde anios previos hasta 2024
 
 # Directorio de datos historicos
-datos_dir <- file.path(base_dir, "Procesamiento/Bases/Defunciones")
+datos_dir <- file.path(dir, "Defunciones")
 
 # Verificar que exista el directorio
 if (!dir.exists(datos_dir)) {
@@ -147,7 +148,7 @@ cargar_anio <- function(anio) {
   return(df)
 }
 
-if(!file.exists(file.path(base_dir, "Procesamiento/Bases/Defunciones/defunciones_historicas.rds"))) {
+if(!file.exists(file.path(dir, "Defunciones/defunciones_historicas.rds"))) {
 
 # Cargar todos los anios disponibles ----
 todos_los_anios <- c(2007:2024)
@@ -158,10 +159,10 @@ defunciones_historicas <- bind_rows(
   lapply(todos_los_anios, cargar_anio)
 )
 
-saveRDS(defunciones_historicas, file.path(base_dir, "Procesamiento/Bases/Defunciones/defunciones_historicas.rds"))
+saveRDS(defunciones_historicas, file.path(dir, "Defunciones/defunciones_historicas.rds"))
 
 } else {
-   defunciones_historicas <- readRDS(file.path(base_dir, "Procesamiento/Bases/Defunciones/defunciones_historicas.rds"))
+   defunciones_historicas <- readRDS(file.path(dir, "Defunciones/defunciones_historicas.rds"))
 }
 
 
@@ -301,6 +302,8 @@ combined_plot <- p1 + p2 +
 ggsave(file.path(output_dir, "serie_mortalidad_educacion_combinado.png"),
        combined_plot, width = 14, height = 6, dpi = 300, bg = "white")
 
+writexl::write_xlsx(tasas_adultos_tiempo, file.path(graf_datos_dir, "serie_mortalidad_adultos.xlsx"))
+writexl::write_xlsx(tasas_jovenes_tiempo, file.path(graf_datos_dir, "serie_mortalidad_jovenes.xlsx"))
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Grafico 2: Mortalidad por nivel de pobreza (serie temporal) ----
@@ -464,6 +467,9 @@ combined_plot_homicidios <- p4_comb + p5_comb +
 ggsave(file.path(output_dir, "serie_homicidios_educacion_combinado.png"),
        combined_plot_homicidios, width = 14, height = 6, dpi = 300, bg = "white")
 
+writexl::write_xlsx(tasas_homicidios_adultos, file.path(graf_datos_dir, "serie_homicidios_adultos.xlsx"))
+writexl::write_xlsx(tasas_homicidios_jovenes, file.path(graf_datos_dir, "serie_homicidios_jovenes.xlsx"))
+
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Grafico 4: Homicidios por nivel de pobreza (serie temporal) ----
@@ -585,6 +591,10 @@ p8 <- ggplot(tasas_suicidios_adultos, aes(x = anio, y = tasa, color = nivel_educ
 
 cat("Graficos guardados.\n")
 
+writexl::write_xlsx(tasas_suicidios_adultos, file.path(graf_datos_dir, "serie_suicidios_adultos.xlsx"))
+writexl::write_xlsx(tasas_suicidios_jovenes, file.path(graf_datos_dir, "serie_suicidios_jovenes.xlsx"))
+
+
 
 # Combinar plots suicidios educacion ----
 
@@ -687,5 +697,5 @@ if (datos_disponibles && nrow(defunciones_historicas) > 0) {
 } else {
   cat("\nNo se generaron Graficos debido a la falta de datos historicos.\n")
   cat("Por favor, coloque los archivos EDG_{year}.sav en:\n")
-  cat(" ", file.path(base_dir, "Procesamiento/Bases/Defunciones"), "\n")
+  cat(" ", file.path(dir, "Defunciones"), "\n")
 }

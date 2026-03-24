@@ -17,14 +17,23 @@ set more off
 * 1. CONFIGURACIÓN — Modificar año y mes aquí
 * ============================================================================
 
-local year  2024
-local month 06
+*global meses 01 02 03 04 05 06 07 08 09 10 11 12
+global meses 01
+global anio 2026
+
+foreach mes of global meses {  
+
+local year  $anio
+local month `mes'
+di "`month'"
+
+
 
 * ============================================================================
 * 2. RUTAS
 * ============================================================================
 
-global basedir "/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/Automatizacion"
+global basedir "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Automatizacion"
 
 local mm : display %02.0f `month'
 local destdir "$basedir/Bases/ENEMDU/ENEMDU/`year'/`mm'"
@@ -118,3 +127,4 @@ capture erase "/tmp/biinec_page.html"
 
 display as result _n "Archivos guardados en: `destdir'"
 dir "`destdir'", wide
+}

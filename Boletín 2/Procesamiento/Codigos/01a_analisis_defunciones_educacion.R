@@ -8,7 +8,7 @@
 cat("\n========== ANÁLISIS DE DEFUNCIONES POR NIVEL EDUCATIVO ==========\n")
 
 # Carga y transformación de datos ----
-defunciones <- read_spss(file.path(base_dir, "Procesamiento/Bases/Defunciones/EDG_2022.sav"))
+defunciones <- read_spss(file.path(dir, "Defunciones/Raw/EDG_2022.sav"))
 
 defunciones <- defunciones %>%
   mutate(
@@ -505,6 +505,7 @@ g_tipo_causa <- ggplot(graf_tipo_causa_data, aes(x = categoria, y = tasa_1000, f
 
 #ggsave(file.path(output_dir, "mortalidad_adultos_causas_educacion2.png"), g_tipo_causa, width = 12, height = 8, dpi = 300, bg = "white")
 cat("Gráfico guardado: mortalidad_adultos_causas_educacion2.png\n")
+writexl::write_xlsx(graf_tipo_causa_data, file.path(graf_datos_dir, "mortalidad_adultos_causas_educacion.xlsx"))
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Jóvenes ----
@@ -828,6 +829,7 @@ g_mort_total_combinada
 ggsave(file.path(output_dir, "mortalidad_total_combinada_educacion.png"),
        g_mort_total_combinada, width = 12, height = 6, dpi = 300, bg = "white")
 cat("Gráfico guardado: mortalidad_total_combinada_educacion.png\n")
+writexl::write_xlsx(tasas_combinadas, file.path(graf_datos_dir, "mortalidad_educacion_2022.xlsx"))
 
 
 ## Gráfico 2: por causas ----
@@ -1010,6 +1012,9 @@ g_mort_causas_combinado
 
 ggsave(file.path(output_dir, "mortalidad_combinada_causas.png"), 
        g_mort_causas_combinado, width = 14, height = 9, dpi = 300, bg = "white")
+
+
+writexl::write_xlsx(tasas_combinadas, file.path(graf_datos_dir, "mortalidad_casusas_educacion_2022.xlsx"))
 
 cat("Gráfico guardado: mortalidad_combinada_causas.png\n")
 
