@@ -13,7 +13,7 @@ cat("\n--- Análisis de mortalidad infantil y materna ---\n")
 # Para mortalidad infantil, usaremos la población de niños <1 año del censo
 # Para mortalidad materna, usaremos mujeres en edad fértil (15-49 años)
 
-con <- dbConnect(duckdb::duckdb(), dbdir = file.path(base_dir, "Procesamiento/Bases/Censo/mydb.duckdb"), read_only = TRUE)
+con <- dbConnect(duckdb::duckdb(), dbdir = file.path(dir, "Censo/mydb.duckdb"), read_only = TRUE)
 
 # Población infantil (<1 año) - gedad == 0
 poblacion_infantil_total <- dbGetQuery(con, "
@@ -130,6 +130,8 @@ g_mort_infantil_educ <- ggplot(tasas_mort_infantil_educ, aes(x = educacion_madre
   ) +
   theme(legend.position = "none")
 
+
+
 ggsave(file.path(output_dir, "mortalidad_infantil_educacion_madre.png"), g_mort_infantil_educ, width = 9, height = 6, dpi = 300, bg = "white")
 cat("Gráfico guardado: mortalidad_infantil_educacion_madre.png\n")
 
@@ -218,7 +220,7 @@ defunciones_maternas <- defunciones_maternas %>%
   )
 
 # Población de referencia: mujeres en edad fértil por educación
-con <- dbConnect(duckdb::duckdb(), dbdir = file.path(base_dir, "Procesamiento/Bases/Censo/mydb.duckdb"), read_only = TRUE)
+con <- dbConnect(duckdb::duckdb(), dbdir = file.path(base_dir, "Censo/mydb.duckdb"), read_only = TRUE)
 
 poblacion_mujeres_educ <- dbGetQuery(con, "
   SELECT

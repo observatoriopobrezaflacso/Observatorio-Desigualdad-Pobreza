@@ -7,7 +7,7 @@
 cat("\n========== ANÁLISIS DE EGRESOS HOSPITALARIOS ==========\n")
 
 # Carga y transformación de datos ----
-egresos <- readRDS(file.path(base_dir, "Procesamiento/Bases/Hospitalarias/egresos_hospitalarios_2024.rds"))
+egresos <- readRDS(file.path(base_dir, "Hospitalarias/egresos_hospitalarios_2024.rds"))
 
 egresos <- egresos %>%
   mutate(

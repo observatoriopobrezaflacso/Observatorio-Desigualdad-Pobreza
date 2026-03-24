@@ -22,10 +22,10 @@ foreach files of local myfiles {
 * Buscar variables comunes a todas las bases
 
 macro drop _all
-global wd "G:/Mi unidad/Procesamiento/Bases"
+global wd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Automatizacion/Bases/ENEMDU"
 cd "$wd"            
 
-forval i = 2025/2025{
+forval i = 2024/2026{
 
 forval j = 1/12 {
 if (strlen("`j'") == 1) local j2 = "0`j'"
@@ -47,7 +47,6 @@ di "ENEMDU/`i'/`j2'/`files'"
 	capture mkdir "ENEMDU - copia/`i'"
 	capture mkdir "ENEMDU - copia/`i'/`j2'"
     save "ENEMDU - copia/`i'/`j2'/`x'" , replace
-	di "asd2"
 } 
     
    }

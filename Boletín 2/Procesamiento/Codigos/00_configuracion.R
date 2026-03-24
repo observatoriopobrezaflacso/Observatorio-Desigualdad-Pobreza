@@ -40,22 +40,29 @@ theme_causas <- theme(
 
 
 # Directorios ----
-base_dir <- '/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 2'
-setwd(base_dir)
-output_dir <- file.path(base_dir, "Graficos")
+
+user_root <- '/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec'
+dir <- file.path(user_root, 'Mi unidad/Bases')
+output_dir <- file.path(user_root, "Mi unidad/Boletín 2/Graficos")
+graf_datos_dir <- file.path(user_root, "Mi unidad/Boletín 2/Resultados/Mortalidad/Datos")
+gh_codes <- '/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 2/Procesamiento/Codigos'
+
+
+setwd(file.path(dir))
+
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
 # Consultas a base de datos censal (duckdb) ----
 # Usar read_only = TRUE para permitir acceso concurrente
 
-con <- dbConnect(duckdb::duckdb(), dbdir = 'Procesamiento/Bases/Censo/mydb.duckdb', read_only = TRUE)
+con <- dbConnect(duckdb::duckdb(), dbdir = 'Censo/mydb.duckdb', read_only = TRUE)
 
 # Código para crear la tabla censo2022 (ejecutar solo una vez)
 # dbExecute(con, "
 #   CREATE TABLE censo2022 AS
 #   SELECT *
 #   FROM read_csv_auto(
-#     'Procesamiento/Bases/Censo/BDD_POB_CPV2022_SECT.csv'
+#     'Censo/BDD_POB_CPV2022_SECT.csv'
 #   )
 # ")
 
@@ -134,15 +141,15 @@ poblacion_educacion_adultos <- list(
 # poblacion adulta de los censos 2001, 2010 y 2022, obtenida de redatam:
 # https://redatam.inec.gob.ec/binecu/RpWebEngine.exe/Portal?BASE=CPV2001
 
-poblacion_adulta_superior <- data.frame(superior =    c(643564, 1087081, 2205068),
-                                        no_superior = c(3673916, 4755803, 6644025),
-                                        anio = c(2001, 2010, 2022))
+poblacion_adulta_superior <- data.frame(superior =    c(356378, 643564, 1087081, 2205068),
+                                        no_superior = c(2728030, 3673916, 4755803, 6644025),
+                                        anio = c(1990, 2001, 2010, 2022))
 
-prediction_data <- data.frame(anio = 2001:2024)
+prediction_data <- data.frame(anio = 1990:2024)
 
 extrapolacion_poblacion_adulta_superior <- 
 data.frame(
-  anio = c(2001:2024),
+  anio = c(1990:2024),
 superior = predict(
     lm(superior ~ anio + I(anio ^2), data = poblacion_adulta_superior), 
           newdata = prediction_data
@@ -152,13 +159,15 @@ superior = predict(
           newdata = prediction_data
           )
 ) %>%
- mutate(superior =    case_when(anio == 2001 ~ poblacion_adulta_superior$superior[1],
-                                anio == 2010 ~ poblacion_adulta_superior$superior[2],
-                                anio == 2022 ~ poblacion_adulta_superior$superior[3],
+ mutate(superior =    case_when(anio == 1990 ~ poblacion_adulta_superior$superior[1],
+                                anio == 2001 ~ poblacion_adulta_superior$superior[2],
+                                anio == 2010 ~ poblacion_adulta_superior$superior[3],
+                                anio == 2022 ~ poblacion_adulta_superior$superior[4],
                                 TRUE ~ superior), 
-        no_superior = case_when(anio == 2001 ~ poblacion_adulta_superior$no_superior[1],
-                                anio == 2010 ~ poblacion_adulta_superior$no_superior[2],
-                                anio == 2022 ~ poblacion_adulta_superior$no_superior[3],
+        no_superior = case_when(anio == 1990 ~ poblacion_adulta_superior$no_superior[1],
+                                anio == 2001 ~ poblacion_adulta_superior$no_superior[2],
+                                anio == 2010 ~ poblacion_adulta_superior$no_superior[3],
+                                anio == 2022 ~ poblacion_adulta_superior$no_superior[4],
                                 TRUE ~ no_superior))
 
 
@@ -171,7 +180,7 @@ y_limits <- range(poblacion_adulta_superior$superior)
 
 plot1 <- ggplot(poblacion_adulta_superior, aes(x = anio, y = superior)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = TRUE, color = "blue") +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE, color = "blue") +
   coord_cartesian(xlim = x_limits, ylim = y_limits) +  # Set fixed limits
   labs(
     x = "Año",
@@ -200,15 +209,15 @@ plot1 + plot2
 # poblacion joven de los censos 2001, 2010 y 2022, obtenida de redatam:
 # https://redatam.inec.gob.ec/binecu/RpWebEngine.exe/Portal?BASE=CPV2001
 
-poblacion_joven_secundaria <- data.frame(secundaria_completa =   c(685649, 1673093, 2544173), 
-                                         secundaria_incompleta = c(1430383, 731732, 298907),
-                                         anio = c(2001, 2010, 2022))
+poblacion_joven_secundaria <- data.frame(secundaria_completa =   c(969076, 1045563, 1673093, 2544173), 
+                                         secundaria_incompleta = c(702603, 815494, 731732, 298907),
+                                         anio = c(1990, 2001, 2010, 2022))
 
-prediction_data <- data.frame(anio = 2001:2024)
+prediction_data <- data.frame(anio = 1990:2024)
 
 extrapolacion_poblacion_joven_secundaria <- 
 data.frame(
-  anio = c(2001:2024),
+  anio = c(1990:2024),
 secundaria_completa = predict(
     lm(secundaria_completa ~ anio + I(anio ^2), data = poblacion_joven_secundaria), 
           newdata = prediction_data
@@ -218,20 +227,24 @@ secundaria_completa = predict(
           newdata = prediction_data
           )
 ) %>%
-mutate(secundaria_completa =    case_when(anio == 2001 ~ poblacion_joven_secundaria$secundaria_completa[1],
-                                anio == 2010 ~ poblacion_joven_secundaria$secundaria_completa[2],
-                                anio == 2022 ~ poblacion_joven_secundaria$secundaria_completa[3],
+mutate(secundaria_completa =    case_when(
+                                anio == 1990 ~ poblacion_joven_secundaria$secundaria_completa[1],
+                                anio == 2001 ~ poblacion_joven_secundaria$secundaria_completa[2],
+                                anio == 2010 ~ poblacion_joven_secundaria$secundaria_completa[3],
+                                anio == 2022 ~ poblacion_joven_secundaria$secundaria_completa[4],
                                 TRUE ~ secundaria_completa), 
-        secundaria_incompleta = case_when(anio == 2001 ~ poblacion_joven_secundaria$secundaria_incompleta[1],
-                                anio == 2010 ~ poblacion_joven_secundaria$secundaria_incompleta[2],
-                                anio == 2022 ~ poblacion_joven_secundaria$secundaria_incompleta[3],
+        secundaria_incompleta = case_when(
+                                anio == 1990 ~ poblacion_joven_secundaria$secundaria_incompleta[1],
+                                anio == 2001 ~ poblacion_joven_secundaria$secundaria_incompleta[2],
+                                anio == 2010 ~ poblacion_joven_secundaria$secundaria_incompleta[3],
+                                anio == 2022 ~ poblacion_joven_secundaria$secundaria_incompleta[4],
                                 TRUE ~ secundaria_incompleta))
 
 
 # Grafico extrapolacion cuadratica
 plot3 <- ggplot(poblacion_joven_secundaria, aes(x = anio, y = secundaria_completa)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = TRUE, color = "blue") +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE, color = "blue") +
   labs(
     title = "",
     x = "Año",
@@ -242,7 +255,7 @@ plot3 <- ggplot(poblacion_joven_secundaria, aes(x = anio, y = secundaria_complet
 
 plot4 <- ggplot(poblacion_joven_secundaria, aes(x = anio, y = secundaria_incompleta)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = TRUE, color = "blue") +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE, color = "blue") +
   labs(
     title = "",
     x = "Año",
@@ -257,7 +270,7 @@ plot3 + plot4
 cat("\nCargando datos de pobreza por parroquia...\n")
 
 pobreza_raw <- read.csv(
-  file.path(base_dir, "Procesamiento/Bases/Censo/NBI/pobreza_nbi_con_dpa_2022.csv"),
+  file.path(dir, "Censo/NBI/pobreza_nbi_con_dpa_2022.csv"),
   stringsAsFactors = FALSE
 )
 

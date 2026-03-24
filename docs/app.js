@@ -90,7 +90,6 @@
             // Render charts lazily
             if (pageId === 'pobreza') renderPobreza();
             if (pageId === 'empleo') renderEmpleo();
-            if (pageId === 'salarios') renderSalarios();
             if (pageId === 'crecimiento') renderCrecimiento();
             if (pageId === 'desigualdad') renderDesigualdad();
             if (pageId === 'tributacion') renderTributacion();
@@ -113,6 +112,7 @@
                 if (target) target.classList.add('active');
                 // Re-render on tab switch
                 if (parent.id === 'page-pobreza') renderPobreza();
+                if (parent.id === 'page-empleo') renderEmpleo();
                 if (parent.id === 'page-desigualdad') renderDesigualdad();
             });
         });
@@ -174,29 +174,6 @@
       </div>
     `).join('');
 
-        // Mini Gini chart
-        const giniData = DATA.giniPanel.filter(r => r.categoria === 'Ecuador' && r.valor != null);
-        const giniYears = uniqueSorted(giniData.map(r => r.ano));
-        const giniMap = {};
-        giniData.forEach(r => giniMap[r.ano] = r.valor);
-
-        makeChart('chart-gini-home', {
-            type: 'line',
-            data: {
-                labels: giniYears,
-                datasets: [{
-                    label: 'Gini',
-                    data: giniYears.map(y => giniMap[y]),
-                    borderColor: COLORS.indigo.border,
-                    backgroundColor: COLORS.indigo.bg,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { y: { min: 0.3, max: 0.9 } }
-            }
-        });
     }
 
     /* ============================================================
@@ -268,14 +245,39 @@
     }
 
     // Etnia bar chart — latest year
+    function showNoData(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const container = canvas.parentElement;
+        makeChart(canvasId, { type: 'bar', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false } });
+        // Overlay a message
+        let msg = container.querySelector('.no-data-msg');
+        if (!msg) {
+            msg = document.createElement('div');
+            msg.className = 'no-data-msg';
+            msg.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--text-muted);font-size:0.95rem;font-weight:500;text-align:center;pointer-events:none;';
+            container.appendChild(msg);
+        }
+        msg.textContent = 'Sin datos para este indicador';
+        msg.style.display = 'block';
+    }
+
+    function clearNoData(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const msg = canvas.parentElement.querySelector('.no-data-msg');
+        if (msg) msg.style.display = 'none';
+    }
+
     function renderPobrezaEtnia() {
         const indicator = getSelectedPovIndicator();
         const mapInd = indicator === 'Pobreza' ? 'Pobreza' : indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
         const data = DATA.pobrezaSexoEtnia.filter(r => r.tipoGrupo === 'etnia' && r.indicador === mapInd && r.valor != null);
         if (!data.length) {
-            makeChart('chart-pov-etnia', { type: 'bar', data: { labels: ['Sin datos'], datasets: [{ data: [0] }] } });
+            showNoData('chart-pov-etnia');
             return;
         }
+        clearNoData('chart-pov-etnia');
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years[years.length - 1];
         const latest = data.filter(r => r.anio === latestYear);
@@ -311,6 +313,8 @@
         const indicator = getSelectedPovIndicator();
         const mapInd = indicator === 'Pobreza' ? 'Pobreza' : indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
         const data = DATA.pobrezaSexoEtnia.filter(r => r.tipoGrupo === 'sexo' && r.indicador === mapInd && r.valor != null);
+        if (!data.length) { showNoData('chart-pov-sexo'); return; }
+        clearNoData('chart-pov-sexo');
         const byGrupo = groupBy(data, 'grupo');
         const years = uniqueSorted(data.map(r => r.anio));
         const sexColors = { 'Hombre': COLORS.cyan, 'Mujer': COLORS.rose };
@@ -390,6 +394,8 @@
         const indicator = getSelectedPovIndicator();
         const mapInd = indicator === 'Pobreza' ? 'Pobreza' : indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
         const data = DATA.pobrezaEducacion.filter(r => r.indicador === mapInd && r.valor != null);
+        if (!data.length) { showNoData('chart-pov-educacion'); return; }
+        clearNoData('chart-pov-educacion');
         const byNivel = groupBy(data, 'nivelEducativo');
         const years = uniqueSorted(data.map(r => r.anio));
         const educColors = {
@@ -428,6 +434,8 @@
         const indicator = getSelectedPovIndicator();
         const mapInd = indicator === 'Pobreza' ? 'Pobreza' : indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
         const data = DATA.pobrezaEdad.filter(r => r.indicador === mapInd && r.valor != null);
+        if (!data.length) { showNoData('chart-pov-edad'); return; }
+        clearNoData('chart-pov-edad');
         const byGrupo = groupBy(data, 'grupoEtario');
         const years = uniqueSorted(data.map(r => r.anio));
         const ageColors = {
@@ -468,6 +476,8 @@
         const indicator = getSelectedPovIndicator();
         const mapInd = indicator === 'Pobreza' ? 'Pobreza' : indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
         const data = DATA.pobrezaRegion.filter(r => r.indicador === mapInd && r.valor != null);
+        if (!data.length) { showNoData('chart-pov-region'); return; }
+        clearNoData('chart-pov-region');
         const byRegion = groupBy(data, 'region');
         const years = uniqueSorted(data.map(r => r.anio));
         const regionColors = {
@@ -508,34 +518,31 @@
     }
 
     function renderSigTable() {
-        // Build national-level year-over-year from pobrezaTableau (Nacional)
-        const indicators = ['Pobreza', 'Pobreza Extrema'];
-        const rows = [];
-        indicators.forEach(ind => {
-            const national = DATA.pobrezaTableau
-                .filter(r => r.indicador === ind && r.nivel === 'Nacional' && r.valor != null)
-                .sort((a, b) => a.ano - b.ano);
-            for (let i = 1; i < national.length; i++) {
-                const prev = national[i - 1];
-                const curr = national[i];
-                const varPp = curr.valor - prev.valor;
-                const varPct = prev.valor !== 0 ? (varPp / prev.valor) * 100 : null;
-                rows.push({ anio: curr.ano, indicador: ind, valor: curr.valor, valorAnt: prev.valor, varPp, varPct });
-            }
-        });
-        rows.sort((a, b) => b.anio - a.anio || a.indicador.localeCompare(b.indicador));
+        const raw = DATA.variacionPobrezaSignificancia;
+        if (!raw || !raw.length) {
+            document.querySelector('#sig-table tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Sin datos de significancia</td></tr>';
+            return;
+        }
+        // Filter for Nacional dimension and nivel
+        const rows = raw
+            .filter(r => r.dimension === 'Nacional' && r.nivel === 'Nacional')
+            .sort((a, b) => b.anio - a.anio || a.indicador.localeCompare(b.indicador));
 
         const tbody = document.querySelector('#sig-table tbody');
-        tbody.innerHTML = rows.map(r => `
+        tbody.innerHTML = rows.map(r => {
+            const sigClass = r.significativo && r.significativo.startsWith('Sí') ? 'sig-yes' :
+                r.significativo === 'No' ? 'sig-no' : 'sig-maybe';
+            return `
             <tr>
                 <td>${r.anio}</td>
                 <td>${r.indicador}</td>
-                <td>${r.valor.toFixed(2)}</td>
-                <td>${r.valorAnt.toFixed(2)}</td>
-                <td style="color:${r.varPp < 0 ? '#10b981' : '#ef4444'}">${(r.varPp > 0 ? '+' : '') + r.varPp.toFixed(2)}</td>
-                <td style="color:${r.varPct != null && r.varPct < 0 ? '#10b981' : '#ef4444'}">${r.varPct != null ? (r.varPct > 0 ? '+' : '') + r.varPct.toFixed(1) + '%' : '—'}</td>
+                <td>${r.valor != null ? r.valor.toFixed(2) : '—'}</td>
+                <td>${r.valorAnterior != null ? r.valorAnterior.toFixed(2) : '—'}</td>
+                <td style="color:${r.variacionPp < 0 ? '#10b981' : '#ef4444'}">${r.variacionPp != null ? (r.variacionPp > 0 ? '+' : '') + r.variacionPp.toFixed(2) : '—'}</td>
+                <td><span class="${sigClass}">${r.significativo || '—'}</span></td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
     }
 
     // Bind indicator filter — re-render whichever sub-tab is active
@@ -573,7 +580,8 @@
         const data = DATA.pobrezaSexoEtnia.filter(r => r.tipoGrupo === 'sexo' && r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
-        if (!latestYear) { makeChart('chart-pov-bar-sexo', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
+        if (!latestYear) { showNoData('chart-pov-bar-sexo'); return; }
+        clearNoData('chart-pov-bar-sexo');
         const latest = data.filter(r => r.anio === latestYear);
         document.getElementById('pov-bar-sexo-title').textContent = indicator + ' por Sexo (' + latestYear + ')';
         makeChart('chart-pov-bar-sexo', {
@@ -595,7 +603,8 @@
         const data = DATA.pobrezaEducacion.filter(r => r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
-        if (!latestYear) { makeChart('chart-pov-bar-educacion', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
+        if (!latestYear) { showNoData('chart-pov-bar-educacion'); return; }
+        clearNoData('chart-pov-bar-educacion');
         const latest = data.filter(r => r.anio === latestYear);
         document.getElementById('pov-bar-educ-title').textContent = indicator + ' por Educación (' + latestYear + ')';
         makeChart('chart-pov-bar-educacion', {
@@ -617,7 +626,8 @@
         const data = DATA.pobrezaEdad.filter(r => r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
-        if (!latestYear) { makeChart('chart-pov-bar-edad', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
+        if (!latestYear) { showNoData('chart-pov-bar-edad'); return; }
+        clearNoData('chart-pov-bar-edad');
         const latest = data.filter(r => r.anio === latestYear);
         document.getElementById('pov-bar-edad-title').textContent = indicator + ' por Grupo Etario (' + latestYear + ')';
         makeChart('chart-pov-bar-edad', {
@@ -639,7 +649,8 @@
         const data = DATA.pobrezaRegion.filter(r => r.indicador === mapInd && r.valor != null);
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
-        if (!latestYear) { makeChart('chart-pov-bar-region', { type: 'bar', data: { labels: [], datasets: [] } }); return; }
+        if (!latestYear) { showNoData('chart-pov-bar-region'); return; }
+        clearNoData('chart-pov-bar-region');
         const latest = data.filter(r => r.anio === latestYear);
         document.getElementById('pov-bar-region-title').textContent = indicator + ' por Región (' + latestYear + ')';
         makeChart('chart-pov-bar-region', {
@@ -703,16 +714,19 @@
     /* ============================================================
        PAGE: EMPLEO
        ============================================================ */
-    let empleoRendered = false;
-
     function renderEmpleo() {
-        if (empleoRendered) return;
-        renderEmpleoSeries();
-        renderIESS();
-        renderEmpleoDemo();
-        renderEmpleoSector();
-        renderEmpleoSigTable();
-        empleoRendered = true;
+        const activeTab = document.querySelector('#empleo-tabs .sub-tab.active');
+        const tabId = activeTab ? activeTab.dataset.subtab : 'empleo-main';
+
+        if (tabId === 'empleo-main') {
+            renderEmpleoSeries();
+            renderIESS();
+            renderEmpleoDemo();
+            renderEmpleoSector();
+            renderEmpleoSigTable();
+        } else {
+            renderSalarios();
+        }
     }
 
     // Employment time series
@@ -820,10 +834,33 @@
     }
 
     // Employment growth by sector
+    let empleoSectorYearsInit = false;
+    function initEmpleoSectorYears() {
+        if (empleoSectorYearsInit) return;
+        const years = uniqueSorted(DATA.crecimientoEmpleoSector.map(r => r.anio));
+        const startSel = document.getElementById('empleo-sector-start');
+        const endSel = document.getElementById('empleo-sector-end');
+        years.forEach(y => {
+            startSel.appendChild(Object.assign(document.createElement('option'), { value: y, textContent: y }));
+            endSel.appendChild(Object.assign(document.createElement('option'), { value: y, textContent: y }));
+        });
+        startSel.value = years[0];
+        endSel.value = years[years.length - 1];
+        startSel.addEventListener('change', renderEmpleoSector);
+        endSel.addEventListener('change', renderEmpleoSector);
+        empleoSectorYearsInit = true;
+    }
+
     function renderEmpleoSector() {
-        const periodo = document.getElementById('empleo-periodo').value;
-        const [startYear, endYear] = periodo.split('-').map(Number);
+        initEmpleoSectorYears();
+        const startYear = +document.getElementById('empleo-sector-start').value;
+        const endYear = +document.getElementById('empleo-sector-end').value;
         const rawData = DATA.crecimientoEmpleoSector;
+
+        if (startYear >= endYear) {
+            makeChart('chart-empleo-sector', { type: 'bar', data: { labels: ['Seleccione años distintos'], datasets: [{ data: [0] }] } });
+            return;
+        }
 
         // Group by sector
         const bySector = groupBy(rawData, 'sector');
@@ -889,19 +926,14 @@
 
     // Bind filters
     document.getElementById('empleo-dimension').addEventListener('change', renderEmpleoDemo);
-    document.getElementById('empleo-periodo').addEventListener('change', renderEmpleoSector);
 
     /* ============================================================
        PAGE: SALARIOS Y BRECHAS
        ============================================================ */
-    let salariosRendered = false;
-
     function renderSalarios() {
-        if (salariosRendered) return;
         renderSalariosSeries();
         renderBrechas();
         renderBrechasTrend();
-        salariosRendered = true;
     }
 
     // Wage evolution over time
@@ -1187,11 +1219,34 @@
         });
     }
 
-    // Employment growth by sector
+    // Employment growth by sector (Crecimiento page)
+    let crecEmpleoYearsInit = false;
+    function initCrecEmpleoYears() {
+        if (crecEmpleoYearsInit) return;
+        const years = uniqueSorted(DATA.crecimientoEmpleoSector.map(r => r.anio));
+        const startSel = document.getElementById('crec-empleo-sector-start');
+        const endSel = document.getElementById('crec-empleo-sector-end');
+        years.forEach(y => {
+            startSel.appendChild(Object.assign(document.createElement('option'), { value: y, textContent: y }));
+            endSel.appendChild(Object.assign(document.createElement('option'), { value: y, textContent: y }));
+        });
+        startSel.value = years[0];
+        endSel.value = years[years.length - 1];
+        startSel.addEventListener('change', renderCrecEmpleo);
+        endSel.addEventListener('change', renderCrecEmpleo);
+        crecEmpleoYearsInit = true;
+    }
+
     function renderCrecEmpleo() {
-        const periodo = document.getElementById('crec-empleo-periodo').value;
-        const [startYear, endYear] = periodo.split('-').map(Number);
+        initCrecEmpleoYears();
+        const startYear = +document.getElementById('crec-empleo-sector-start').value;
+        const endYear = +document.getElementById('crec-empleo-sector-end').value;
         const rawData = DATA.crecimientoEmpleoSector;
+
+        if (startYear >= endYear) {
+            makeChart('chart-crec-empleo', { type: 'bar', data: { labels: ['Seleccione años distintos'], datasets: [{ data: [0] }] } });
+            return;
+        }
 
         // Group by sector
         const bySector = groupBy(rawData, 'sector');
@@ -1233,9 +1288,6 @@
         });
     }
 
-    // Bind filters
-    document.getElementById('crec-empleo-periodo').addEventListener('change', renderCrecEmpleo);
-
     /* ============================================================
        PAGE: DESIGUALDAD (unified with sub-tabs)
        ============================================================ */
@@ -1247,6 +1299,7 @@
         const tabId = activeTab ? activeTab.dataset.subtab : 'indicadores';
 
         if (tabId === 'indicadores') {
+            renderGiniHome();
             renderGiniTax();
             renderGiniFull();
             renderGiniLAC();
@@ -1259,6 +1312,32 @@
             renderLatamChart();
         }
         desigualdadRendered = true;
+    }
+
+    // Gini mini chart (moved from Inicio to Desigualdad)
+    function renderGiniHome() {
+        const giniData = DATA.giniPanel.filter(r => r.categoria === 'Ecuador' && r.valor != null);
+        const giniYears = uniqueSorted(giniData.map(r => r.ano));
+        const giniMap = {};
+        giniData.forEach(r => giniMap[r.ano] = r.valor);
+
+        makeChart('chart-gini-home', {
+            type: 'line',
+            data: {
+                labels: giniYears,
+                datasets: [{
+                    label: 'Gini',
+                    data: giniYears.map(y => giniMap[y]),
+                    borderColor: COLORS.indigo.border,
+                    backgroundColor: COLORS.indigo.bg,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { min: 0.3, max: 0.9 } }
+            }
+        });
     }
 
     // Gini before/after taxes
