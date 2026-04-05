@@ -5,12 +5,10 @@ clear
 * ============================================================
 
 * Ruta global para facilitar portabilidad del código
-global limpias "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Procesamiento/Bases/Procesadas/ramas homogeneizadas"
-
+global limpias "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 * Cargar base 2001 con variables relevantes
 use rama1 nivinst condact fexp area  using "$limpias/empleo2001.dta", clear
-
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2001             // diferenciación por año
 rename nivinst p10a_2001
@@ -120,7 +118,7 @@ reshape wide n*, i(rama1 empleo_pleno) j(universitario) string
 reshape wide n*, i(rama1) j(empleo_pleno) string
 
 
-* ============================================================
+* ===========================================================
 **# 2001-2010
 * ============================================================
 
