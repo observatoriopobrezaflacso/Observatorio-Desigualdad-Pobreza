@@ -29,7 +29,7 @@ global repo_dir "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-
 global code_dir "$repo_dir/SRI/Procesamiento/Codigos/Renta/DINA_graficos"
 global out_dir  "$repo_dir/SRI/Procesamiento/Resultados/DINA_graficos"
 
-local input_excel "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/SRI 11.05.16 p. m./Resultados/20.03.2026/Tablas_DINA_dec_corr.xlsx"
+local input_excel "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/SRI/Resultados/25.03.2026/Tablas_DINA_dec_corr.xlsx"
 
 capture mkdir "$out_dir"
 
@@ -136,6 +136,9 @@ replace pos_share_bottom35 = 6  if share_top01    >= share_bottom35 & share_top0
 replace pos_share_top01    = 6  if share_top01    <  share_bottom35 & share_top01 < . & share_bottom35 < .
 replace pos_share_bottom35 = 12 if share_top01    <  share_bottom35 & share_top01 < . & share_bottom35 < .
 
+* 35% mas pobre: en 2010, 2015 y 2020 etiqueta apenas debajo de la linea (solo esta serie)
+replace pos_share_bottom35 = 6 if inlist(anio, 2010, 2015, 2020)
+
 * Top 1% vs 50% inferior
 replace pos_share_top1     = 12 if share_top1     >= share_bottom50 & share_top1 < . & share_bottom50 < .
 replace pos_share_bottom50 = 6  if share_top1     >= share_bottom50 & share_top1 < . & share_bottom50 < .
@@ -181,7 +184,20 @@ else local leg_bot50 "50% más pobre"
 
 * ---------------------------------------------------------------------------
 * 4. Grafico 1: participacion en el ingreso nacional
+*    Eje Y: ticks desde 0 hasta techo >= max entre todas las series del grafico
 * ---------------------------------------------------------------------------
+
+tempvar _ym
+egen `_ym' = rowmax(share_top01 share_top1 share_top10 share_middle40 share_bottom35 share_bottom50)
+quietly summarize `_ym'
+local rawg = cond(missing(r(max)), 0, r(max))
+drop `_ym'
+local ysg = 5
+if `rawg' <= 12 local ysg = 2
+if `rawg' <= 4 local ysg = 1
+local ytg = ceil(`rawg'/`ysg')*`ysg'
+if `ytg' < `rawg' local ytg = `ytg' + `ysg'
+if `ytg' == 0 local ytg = `ysg'
 
 twoway ///
     (connected share_top01 anio, sort lcolor("106 61 154") lwidth(medthick) ///
@@ -207,14 +223,15 @@ twoway ///
     ytitle("Porcentaje del ingreso nacional") ///
     xtitle("") ///
     xlabel(`xmin'(1)`xmax', angle(45)) ///
-    ylabel(, angle(horizontal) format(%9.0g)) ///
+    ylabel(0(`ysg')`ytg', angle(horizontal) format(%9.0g)) ///
+    yscale(range(0 `ytg')) ///
     legend(order(1 "`leg_top01'" 2 "`leg_top1'" 3 "`leg_top10'" 4 "`leg_mid40'" 5 "`leg_bot35'" 6 "`leg_bot50'") ///
            rows(3) position(6) span size(small) region(lcolor(none))) ///
     graphregion(color(white)) ///
     plotregion(color(white)) 
 	
 capture noisily graph export "$out_dir/participacion_ingreso_pretax_2010_2024.png", ///
-    replace width(2400)
+    replace width(3600)
 graph export "$out_dir/participacion_ingreso_pretax_2010_2024.pdf", replace
 graph save "$out_dir/participacion_ingreso_pretax_2010_2024.gph", replace
 
@@ -254,7 +271,7 @@ twoway ///
     plotregion(color(white))
 
 capture noisily graph export "$out_dir/palma_pretax_posttax_2010_2024.png", ///
-    replace width(2400)
+    replace width(3600)
 graph export "$out_dir/palma_pretax_posttax_2010_2024.pdf", replace
 graph save "$out_dir/palma_pretax_posttax_2010_2024.gph", replace
 
@@ -354,7 +371,7 @@ twoway ///
         msymbol(O) msize(vsmall) mcolor("51 160 44") ///
         mlabel(lab_share_cap_bot50) mlabcolor("51 160 44") mlabsize(small) mlabvposition(pos_share_cap_bot50)), ///
     title("Concentración del ingreso de capital", size(medium)) ///
-    subtitle("Participación por grupo de percentil (hoja capital)", size(small)) ///
+    subtitle("Participación por grupo de percentil", size(small)) ///
     ytitle("Porcentaje del ingreso de capital total") ///
     xtitle("") ///
     xlabel(`xmin'(1)`xmax', angle(45)) ///
@@ -365,10 +382,11 @@ twoway ///
     plotregion(color(white))
 
 capture noisily graph export "$out_dir/participacion_ingreso_capital_2010_2024.png", ///
-    replace width(2400)
+    replace width(3600)
 graph export "$out_dir/participacion_ingreso_capital_2010_2024.pdf", replace
 graph save "$out_dir/participacion_ingreso_capital_2010_2024.gph", replace
 
 restore
 
 exit, clear
+

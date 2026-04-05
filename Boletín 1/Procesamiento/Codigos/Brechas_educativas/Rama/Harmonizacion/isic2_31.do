@@ -1,9 +1,19 @@
 clear
 
-* Definición de rutas globales para facilitar la portabilidad del código
-global raw "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Bases/enemdu_diciembres"
 
-global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias"
+* Definición de rutas globales para facilitar la portabilidad del código
+
+global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad" 
+
+global enemdu_diciembres "$user_root/Bases/ENEMDU/Originales/Diciembres/"
+global bases_90s "$enemdu_diciembres/1990-1999"
+global bases_2000_2006 "$enemdu_diciembres/2000-2006"
+global bases_2007_2017 "$enemdu_diciembres/2007-2017"
+global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
+
+global isic "$root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+global out "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 
 foreach anio of numlist 1991 1998 {
@@ -14,7 +24,7 @@ foreach anio of numlist 1991 1998 {
 	* ------------------------------------------------------------------------------
 
 	* Load your crosswalk file (assuming it is saved as crosswalk.dta)
-	import delimited using "G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\Brecha educacion\Bases\ISIC2_ISIC31.txt", clear
+	import delimited using "$isic/ISIC2_ISIC31.txt", clear
 
 
 	* Suponiendo que 'crosswalk_2_to_31.dta' ya tiene las columnas:
@@ -42,7 +52,13 @@ foreach anio of numlist 1991 1998 {
 
 
 	* Carga su conjunto de datos de 2011 (asumiendo que contiene códigos Rev. 2)
-	use "$raw/empleo`anio'.dta", clear
+
+	if (inrange(`anio', 1990, 1999)) local dir_bases $bases_90s
+	if (inrange(`anio', 2000, 2006)) local dir_bases $bases_2000_2006
+	if (inrange(`anio', 2007, 2017)) local dir_bases $bases_2007_2017
+	if (inrange(`anio', 2018, 2025)) local dir_bases $bases_2018_presente
+	
+	use "`dir_bases'/empleo`anio'.dta", clear 
 
 	* Renombra la variable actual de 4 dígitos (Rev 2) y crea la clave de fusión.
 	rename rama p40_old
@@ -116,7 +132,7 @@ foreach anio of numlist 1991 1998 {
 	drop isic2 rama_new p40_old
 
 
-	save "$raw/empleo`anio'_isic31", replace
+	save "$out/empleo`anio'_isic31", replace
 
 }
 

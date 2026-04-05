@@ -8,9 +8,9 @@ global bases_2007_2017 "$enemdu_diciembres/2007-2017"
 global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
 
 
-local texto_buscar "tiene RUC"
+local texto_buscar "informal"
 
-forval y = 2007/2024 {
+forval y = 1990/2024 {
 
     di "************** `y' ********************"
 
@@ -28,13 +28,13 @@ forval y = 2007/2024 {
     if ("`r(varlist)'" != "") {
         local vars_buscadas = r(varlist)
 		foreach var of local vars_buscadas {
-			tab `var'
-			tab `var', nol
+			*tab `var'
+			*tab `var', nol
 		}
 		
 		
     }
-    else di "No hay variable en `y'"
+    else di "No hay texto buscado en `y'"
 
 }
 
