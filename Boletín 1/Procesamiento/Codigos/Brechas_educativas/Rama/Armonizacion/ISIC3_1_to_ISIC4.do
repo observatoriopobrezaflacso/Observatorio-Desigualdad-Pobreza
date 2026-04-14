@@ -3,7 +3,7 @@ clear
 
 * Definición de rutas globales para facilitar la portabilidad del código
 
-global root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/" 
+global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad" 
 
 global enemdu_diciembres "$user_root/Bases/ENEMDU/Originales/Diciembres/"
 global bases_90s "$enemdu_diciembres/1990-1999"
@@ -13,14 +13,14 @@ global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
 
 global isic "$root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
-global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias"
+global out "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 *-----------------------------------------------------------------------------
 * STEP 1: Prepare the Crosswalk (using the structure from your image)
 * ------------------------------------------------------------------------------
 
 * Load your crosswalk file (assuming it is saved as crosswalk.dta)
-import delimited using "G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\Brecha educacion\Bases\ISIC31_ISIC4.txt", clear
+import delimited using "$isic/ISIC31_ISIC4.txt", clear
 
 
 * 1. Standardize the matching variable (ISIC 3.1)
@@ -47,7 +47,8 @@ rename isic4code p40_rev4_new
 * Save temporary crosswalk
 tempfile crosswalk_clean
 save `crosswalk_clean'
- ------------------------------------------------------------------------------
+
+*------------------------------------------------------------------------------
 * STEP 2: Update the 2011 Dataset ------------------------------------------------------------------------------
 
 foreach anio of numlist 2001 2010 2011 {
@@ -58,8 +59,8 @@ foreach anio of numlist 2001 2010 2011 {
 	if (inrange(`anio', 2000, 2006)) local dir_bases $bases_2000_2006
 	if (inrange(`anio', 2007, 2017)) local dir_bases $bases_2007_2017
 	if (inrange(`anio', 2018, 2025)) local dir_bases $bases_2018_presente
-
-	use "`dir_bases'/empleo`y'.dta", clear 
+	
+	use "`dir_bases'/empleo`anio'.dta", clear 
 
 	if `anio' == 2001 gen p40 = rama
 
@@ -69,7 +70,6 @@ foreach anio of numlist 2001 2010 2011 {
 
 	* Merge with the crosswalk
 	merge m:1 p40 using `crosswalk_clean', keep(master match)
-
 
 	* Update p40 to the new ISIC 4 code
 	* We save the old one as backup and overwrite p40 with the 2024 standard
@@ -156,5 +156,3 @@ foreach anio of numlist 2001 2010 2011 {
 
 }
 
-use "$raw/empleo2024.dta", clear
-save "$out/empleo2024.dta", replace
