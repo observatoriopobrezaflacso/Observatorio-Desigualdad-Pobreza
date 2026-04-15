@@ -173,230 +173,389 @@ else:
 
 """# **Armonización**
 
-## **Informal-Afiliación**
-Indica si está afiliado al *IESS*
+## **Generación ID**
 """
 
 import pandas as pd
-
-# 1. Definimos la ruta exacta donde se guardó el mapa
-ruta_mapa = "/content/drive/MyDrive/Observatorio/Bases_limpias/Mapa_Maestro_1990_2024.xlsx"
-
-# 2. Cargamos el Excel que generamos hace un momento
-df_mapa = pd.read_excel(ruta_mapa)
-
-# 3. Filtramos solo para la variable de interés: Informal-Afiliación
-# Nota: Verifica si en tu diccionario usamos 'Afiliación-IESS' o 'Informal-Afiliación'
-mapa_afiliacion = df_mapa[df_mapa['Concepto_Analisis'] == 'Informal-Afiliación'].sort_values('Año')
-
-# 4. Desplegamos el resultado para auditar
-with pd.option_context('display.max_rows', None, 'display.max_colwidth', 500):
-    print("📋 AUDITORÍA DE VARIABLE: AFILIACIÓN AL IESS (1990-2024)")
-    print("-" * 100)
-    if not mapa_afiliacion.empty:
-        print(mapa_afiliacion[['Año', 'Variable_Original_DTA', 'Etiquetas_Diccionario']])
-    else:
-        print("⚠️ No se encontraron registros. Revisa si el nombre del concepto es 'Afiliación-IESS' o 'Informal-Afiliación' en tu diccionario.")
-
-import pandas as pd
-import pyreadstat
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pyreadstat
 
-# --- 1. CONFIGURACIÓN DE RUTAS ---
-path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
-path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-ruta_mapa = os.path.join(path_limpias, "Mapa_Maestro_1990_2024.xlsx")
+# --- 1. CONFIGURACIÓN ---
+path_origen = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
+path_guardado = "/content/drive/MyDrive/Observatorio/Bases_limpias"
+os.makedirs(path_guardado, exist_ok=True)
 
-df_mapa = pd.read_excel(ruta_mapa)
+def pad_id(val, length):
+    if pd.isna(val): return "0" * length
+    # Maneja casos donde el dato viene como float o string
+    s = str(int(float(val)))
+    return s.zfill(length)
 
-def regla_estricta_iess(row, columnas, anio):
-    """
-    REGLA PEDIDA: Solo IESS General (No Voluntario, No Campesino)
-    1: IESS General
-    0: Otros Seguros o Ninguno
-    """
-    if anio <= 2000:
-        # En los 90s no se puede separar, asumimos el 'si' como base general
-        cods_iess = [1]
-    elif 2001 <= anio <= 2006:
-        # Según tu auditoría: 2 es IESS General. (3 es Campesino -> va a 0)
-        cods_iess = [2]
-    else:
-        # Según tu auditoría: 1 es IESS General. (2 es Voluntario, 3 es Campesino -> van a 0)
-        cods_iess = [1]
+bases_anuales = []
 
-    for col in columnas:
-        val = row[col]
-        if pd.isna(val): continue
-        try:
-            if int(float(val)) in cods_iess:
-                return 1
-        except:
-            continue
-    return 0
-
-# --- 2. PROCESAMIENTO ---
-lista_master = []
-
-for anio in range(1990, 2025):
-    # Usando los nombres de columna de tu auditoría visual
-    info_anio = df_mapa[(df_mapa['Año'] == anio) & (df_mapa['Concepto_Analisis'] == 'Informal-Afiliación')]
-    if info_anio.empty: continue
-
-    columnas_dta = [c for c in info_anio['Variable_Original_DTA'].unique() if c.lower() in ['iess', 'p05a']]
-
+for anio in range(1990, 2026):
     if 1990 <= anio <= 1999: sub = "1990-1999"
     elif 2000 <= anio <= 2006: sub = "2000-2006"
     elif 2007 <= anio <= 2017: sub = "2007-2017"
     else: sub = os.path.join("2018-presente", "Trimestrales")
 
-    ruta_input = os.path.join(path_base, sub, f"empleo{anio}.dta")
+    file_path = os.path.join(path_origen, sub, f"empleo{anio}.dta")
 
-    if os.path.exists(ruta_input):
-        print(f"🔄 Procesando {anio} (Estricto)...", end=" ")
+    if os.path.exists(file_path):
+        print(f"Procesando optimizado: {anio}...")
 
-        # Leemos solo IESS General (usualmente p05a o iess)
-        df_t, meta = pyreadstat.read_dta(ruta_input, usecols=columnas_dta)
+        # Leemos solo los nombres de las columnas primero para saber qué pedir
+        # Esto evita cargar 400 columnas si solo usaremos 7
+        _, meta = pyreadstat.read_dta(file_path, metadataonly=True)
+        cols_names = meta.column_names
 
-        df_t['iess_estricto'] = df_t.apply(lambda x: regla_estricta_iess(x, columnas_dta, anio), axis=1)
-        df_t['anio'] = anio
-        df_t['id_persona'] = df_t.index
+        # Definir qué columnas buscar según el año
+        if 1990 <= anio <= 2000:
+            target_vars = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'formul', 'persona']
+        elif 2001 <= anio <= 2002:
+            target_vars = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'persona']
+        elif 2003 <= anio <= 2017: # Incluye p01 o persona según el año
+            target_vars = ['ciudad', 'zona', 'sector', 'panelm', 'vivienda', 'hogar', 'p01', 'persona']
+        else:
+            target_vars = ['ciudad', 'conglomerado', 'panelm', 'vivienda', 'hogar', 'p01']
 
-        # Guardado DTA individual
-        ruta_out = os.path.join(path_limpias, "Temporales", f"afilia_estricta_{anio}.dta")
-        os.makedirs(os.path.dirname(ruta_out), exist_ok=True)
+        # Filtrar solo las que existen en el archivo
+        needed_vars = [v for v in target_vars if v in cols_names]
 
-        pyreadstat.write_dta(df_t[['anio', 'id_persona', 'iess_estricto']], ruta_out,
-                             column_labels={'iess_estricto': 'Solo IESS General (1:Si, 0:No)'},
-                             variable_value_labels={'iess_estricto': {1: "IESS General", 0: "Otros/No"}})
+        # LEER SOLO LAS COLUMNAS NECESARIAS (Ahorra muchísima RAM)
+        df = pd.read_stata(file_path, columns=needed_vars, convert_categoricals=False)
+        df.columns = df.columns.str.lower()
 
-        lista_master.append(df_t[['anio', 'id_persona', 'iess_estricto']])
-        print("✅")
+        # DEFRAGMENTAR: Esto elimina el PerformanceWarning
+        df = df.copy()
 
-# --- 3. MASTER Y GRÁFICO ---
-df_master_final = pd.concat(lista_master, ignore_index=True)
-ruta_master = os.path.join(path_limpias, "Master_Afiliacion_Estricta_90_24.dta")
-pyreadstat.write_dta(df_master_final, ruta_master)
+        df['anio'] = anio
 
-# Control de %
-control = df_master_final.groupby('anio')['iess_estricto'].mean() * 100
-}
-plt.figure(figsize=(12, 5))
-plt.plot(control.index, control, marker='o', color='darkred', label='% IESS General')
-plt.title('Evolución de la Afiliación Estricta (IESS General) 1990-2024')
-plt.ylabel('Porcentaje (%)')
-plt.grid(True, alpha=0.3)
-plt.ylim(0, max(control)+10)
-plt.show()
+        # Aplicar el relleno de ceros
+        for v in needed_vars:
+            length = 6 if v == 'ciudad' else 3 if v in ['zona', 'sector', 'panelm', 'conglomerado'] else 2
+            df[v] = df[v].apply(lambda x: pad_id(x, length))
 
-print(f"\n🚀 Master estricto guardado en: {ruta_master}")
+        # Crear ID
+        df['id_persona'] = df[needed_vars].agg(''.join, axis=1)
 
-"""### **Opción 2 IESS**"""
+        # Manejo de duplicados con lógica persona2
+        df['persona2'] = df.groupby('id_persona').cumcount() + 1
+        mask = df.duplicated(subset=['id_persona'], keep=False)
+        df.loc[mask, 'id_persona'] = df['id_persona'] + df['persona2'].astype(str)
+
+        # Guardar solo lo mínimo necesario
+        bases_anuales.append(df[['id_persona', 'anio']])
+
+# Unir todo
+df_final = pd.concat(bases_anuales, ignore_index=True)
+df_final.to_stata(os.path.join(path_guardado, "id_persona_armonizado.dta"), write_index=False)
+print("¡Base final generada sin fragmentación!")
+
+"""## **Base con ID para unir a todas las variables**"""
 
 import pandas as pd
-import pyreadstat
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pyreadstat
 
 # --- 1. CONFIGURACIÓN DE RUTAS ---
-path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
-path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-ruta_mapa = os.path.join(path_limpias, "Mapa_Maestro_1990_2024.xlsx")
+path_origen = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
+path_guardado = "/content/drive/MyDrive/Observatorio/Bases_limpias"
+os.makedirs(path_guardado, exist_ok=True)
 
-# Cargar Mapa Maestro
-df_mapa = pd.read_excel(ruta_mapa)
+def pad_id(val, length):
+    if pd.isna(val): return "0" * length
+    try:
+        # Convierte a entero para quitar el .0 y luego a string con ceros a la izquierda
+        return str(int(float(val))).zfill(length)
+    except:
+        return "0" * length
 
-def regla_formalidad_opcion2(row, columnas, anio):
-    """
-    OPCIÓN 2: Formalidad Laboral Civil y Militar
-    1: IESS General + ISSFA (Militares) + ISSPOL (Policías)
-    0: Seguro Campesino, Voluntario, Privado, Ninguno o Otros.
-    """
-    if anio <= 2000:
-        # En los 90s, el '1' (Sí) es nuestra única base de formalidad
-        cods_formal = [1]
-    elif 2001 <= anio <= 2006:
-        # 2: IESS General, 4: ISSFA/ISSPOL. (3: Campesino va a 0)
-        cods_formal = [2, 4]
-    else:
-        # 1: IESS General, 4: ISSFA/ISSPOL. (2: Voluntario, 3: Campesino van a 0)
-        cods_formal = [1, 4]
+# --- 2. BUCLE DE CONSTRUCCIÓN DEL MASTER ---
+bases_master = []
 
-    for col in columnas:
-        val = row[col]
-        if pd.isna(val): continue
-        try:
-            if int(float(val)) in cods_formal:
-                return 1
-        except:
-            continue
-    return 0
-
-# --- 2. PROCESAMIENTO ---
-lista_master_op2 = []
-
-for anio in range(1990, 2025):
-    # Filtro según tu Mapa Maestro
-    info_anio = df_mapa[(df_mapa['Año'] == anio) & (df_mapa['Concepto_Analisis'] == 'Informal-Afiliación')]
-    if info_anio.empty: continue
-
-    # Variables de interés (p05a suele ser general, p05b suele ser el resto)
-    columnas_dta = [c for c in info_anio['Variable_Original_DTA'].unique() if c.lower() in ['iess', 'p05a', 'p05b']]
-
+for anio in range(1990, 2026):
     # Lógica de subcarpetas
     if 1990 <= anio <= 1999: sub = "1990-1999"
     elif 2000 <= anio <= 2006: sub = "2000-2006"
     elif 2007 <= anio <= 2017: sub = "2007-2017"
     else: sub = os.path.join("2018-presente", "Trimestrales")
 
+    file_path = os.path.join(path_origen, sub, f"empleo{anio}.dta")
+
+    if os.path.exists(file_path):
+        print(f"Extrayendo IDs de: {anio}...")
+
+        # Leemos solo los nombres de columnas para saber qué variables de ID existen
+        _, meta = pyreadstat.read_dta(file_path, metadataonly=True)
+        cols_base = [col.lower() for col in meta.column_names]
+
+        # Definir componentes del ID según el periodo
+        if 1990 <= anio <= 2000:
+            id_vars = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'formul', 'persona']
+        elif 2001 <= anio <= 2002:
+            id_vars = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'persona']
+        elif 2003 <= anio <= 2017:
+            id_vars = ['ciudad', 'zona', 'sector', 'panelm', 'vivienda', 'hogar', 'p01', 'persona']
+        else: # 2018 en adelante
+            id_vars = ['ciudad', 'conglomerado', 'panelm', 'vivienda', 'hogar', 'p01']
+
+        # Filtrar solo las que existen en la base actual
+        present_vars = [v for v in id_vars if v in cols_base]
+
+        # CARGA OPTIMIZADA: Solo cargamos las variables de ID
+        df = pd.read_stata(file_path, columns=present_vars, convert_categoricals=False)
+        df.columns = df.columns.str.lower()
+        df = df.copy() # Defragmentar inmediatamente
+
+        # Aplicar formato (Padding)
+        for v in present_vars:
+            # Largos estándar para evitar IDs deformes
+            length = 6 if v == 'ciudad' else 3 if v in ['zona', 'sector', 'panelm', 'conglomerado'] else 2
+            df[v] = df[v].apply(lambda x: pad_id(x, length))
+
+        # Crear la columna de ID armonizado
+        df['id_persona'] = df[present_vars].agg(''.join, axis=1)
+        df['anio'] = anio
+
+        # Manejo de duplicados (lógica persona2)
+        # Si un ID se repite en el mismo año, se le añade un sufijo para diferenciar personas
+        df['persona2'] = df.groupby('id_persona').cumcount() + 1
+        mask = df.duplicated(subset=['id_persona'], keep=False)
+        df.loc[mask, 'id_persona'] = df['id_persona'] + df['persona2'].astype(str)
+
+        # Guardar solo las dos columnas del Master
+        bases_master.append(df[['id_persona', 'anio']])
+
+# --- 3. CONSOLIDACIÓN FINAL ---
+print("Uniendo todos los años en el Master...")
+df_master = pd.concat(bases_master, ignore_index=True)
+
+# Guardar el archivo Master
+ruta_master = os.path.join(path_guardado, "MASTER_IDS_ENEMDU_1990_2025.dta")
+df_master.to_stata(ruta_master, write_index=False)
+
+print(f"--- PROCESO COMPLETADO ---")
+print(f"Archivo Master creado en: {ruta_master}")
+print(f"Total de registros: {len(df_master)}")
+
+import pandas as pd
+
+# 1. Carguemos un año de prueba (ejemplo 2015 que es pesado)
+test_year = 2015
+path_test = f"{path_origen}/2007-2017/empleo{test_year}.dta"
+
+# 2. Leemos la base tal cual viene (sin ordenar nada)
+df_test = pd.read_stata(path_test, convert_categoricals=False)
+df_test.columns = df_test.columns.str.lower()
+
+# 3. Creamos un índice de fila "artificial" para ver si se mueve
+df_test['fila_original'] = range(len(df_test))
+
+# 4. Creamos el ID con tu lógica
+# (Uso una versión simplificada para la prueba)
+id_vars = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'p01']
+for v in id_vars:
+    df_test[v] = df_test[v].apply(lambda x: str(int(float(x))).zfill(2) if pd.notna(x) else "00")
+
+df_test['id_generado'] = df_test[id_vars].agg(''.join, axis=1)
+
+# --- RESULTADO ---
+print(f"Total filas: {len(df_test)}")
+print("-" * 30)
+print("Muestra de las primeras 5 filas:")
+print(df_test[['fila_original', 'id_generado']].head())
+
+"""## **IESS Urbano rural**
+De 1990 a 1999 era todo urbano
+De 2000 a 2024 la variable es area
+"""
+
+import pandas as pd
+import os
+import pyreadstat
+
+# --- 1. CONFIGURACIÓN DE RUTAS ---
+path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
+path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
+ruta_master_ids = os.path.join(path_limpias, "MASTER_IDS_ENEMDU_1990_2025.dta")
+
+# --- 2. FUNCIONES DE APOYO ---
+def regla_estricta_iess(row, columnas, anio):
+    if anio <= 2000:
+        cods_iess = [1]
+    elif 2001 <= anio <= 2006:
+        cods_iess = [2]
+    else:
+        cods_iess = [1]
+    for col in columnas:
+        val = row[col]
+        if pd.isna(val): continue
+        try:
+            if int(float(val)) in cods_iess: return 1
+        except: continue
+    return 0
+
+def pad_id(val, length):
+    if pd.isna(val): return "0" * length
+    try:
+        return str(int(float(val))).zfill(length)
+    except:
+        return "0" * length
+
+# --- 3. INICIO DEL PROCESO ---
+print("Cargando Master de IDs...")
+df_master_base = pd.read_stata(ruta_master_ids)
+
+lista_variables_armonizadas = []
+
+for anio in range(1990, 2026):
+    if 1990 <= anio <= 1999: sub = "1990-1999"
+    elif 2000 <= anio <= 2006: sub = "2000-2006"
+    elif 2007 <= anio <= 2017: sub = "2007-2017"
+    else: sub = os.path.join("2018-presente", "Trimestrales")
+
     ruta_input = os.path.join(path_base, sub, f"empleo{anio}.dta")
 
     if os.path.exists(ruta_input):
-        print(f"🔄 Procesando {anio} (Opción 2: IESS + Militares)...", end=" ")
+        print(f"Procesando {anio} (IESS + Área)...", end=" ")
 
-        # Lectura
-        df_t, meta = pyreadstat.read_dta(ruta_input, usecols=columnas_dta)
+        # Metadatos para saber qué leer
+        _, meta = pyreadstat.read_dta(ruta_input, metadataonly=True)
+        cols_base = [col.lower() for col in meta.column_names]
 
-        # Aplicar regla
-        df_t['formal_op2'] = df_t.apply(lambda x: regla_formalidad_opcion2(x, columnas_dta, anio), axis=1)
-        df_t['anio'] = anio
-        df_t['id_persona'] = df_t.index
+        # Definir variables a extraer
+        id_vars_req = ['ciudad', 'zona', 'sector', 'panelm', 'conglomerado', 'vivienda', 'hogar', 'p01', 'persona', 'formul']
+        iess_vars_req = ['iess', 'p05a']
+        area_var_req = ['area'] # Variable de área
 
-        # Guardado individual solicitado
-        ruta_out = os.path.join(path_limpias, "Temporales", f"afilia_op2_{anio}.dta")
-        os.makedirs(os.path.dirname(ruta_out), exist_ok=True)
+        needed = [v for v in id_vars_req + iess_vars_req + area_var_req if v in cols_base]
 
-        pyreadstat.write_dta(df_t[['anio', 'id_persona', 'formal_op2']], ruta_out,
-                             column_labels={'formal_op2': 'Formalidad IESS+Militares (1:Si, 0:No)'})
+        # Carga selectiva
+        df_temp = pd.read_stata(ruta_input, columns=needed, convert_categoricals=False)
+        df_temp.columns = df_temp.columns.str.lower()
+        df_temp = df_temp.copy()
+        df_temp['anio'] = anio
 
-        lista_master_op2.append(df_t[['anio', 'id_persona', 'formal_op2']])
+        # A. GENERAR ID_PERSONA (Identidad)
+        if 1990 <= anio <= 2000:
+            comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'formul', 'persona']
+        elif 2001 <= anio <= 2002:
+            comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'persona']
+        elif 2003 <= anio <= 2017:
+            comp = ['ciudad', 'zona', 'sector', 'panelm', 'vivienda', 'hogar', 'p01', 'persona']
+        else:
+            comp = ['ciudad', 'conglomerado', 'panelm', 'vivienda', 'hogar', 'p01']
+
+        present_comp = [v for v in comp if v in df_temp.columns]
+        for v in present_comp:
+            l = 6 if v == 'ciudad' else 3 if v in ['zona', 'sector', 'panelm', 'conglomerado'] else 2
+            df_temp[v] = df_temp[v].apply(lambda x: pad_id(x, l))
+
+        df_temp['id_persona'] = df_temp[present_comp].agg(''.join, axis=1)
+        df_temp['persona2'] = df_temp.groupby('id_persona').cumcount() + 1
+        mask = df_temp.duplicated(subset=['id_persona'], keep=False)
+        df_temp.loc[mask, 'id_persona'] = df_temp['id_persona'] + df_temp['persona2'].astype(str)
+
+        # B. ARMONIZAR ÁREA
+        if 'area' in df_temp.columns:
+            df_temp['area_armonizada'] = pd.to_numeric(df_temp['area'], errors='coerce')
+        else:
+            df_temp['area_armonizada'] = 1 # 90s son urbanos
+
+        # C. REGLA IESS ESTRICTA
+        cols_iess = [v for v in iess_vars_req if v in df_temp.columns]
+        df_temp['iess_estricto'] = df_temp.apply(lambda x: regla_estricta_iess(x, cols_iess, anio), axis=1)
+
+        # Guardar solo el "pedazo" armonizado
+        lista_variables_armonizadas.append(df_temp[['id_persona', 'anio', 'area_armonizada', 'iess_estricto']])
         print("✅")
 
-# --- 3. CONSOLIDACIÓN Y RESULTADOS ---
-df_master_op2 = pd.concat(lista_master_op2, ignore_index=True)
-ruta_save = os.path.join(path_limpias, "Master_Afiliacion_Opcion2_90_24.dta")
-pyreadstat.write_dta(df_master_op2, ruta_save)
+# --- 4. CHECKPOINT DE VARIABLES ARMONIZADAS ---
+print("\nGuardando Checkpoint de variables armonizadas...")
+df_checkpoint = pd.concat(lista_variables_armonizadas, ignore_index=True)
+ruta_checkpoint = os.path.join(path_limpias, "Checkpoint_IESS_Area.dta")
+df_checkpoint.to_stata(ruta_checkpoint, write_index=False)
 
-# --- 4. TABLA DE RESULTADOS EN COLAB ---
-tabla_res = pd.crosstab(df_master_op2['anio'], df_master_op2['formal_op2'], normalize='index') * 100
-tabla_res.columns = ['% Informal/Otros (0)', '% Formal IESS+Mil (1)']
+# --- 5. MERGE FINAL AL MASTER ---
+print("Creando MASTER_ENEMDU_CONSOLIDADO...")
+df_consolidado = pd.merge(df_master_base, df_checkpoint, on=['id_persona', 'anio'], how='left')
 
-print("\n📊 TABLA DE CONTROL - OPCIÓN 2 (IESS GENERAL + ISSFA/ISSPOL)")
-display(tabla_res.round(2))
+ruta_final = os.path.join(path_limpias, "MASTER_ENEMDU_CONSOLIDADO.dta")
+df_consolidado.to_stata(ruta_final, write_index=False)
 
-# Gráfico rápido
-plt.figure(figsize=(10, 4))
-plt.plot(tabla_res.index, tabla_res['% Formal IESS+Mil (1)'], marker='o', color='navy')
-plt.title('Tendencia de Formalidad Laboral (Opción 2)')
-plt.grid(True, alpha=0.3)
+print(f"\n🚀 ¡LISTO! Base consolidada en: {ruta_final}")
+
+"""### **Tabla de consistencia**"""
+
+# --- TABLA DE PORCENTAJES POR AÑO (IESS SÍ / NO) ---
+
+# Calculamos las frecuencias y porcentajes
+tabla_resumen = df_consolidado.groupby('anio')['iess_estricto'].value_counts(normalize=True).unstack() * 100
+
+# Renombrar columnas para claridad
+# 0 suele ser "No Afiliado / Otros" y 1 es "IESS General"
+tabla_resumen.columns = ['IESS_No (%)', 'IESS_Si (%)']
+
+# Llenar posibles NaNs con 0 (por si algún año no tuviera registros de un tipo)
+tabla_resumen = tabla_resumen.fillna(0)
+
+# Formatear a 2 decimales y mostrar
+print("--- REPARTO DE AFILIACIÓN IESS ESTRICTA POR AÑO (%) ---")
+display(tabla_resumen.round(2))
+
+# Opcional: Ver también en términos de conteo de personas
+print("\n--- CONTEO TOTAL DE PERSONAS ---")
+conteo_personas = df_consolidado.groupby('anio')['iess_estricto'].value_counts().unstack().fillna(0)
+conteo_personas.columns = ['Total_IESS_No', 'Total_IESS_Si']
+display(conteo_personas.astype(int))
+
+"""### Gráfico comparativo"""
+
+# --- GENERACIÓN Y GUARDADO DEL GRÁFICO DE CONSISTENCIA ---
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Preparar los datos para el gráfico (usando la tabla de auditoría que ya calculamos)
+auditoria = df_consolidado.groupby('anio').agg(
+    tasa_iess_nacional=('iess_estricto', 'mean'),
+    tasa_iess_urbana=('iess_estricto', lambda x: x[df_consolidado['area_armonizada'] == 1].mean())
+).reset_index()
+
+auditoria['tasa_iess_nacional'] *= 100
+auditoria['tasa_iess_urbana'] *= 100
+
+# Configuración estética
+plt.figure(figsize=(14, 8))
+sns.set_style("whitegrid")
+
+# Dibujar Serie Urbana
+plt.plot(auditoria['anio'], auditoria['tasa_iess_urbana'],
+         label='Urbano (Serie Histórica 1990-2024)',
+         color='#1f77b4', linewidth=3, marker='s', markersize=6)
+
+# Dibujar Serie Nacional (desde 2000)
+nacional_df = auditoria[auditoria['anio'] >= 2000].dropna()
+plt.plot(nacional_df['anio'], nacional_df['tasa_iess_nacional'],
+         label='Nacional (Desde 2000)',
+         color='#e31a1c', linestyle='--', linewidth=2, marker='o', markersize=6)
+
+# Etiquetas y títulos
+plt.title('Consistencia de Afiliación IESS Estricta (1990-2024)\nSerie Longitudinal Armonizada', fontsize=16, fontweight='bold')
+plt.ylabel('Porcentaje (%) de Afiliados', fontsize=12)
+plt.xlabel('Año de la Encuesta', fontsize=12)
+plt.legend(frameon=True, fontsize=11, loc='upper left')
+plt.ylim(0, max(auditoria['tasa_iess_urbana'].max(), nacional_df['tasa_iess_nacional'].max()) + 10)
+plt.xticks(auditoria['anio'], rotation=45)
+plt.tight_layout()
+
+# --- GUARDADO DEL GRÁFICO ---
+ruta_grafico = os.path.join(path_limpias, "Grafico_Consistencia_IESS_1990_2024.png")
+plt.savefig(ruta_grafico, dpi=300, bbox_inches='tight')
+print(f"✅ Gráfico de consistencia guardado con éxito en: {ruta_grafico}")
+
+# Mostrar en Colab
 plt.show()
-
-print(f"\n🚀 Master Opción 2 guardado en: {ruta_save}")
 
 """## **Informal-Sector informal**"""
 
@@ -427,252 +586,210 @@ with pd.option_context('display.max_rows', None, 'display.max_colwidth', 500):
         print(f"⚠️ No se encontró el concepto '{concepto_buscado}'.")
 
 import pandas as pd
-import pyreadstat
 import os
+import pyreadstat
 
-# --- 1. CONFIGURACIÓN ---
+# --- 1. CONFIGURACIÓN DE RUTAS ---
 path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
 path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-ruta_mapa = os.path.join(path_limpias, "Mapa_Maestro_1990_2024.xlsx")
-df_mapa = pd.read_excel(ruta_mapa)
+ruta_master = os.path.join(path_limpias, "MASTER_ENEMDU_CONSOLIDADO.dta")
 
-def regla_sector_binario(row, columnas):
+# --- 2. FUNCIONES DE APOYO ---
+def regla_sector_binario(row, columnas_disponibles):
     """
-    Regla universal basada en auditoría:
     1: Sector Informal (Código 2)
-    0: Cualquier otro sector (Formal, Doméstico, Agrícola, No clasificado)
+    0: Otros sectores
     """
-    for col in columnas:
+    for col in columnas_disponibles:
         val = row[col]
         if pd.isna(val): continue
         try:
-            if int(float(val)) == 2:
-                return 1
-        except:
-            continue
+            if int(float(val)) == 2: return 1
+        except: continue
     return 0
 
-# --- 2. PROCESAMIENTO ---
-lista_sector = []
+def pad_id(val, length):
+    if pd.isna(val): return "0" * length
+    try: return str(int(float(val))).zfill(length)
+    except: return "0" * length
 
-for anio in range(1990, 2025):
-    info_anio = df_mapa[(df_mapa['Año'] == anio) &
-                        (df_mapa['Concepto_Analisis'] == 'Informal-Sector informal')]
+# --- 3. PROCESAMIENTO ---
+if not os.path.exists(ruta_master):
+    print(f"❌ ERROR: No se encontró el archivo {ruta_master}")
+else:
+    print(f"📂 Cargando Master: {ruta_master}")
+    df_master = pd.read_stata(ruta_master)
+    lista_sector_armonizado = []
 
-    if info_anio.empty: continue
+    # Diccionario basado en tu Mapa Maestro
+    mapa_variables = {
+        range(1990, 2007): ['peamsiu'],
+        range(2007, 2014): ['SECEMP', 'secemp'],
+        range(2014, 2015): ['peamsiu'],
+        range(2015, 2026): ['secemp']
+    }
 
-    # Capturamos las variables detectadas (peamsiu, SECEMP, secemp)
-    columnas_dta = [c for c in info_anio['Variable_Original_DTA'].unique()]
+    for anio in range(1990, 2025):
+        if 1990 <= anio <= 1999: sub = "1990-1999"
+        elif 2000 <= anio <= 2006: sub = "2000-2006"
+        elif 2007 <= anio <= 2017: sub = "2007-2017"
+        else: sub = os.path.join("2018-presente", "Trimestrales")
 
-    # Lógica de carpetas
-    if 1990 <= anio <= 1999: sub = "1990-1999"
-    elif 2000 <= anio <= 2006: sub = "2000-2006"
-    elif 2007 <= anio <= 2017: sub = "2007-2017"
-    else: sub = os.path.join("2018-presente", "Trimestrales")
+        ruta_input = os.path.join(path_base, sub, f"empleo{anio}.dta")
 
-    ruta_input = os.path.join(path_base, sub, f"empleo{anio}.dta")
+        if os.path.exists(ruta_input):
+            print(f"Procesando {anio}...", end=" ")
 
-    if os.path.exists(ruta_input):
-        print(f"🔄 Procesando Sector {anio}...", end=" ")
-        df_t, _ = pyreadstat.read_dta(ruta_input, usecols=columnas_dta)
+            # 1. Metadatos y limpieza de nombres de columnas
+            _, meta = pyreadstat.read_dta(ruta_input, metadataonly=True)
+            cols_reales_originales = meta.column_names
 
-        df_t['sector_informal'] = df_t.apply(lambda x: regla_sector_binario(x, columnas_dta), axis=1)
-        df_t['anio'] = anio
-        df_t['id_persona'] = df_t.index
+            id_vars_req = ['ciudad', 'zona', 'sector', 'panelm', 'conglomerado', 'vivienda', 'hogar', 'p01', 'persona', 'formul']
 
-        lista_sector.append(df_t[['anio', 'id_persona', 'sector_informal']])
-        print("✅")
+            vars_sector_anio = []
+            for r, v in mapa_variables.items():
+                if anio in r: vars_sector_anio = v
 
-# Consolidación
-df_master_sector = pd.concat(lista_sector, ignore_index=True)
-ruta_master_sec = os.path.join(path_limpias, "Master_Sector_Informal_90_24.dta")
-pyreadstat.write_dta(df_master_sector, ruta_master_sec)
-print(f"\n🚀 Master de Sector guardado en: {ruta_master_sec}")
+            # 2. Construir lista de columnas ÚNICAS para evitar el ValueError
+            needed_raw = []
+            for v in (id_vars_req + vars_sector_anio):
+                match = [orig for orig in cols_reales_originales if orig.lower() == v.lower()]
+                if match: needed_raw.append(match[0])
 
-import matplotlib.pyplot as plt
+            # ELIMINAR DUPLICADOS manteniendo orden
+            needed = list(dict.fromkeys(needed_raw))
 
-# 1. Tabla de control
-tabla_sec = pd.crosstab(df_master_sector['anio'], df_master_sector['sector_informal'], normalize='index') * 100
-tabla_sec.columns = ['% Resto (Formal/Domest/Agro)', '% Sector Informal (1)']
+            # 3. Cargar datos
+            df_temp = pd.read_stata(ruta_input, columns=needed, convert_categoricals=False)
+            df_temp.columns = df_temp.columns.str.lower()
+            df_temp['anio'] = anio
 
-print("\n📊 RESULTADOS HISTÓRICOS: SECTOR INFORMAL")
-display(tabla_sec.round(2))
+            # 4. Generar ID_PERSONA Espejo
+            if 1990 <= anio <= 2000:
+                comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'formul', 'persona']
+            elif 2001 <= anio <= 2002:
+                comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'persona']
+            elif 2003 <= anio <= 2017:
+                comp = ['ciudad', 'zona', 'sector', 'panelm', 'vivienda', 'hogar', 'p01', 'persona']
+            else:
+                comp = ['ciudad', 'conglomerado', 'panelm', 'vivienda', 'hogar', 'p01']
 
-# 2. Gráfico
-plt.figure(figsize=(12, 5))
-plt.plot(tabla_sec.index, tabla_sec['% Sector Informal (1)'],
-         marker='s', color='#E67E22', linewidth=2, label='Tasa Sector Informal')
+            present_comp = [v for v in comp if v in df_temp.columns]
+            for v in present_comp:
+                l = 6 if v == 'ciudad' else 3 if v in ['zona', 'sector', 'panelm', 'conglomerado'] else 2
+                df_temp[v] = df_temp[v].apply(lambda x: pad_id(x, l))
 
-plt.title('Evolución del Sector Informal en Ecuador (1990-2024)', fontsize=14)
-plt.ylabel('Porcentaje (%)')
-plt.ylim(0, 100)
-plt.grid(True, alpha=0.3)
-plt.legend()
-plt.show()
+            df_temp['id_persona'] = df_temp[present_comp].agg(''.join, axis=1)
+            df_temp['persona2'] = df_temp.groupby('id_persona').cumcount() + 1
+            mask = df_temp.duplicated(subset=['id_persona'], keep=False)
+            df_temp.loc[mask, 'id_persona'] = df_temp['id_persona'] + df_temp['persona2'].astype(str)
 
-import matplotlib.pyplot as plt
+            # 5. Aplicar Regla de Sector
+            cols_sector_presentes = [v.lower() for v in vars_sector_anio if v.lower() in df_temp.columns]
+            df_temp['sector_informal'] = df_temp.apply(lambda x: regla_sector_binario(x, cols_sector_presentes), axis=1)
 
-# 1. Tabla de control
-tabla_sec = pd.crosstab(df_master_sector['anio'], df_master_sector['sector_informal'], normalize='index') * 100
-tabla_sec.columns = ['% Resto (Formal/Domest/Agro)', '% Sector Informal (1)']
+            lista_sector_armonizado.append(df_temp[['id_persona', 'anio', 'sector_informal']])
+            print("✅")
 
-print("\n📊 RESULTADOS HISTÓRICOS: SECTOR INFORMAL")
-display(tabla_sec.round(2))
+# --- 4. CONSOLIDACIÓN FINAL ---
+    print("\n--- Finalizando y Guardando ---")
+    df_res_final = pd.concat(lista_sector_armonizado, ignore_index=True)
 
-# 2. Gráfico
-plt.figure(figsize=(12, 5))
-plt.plot(tabla_sec.index, tabla_sec['% Sector Informal (1)'],
-         marker='s', color='#E67E22', linewidth=2, label='Tasa Sector Informal')
+    # Respaldo de seguridad directamente en la ruta común
+    ruta_res = os.path.join(path_limpias, "sector_informal_armonizado.dta")
+    df_res_final.to_stata(ruta_res, write_index=False)
+    print(f"✔️ Respaldo guardado en: {ruta_res}")
 
-plt.title('Evolución del Sector Informal en Ecuador (1990-2024)', fontsize=14)
-plt.ylabel('Porcentaje (%)')
-plt.ylim(0, 100)
-plt.grid(True, alpha=0.3)
-plt.legend()
-plt.show()
+    # Merge al Master y sobreescritura
+    # El merge 'left' asegura que no perdamos personas del master y no dupliquemos columnas existentes
+    df_master = pd.merge(df_master, df_res_final, on=['id_persona', 'anio'], how='left')
 
-"""### **Opcion 2 Informalidad**"""
+    # Guardar Master Actualizado
+    df_master.to_stata(ruta_master, write_index=False)
+    print(f"🚀 PROCESO COMPLETADO: Master actualizado con Sector Informal en {ruta_master}")
 
-import pandas as pd
-import pyreadstat
-import os
-import numpy as np
+"""###**Tabla**"""
 
-# --- 1. CONFIGURACIÓN ---
-path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
-path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-ruta_mapa = os.path.join(path_limpias, "Mapa_Maestro_1990_2024.xlsx")
-df_mapa = pd.read_excel(ruta_mapa)
+# --- GENERACIÓN DE TABLA DE AUDITORÍA ---
+print("\n📊 GENERANDO REPORTE DE CONSISTENCIA...")
 
-def regla_sector_detallado(row, columnas, anio):
-    """
-    Lógica de Clasificación Independiente (Armonizada 1990-2024)
-    """
-    for col in columnas:
-        val = row[col]
-        if pd.isna(val): continue
-        v = int(float(val))
+# 1. Usamos el df_master que ya está en memoria (actualizado con el merge)
+# Agrupamos por año y calculamos el porcentaje de informalidad
+tabla_sector = df_master.groupby('anio')['sector_informal'].value_counts(normalize=True).unstack() * 100
 
-        # Categoría 1: Sector Formal (Empresas con RUC, Estado, Moderno)
-        if v == 1:
-            return "Sector Formal"
+# 2. Renombrar columnas para claridad
+# 0.0 solía ser Formal/Otros, 1.0 es Sector Informal
+tabla_sector.columns = ['Sector_Formal_Otros (%)', 'Sector_Informal (%)']
 
-        # Categoría 2: Sector Informal (Independientes, Negocios de Hogar)
-        elif v == 2:
-            return "Sector Informal"
+# 3. Formatear para que se vea profesional
+print("-" * 50)
+display(tabla_sector.round(2))
 
-        # Categoría 3: Empleo Doméstico (Remunerado)
-        elif v in [3, 4] and "doméstico" in str(row).lower():
-            # Nota: En los 90s era 4, hoy es 3. La auditoría nos guía.
-            return "Empleo Doméstico"
+# 4. Verificación de Nulos (¿Algún año se quedó sin datos?)
+nulos = df_master['sector_informal'].isna().sum()
+if nulos > 0:
+    print(f"\n⚠️ Nota: Hay {nulos} registros sin dato de sector (posiblemente menores de edad o fuera de la PEA).")
+else:
+    print("\n✅ Todos los registros tienen asignada una categoría de sector.")
 
-        # Categoría 4: Sector Agropecuario / No Remunerado (Específico 90s)
-        elif anio < 2007 and v == 3:
-            return "Sector Agropecuario"
+# 5. Exportar la tabla a Excel
+ruta_excel_auditoria = os.path.join(path_limpias, "Auditoria_Sector_Informal_Final.xlsx")
+tabla_sector.to_excel(ruta_excel_auditoria)
+print(f"📄 Tabla guardada en: {ruta_excel_auditoria}")
 
-        # Categoría 5: No Clasificados o Otros
-        elif v in [4, 5]:
-            return "Otros / No Clasificados"
+"""### **Gráfico**"""
 
-    return "No clasificado"
-
-# --- 2. PROCESAMIENTO ---
-lista_master = []
-
-for anio in range(1990, 2025):
-    # Usamos el concepto exacto de tu auditoría
-    info_anio = df_mapa[(df_mapa['Año'] == anio) &
-                        (df_mapa['Concepto_Analisis'] == 'Informal-Sector informal')]
-
-    if info_anio.empty: continue
-    columnas_dta = [c for c in info_anio['Variable_Original_DTA'].unique()]
-
-    # Selección de carpeta según época
-    if 1990 <= anio <= 1999: sub = "1990-1999"
-    elif 2000 <= anio <= 2006: sub = "2000-2006"
-    elif 2007 <= anio <= 2017: sub = "2007-2017"
-    else: sub = os.path.join("2018-presente", "Trimestrales")
-
-    ruta_input = os.path.join(path_base, sub, f"empleo{anio}.dta")
-
-    if os.path.exists(ruta_input):
-        print(f"📊 Procesando Estructura {anio}...", end=" ")
-        # Leemos la variable (peamsiu, secemp, etc)
-        df_t, _ = pyreadstat.read_dta(ruta_input, usecols=columnas_dta)
-
-        # Aplicamos la lógica multicategoría
-        df_t['categoria_sector'] = df_t.apply(lambda x: regla_sector_detallado(x, columnas_dta, anio), axis=1)
-        df_t['anio'] = anio
-        df_t['id_persona'] = df_t.index
-
-        lista_master.append(df_t[['anio', 'id_persona', 'categoria_sector']])
-        print("✅")
-
-# Guardado del Master Multicategoría
-df_master_final = pd.concat(lista_master, ignore_index=True)
-ruta_save = os.path.join(path_limpias, "Master_Estructura_Sector_90_24.dta")
-pyreadstat.write_dta(df_master_final, ruta_save)
-
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
 
-# --- 1. CARGA DE DATOS ---
-path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-ruta_master = os.path.join(path_limpias, "Master_Estructura_Sector_90_24.dta")
+# 1. Preparar datos usando el df_master que está en memoria
+# Agrupamos por año y área para ver la evolución
+graf_data = df_master.groupby(['anio', 'area_armonizada'])['sector_informal'].mean().reset_index()
+graf_data['sector_informal'] *= 100  # Convertir a porcentaje
 
-df_master = pd.read_stata(ruta_master)
+# Separar la serie Urbana (Area 1)
+urbano = graf_data[graf_data['area_armonizada'] == 1]
 
-# --- 2. GENERACIÓN DE TABLA DE CONTROL ---
-# Creamos una tabla de proporciones (frecuencia relativa) por año
-tabla_control = pd.crosstab(df_master['anio'], df_master['categoria_sector'], normalize='index') * 100
+# Calcular la serie Nacional (Promedio de todos los sectores por año)
+nacional = df_master.groupby('anio')['sector_informal'].mean().reset_index()
+nacional['sector_informal'] *= 100
 
-print("📊 TABLA DE CONTROL: ESTRUCTURA DEL MERCADO LABORAL (1990-2024)")
-print("-" * 80)
-display(tabla_control.round(2))
+# 2. Configuración estética
+plt.figure(figsize=(15, 8))
+sns.set_style("whitegrid")
 
-# --- 3. VISUALIZACIÓN DE COMPOSICIÓN (Gráfico de Áreas Apiladas) ---
-plt.figure(figsize=(14, 7))
+# Dibujar serie Urbana (Verde - Cuadrados)
+plt.plot(urbano['anio'], urbano['sector_informal'],
+         label='Sector Informal - Urbano (Serie Histórica)',
+         color='#2ca02c', linewidth=3, marker='s', markersize=6)
 
-# Definimos un orden lógico para las capas del gráfico
-# Abajo lo más estable (Formal), arriba lo más volátil o residual
-categorias_orden = [
-    "Sector Formal",
-    "Sector Informal",
-    "Sector Agropecuario",
-    "Empleo Doméstico",
-    "Otros / No Clasificados"
-]
+# Dibujar serie Nacional (Naranja - Círculos - Solo desde el 2000)
+# Recordamos que antes del 2000 la encuesta no era nacional, por eso filtramos
+nacional_2k = nacional[nacional['anio'] >= 2000]
+plt.plot(nacional_2k['anio'], nacional_2k['sector_informal'],
+         label='Sector Informal - Nacional (Muestra Total)',
+         color='#ff7f0e', linestyle='--', linewidth=2, marker='o', markersize=6)
 
-# Filtramos solo las categorías que realmente existan en los datos para evitar errores
-capas = [c for c in categorias_orden if c in tabla_control.columns]
+# 3. Personalización y etiquetas
+plt.title('Evolución del Sector Informal en Ecuador (1990-2024)', fontsize=16, fontweight='bold')
+plt.ylabel('Porcentaje (%) de Ocupados', fontsize=12)
+plt.xlabel('Año (Diciembre)', fontsize=12)
 
-# Paleta de colores profesional
-colores = ["#2E86C1", "#E67E22", "#27AE60", "#F1C40F", "#95A5A6"]
+# Ajustar los años en el eje X para que no se amontonen
+plt.xticks(df_master['anio'].unique(), rotation=45)
 
-# Crear el gráfico de áreas
-plt.stackplot(tabla_control.index,
-              [tabla_control[c] for c in capas],
-              labels=capas,
-              colors=colores,
-              alpha=0.85)
+# Límites del eje Y para que se vea bien la variabilidad
+plt.ylim(0, 70)
 
-# Personalización estética
-plt.title('Evolución de la Estructura Productiva en Ecuador (1990-2024)', fontsize=16, fontweight='bold')
-plt.ylabel('Participación en el Mercado Laboral (%)', fontsize=12)
-plt.xlabel('Año', fontsize=12)
-plt.xlim(1990, 2024)
-plt.ylim(0, 100)
-plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=3, frameon=False)
-plt.grid(axis='y', linestyle='--', alpha=0.5)
+plt.legend(frameon=True, fontsize=11, loc='upper left')
 
-# Añadir línea vertical en 2007 (Cambio Metodológico Importante)
-plt.axvline(x=2007, color='black', linestyle=':', alpha=0.7)
-plt.text(2007.5, 95, 'Cambio Metodología (INEC)', fontsize=10, fontstyle='italic')
+# 4. Guardado en la ruta común (Bases_limpias)
+ruta_grafico_sector = os.path.join(path_limpias, "Grafico_Consistencia_Sector_Informal.png")
+plt.savefig(ruta_grafico_sector, dpi=300, bbox_inches='tight')
 
-plt.tight_layout()
 plt.show()
+
+print(f"✅ Gráfico generado y guardado en: {ruta_grafico_sector}")
 
 """## **Edad**"""
 
@@ -707,39 +824,49 @@ with pd.option_context('display.max_rows', None, 'display.max_colwidth', 500):
         print(df_mapa['Concepto_Analisis'].unique())
 
 import pandas as pd
-import pyreadstat
 import os
+import pyreadstat
 import numpy as np
 
-# --- 1. CONFIGURACIÓN ---
+# --- 1. CONFIGURACIÓN DE RUTAS ---
 path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
 path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
+ruta_master = os.path.join(path_limpias, "MASTER_ENEMDU_CONSOLIDADO.dta")
 ruta_mapa = os.path.join(path_limpias, "Mapa_Maestro_1990_2024.xlsx")
+
+# Cargar Mapa Maestro
 df_mapa = pd.read_excel(ruta_mapa)
 
+# --- 2. FUNCIONES DE APOYO ---
 def categorizar_edad_ecuador(e):
-    if pd.isna(e) or e == 99 or e < 0:
+    if pd.isna(e) or e >= 99 or e < 0:
         return "N/D"
     if e < 15:
         return "1. Menores (<15)"
     if 15 <= e <= 29:
-        # Rango clave para políticas de empleo juvenil en Ecuador
         return "2. Jóvenes (15-29)"
     if 30 <= e <= 64:
         return "3. Adultos (30-64)"
     return "4. Adultos Mayores (65+)"
 
-# --- 2. PROCESAMIENTO ---
-lista_edad = []
+def pad_id(val, length):
+    if pd.isna(val): return "0" * length
+    try: return str(int(float(val))).zfill(length)
+    except: return "0" * length
+
+# --- 3. PROCESAMIENTO ---
+print(f"📂 Cargando Master: {ruta_master}")
+df_master = pd.read_stata(ruta_master)
+lista_edad_armonizada = []
 
 for anio in range(1990, 2025):
-    # Filtramos la variable específica según el mapa
+    # Filtro del Mapa Maestro para Edad
     info_anio = df_mapa[(df_mapa['Año'] == anio) & (df_mapa['Concepto_Analisis'] == 'Edad')]
     if info_anio.empty: continue
 
-    columna_dta = info_anio['Variable_Original_DTA'].values[0]
+    columna_edad = info_anio['Variable_Original_DTA'].values[0]
 
-    # Lógica de subcarpetas (estándar que ya manejamos)
+    # Lógica de subcarpetas
     if 1990 <= anio <= 1999: sub = "1990-1999"
     elif 2000 <= anio <= 2006: sub = "2000-2006"
     elif 2007 <= anio <= 2017: sub = "2007-2017"
@@ -748,85 +875,216 @@ for anio in range(1990, 2025):
     ruta_input = os.path.join(path_base, sub, f"empleo{anio}.dta")
 
     if os.path.exists(ruta_input):
-        print(f"🎂 Procesando Edad {anio} ({columna_dta})...", end=" ")
-        df_t, _ = pyreadstat.read_dta(ruta_input, usecols=[columna_dta])
+        print(f"🎂 Procesando Edad {anio} ({columna_edad})...", end=" ")
 
-        # 1. Limpieza y conversión
-        df_t['edad_num'] = pd.to_numeric(df_t[columna_dta], errors='coerce')
+        # 1. Metadatos para evitar errores de nombres
+        _, meta = pyreadstat.read_dta(ruta_input, metadataonly=True)
+        cols_reales_originales = meta.column_names
 
-        # 2. Aplicar categorización
-        df_t['grupo_etario'] = df_t['edad_num'].apply(categorizar_edad_ecuador)
+        id_vars_req = ['ciudad', 'zona', 'sector', 'panelm', 'conglomerado', 'vivienda', 'hogar', 'p01', 'persona', 'formul']
 
-        # 3. Identificador de PET (Población en Edad de Trabajar)
-        # Es vital para que luego solo analices informalidad en este grupo
-        df_t['es_pet'] = (df_t['edad_num'] >= 15) & (df_t['edad_num'] < 99)
+        # Asegurar que pedimos la columna de edad con el nombre exacto del DTA
+        needed_raw = []
+        for v in (id_vars_req + [columna_edad]):
+            match = [orig for orig in cols_reales_originales if orig.lower() == v.lower()]
+            if match: needed_raw.append(match[0])
 
-        df_t['anio'] = anio
-        df_t['id_persona'] = df_t.index
+        needed = list(dict.fromkeys(needed_raw))
 
-        lista_edad.append(df_t[['anio', 'id_persona', 'edad_num', 'grupo_etario', 'es_pet']])
+        # 2. Cargar datos
+        df_temp = pd.read_stata(ruta_input, columns=needed, convert_categoricals=False)
+        df_temp.columns = df_temp.columns.str.lower()
+        col_edad_lower = columna_edad.lower()
+        df_temp['anio'] = anio
+
+        # 3. Generar ID_PERSONA (Armonizado para el Merge)
+        if 1990 <= anio <= 2000:
+            comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'formul', 'persona']
+        elif 2001 <= anio <= 2002:
+            comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'persona']
+        elif 2003 <= anio <= 2017:
+            comp = ['ciudad', 'zona', 'sector', 'panelm', 'vivienda', 'hogar', 'p01', 'persona']
+        else:
+            comp = ['ciudad', 'conglomerado', 'panelm', 'vivienda', 'hogar', 'p01']
+
+        present_comp = [v for v in comp if v in df_temp.columns]
+        for v in present_comp:
+            l = 6 if v == 'ciudad' else 3 if v in ['zona', 'sector', 'panelm', 'conglomerado'] else 2
+            df_temp[v] = df_temp[v].apply(lambda x: pad_id(x, l))
+
+        df_temp['id_persona'] = df_temp[present_comp].agg(''.join, axis=1)
+        df_temp['persona2'] = df_temp.groupby('id_persona').cumcount() + 1
+        mask = df_temp.duplicated(subset=['id_persona'], keep=False)
+        df_temp.loc[mask, 'id_persona'] = df_temp['id_persona'] + df_temp['persona2'].astype(str)
+
+        # 4. Limpieza y categorización de Edad
+        # Convertir a numérico y tratar el 99 como NaN
+        df_temp['edad_num'] = pd.to_numeric(df_temp[col_edad_lower], errors='coerce')
+        df_temp.loc[df_temp['edad_num'] >= 99, 'edad_num'] = np.nan
+
+        df_temp['grupo_etario'] = df_temp['edad_num'].apply(categorizar_edad_ecuador)
+        df_temp['es_pet'] = (df_temp['edad_num'] >= 15).astype(int) # 1 si es PET, 0 si no
+
+        lista_edad_armonizada.append(df_temp[['id_persona', 'anio', 'edad_num', 'grupo_etario', 'es_pet']])
         print("✅")
 
-# Consolidación
-df_master_edad = pd.concat(lista_edad, ignore_index=True)
-ruta_save = os.path.join(path_limpias, "Master_Edad_90_24.dta")
-pyreadstat.write_dta(df_master_edad, ruta_save)
+# --- 4. CONSOLIDACIÓN FINAL ---
+print("\n--- Finalizando e Inyectando al Master ---")
+df_res_edad = pd.concat(lista_edad_armonizada, ignore_index=True)
+
+# Guardar respaldo individual
+ruta_res = os.path.join(path_limpias, "edad_armonizada_detalle.dta")
+df_res_edad.to_stata(ruta_res, write_index=False)
+
+# Merge al Master y sobreescritura
+df_master = pd.merge(df_master, df_res_edad, on=['id_persona', 'anio'], how='left')
+
+df_master.to_stata(ruta_master, write_index=False)
+print(f"🚀 MASTER ACTUALIZADO EXITOSAMENTE con Edad, Grupos y PET en: {ruta_master}")
+
+"""### **Tabla**"""
 
 import pandas as pd
+
+# 1. Cargamos el Master (fresco desde el disco para asegurar que vemos los cambios)
+ruta_master = "/content/drive/MyDrive/Observatorio/Bases_limpias/MASTER_ENEMDU_CONSOLIDADO.dta"
+df_audit_edad = pd.read_stata(ruta_master)
+
+# 2. Resumen de Grupos Etarios por Año (Porcentaje)
+print("📊 ESTRUCTURA DEMOGRÁFICA POR GRUPO ETARIO (%)")
+print("-" * 65)
+tabla_grupos = df_audit_edad.groupby('anio')['grupo_etario'].value_counts(normalize=True).unstack() * 100
+display(tabla_grupos.round(2))
+
+# 3. Resumen de la Población en Edad de Trabajar (PET)
+print("\n👷 POBLACIÓN EN EDAD DE TRABAJAR (PET: >= 15 años)")
+print("-" * 65)
+# Calculamos el % de personas que son PET sobre el total de la encuesta cada año
+tabla_pet = df_audit_edad.groupby('anio')['es_pet'].mean() * 100
+tabla_pet = tabla_pet.to_frame(name='% Población PET')
+display(tabla_pet.round(2))
+
+# 4. Auditoría de Extremos (Check de limpieza)
+print("\n🔍 CONTROL DE CALIDAD (Valores Extremos)")
+print("-" * 65)
+stats_edad = df_audit_edad.groupby('anio')['edad_num'].agg(['min', 'max', 'mean']).reset_index()
+display(stats_edad.round(1).tail(10)) # Mostramos los últimos 10 años
+
+"""### **Gráfico**"""
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
 
-# --- 1. CARGA DE DATOS ---
-path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-ruta_master_edad = os.path.join(path_limpias, "Master_Edad_90_24.dta")
+# 1. Preparar los datos: Porcentaje de cada grupo por año
+df_graf = df_master.groupby(['anio', 'grupo_etario']).size().unstack(fill_value=0)
+df_graf_pct = df_graf.divide(df_graf.sum(axis=1), axis=0) * 100
 
-df_edad = pd.read_stata(ruta_master_edad)
+# Aseguramos el orden de las categorías para el gráfico
+orden_grupos = ["1. Menores (<15)", "2. Jóvenes (15-29)", "3. Adultos (30-64)", "4. Adultos Mayores (65+)", "N/D"]
+df_graf_pct = df_graf_pct.reindex(columns=[c for c in orden_grupos if c in df_graf_pct.columns])
 
-# --- 2. TABLA DE CONTROL (Distribución Porcentual por Año) ---
-# Filtramos N/D para que la distribución sea sobre datos válidos
-tabla_edad = pd.crosstab(df_edad['anio'], df_edad['grupo_etario'], normalize='index') * 100
+# 2. Configuración del gráfico
+plt.figure(figsize=(15, 8))
+colores = ["#AED6F1", "#3498DB", "#2874A6", "#1B4F72", "#D5DBDB"]
 
-print("📊 DISTRIBUCIÓN POR GRUPOS DE EDAD (1990-2024)")
-print("-" * 80)
-display(tabla_edad.round(2))
+# Crear el gráfico de áreas apiladas
+plt.stackplot(df_graf_pct.index, df_graf_pct.T, labels=df_graf_pct.columns, colors=colores, alpha=0.8)
 
-# --- 3. GRÁFICO DE ÁREAS APILADAS (Transición Demográfica) ---
-plt.figure(figsize=(14, 7))
-
-# Orden lógico: Menores abajo, Adultos mayores arriba
-orden_etario = [
-    "1. Menores (<15)",
-    "2. Jóvenes (15-29)",
-    "3. Adultos (30-64)",
-    "4. Adultos Mayores (65+)"
-]
-
-# Paleta de colores (de tonos cálidos a fríos para marcar madurez)
-colores_edad = ["#FADBD8", "#F1948A", "#C0392B", "#641E16"]
-
-plt.stackplot(tabla_edad.index,
-              [tabla_edad[c] for c in orden_etario if c in tabla_edad.columns],
-              labels=orden_etario,
-              colors=colores_edad,
-              alpha=0.8)
-
-# Personalización
-plt.title('Transición de la Estructura Etaria en Ecuador (1990-2024)', fontsize=16, fontweight='bold')
-plt.ylabel('Participación Poblacional (%)', fontsize=12)
-plt.xlabel('Año', fontsize=12)
-plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=4, frameon=False)
-plt.grid(axis='y', linestyle='--', alpha=0.3)
+# 3. Estética y etiquetas
+plt.title('Transición Demográfica en las Encuestas ENEMDU (1990-2024)', fontsize=16, fontweight='bold')
+plt.ylabel('Distribución de la Población (%)', fontsize=12)
+plt.xlabel('Año (Diciembre)', fontsize=12)
 plt.xlim(1990, 2024)
 plt.ylim(0, 100)
 
-plt.tight_layout()
+# Añadir una línea vertical en 2000 (Cambio a muestra nacional)
+plt.axvline(x=2000, color='red', linestyle='--', alpha=0.5, label='Inicio Muestra Nacional')
+
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Grupos Etarios")
+plt.xticks(df_master['anio'].unique(), rotation=45)
+plt.grid(axis='y', linestyle='--', alpha=0.3)
+
+# 4. Guardar
+ruta_grafico_edad = os.path.join(path_limpias, "Grafico_Transicion_Demografica_Ecuador.png")
+plt.savefig(ruta_grafico_edad, dpi=300, bbox_inches='tight')
+
 plt.show()
 
-# --- 4. BONUS: CÁLCULO DE LA PET MEDIA ---
-pet_promedio = df_edad[df_edad['es_pet'] == True].groupby('anio')['edad_num'].mean()
-print("\n📈 TENDENCIA: Edad promedio de la Población en Edad de Trabajar (PET)")
-print(pet_promedio.tail(10).round(2))
+print(f"✅ Gráfico de transición demográfica guardado en: {ruta_grafico_edad}")
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+import pandas as pd
+
+# 1. PREPARACIÓN
+col_area = 'area_armonizada'
+df_master['area_label'] = df_master[col_area].astype(str).map({
+    '1': 'Urbano', '1.0': 'Urbano', 'Urbano': 'Urbano',
+    '2': 'Rural', '2.0': 'Rural', 'Rural': 'Rural'
+})
+
+# Agrupamos
+df_demo = df_master.groupby(['anio', 'area_label', 'grupo_etario']).size().reset_index(name='conteo')
+df_total_area = df_master.groupby(['anio', 'area_label']).size().reset_index(name='total')
+df_plot = pd.merge(df_demo, df_total_area, on=['anio', 'area_label'])
+df_plot['porcentaje'] = (df_plot['conteo'] / df_plot['total']) * 100
+
+# 2. FUNCIÓN DE GRÁFICO REFORMADA
+def area_stack_plot(data, **kwargs):
+    if data.empty:
+        return
+
+    # Pivotamos
+    pivot = data.pivot(index='anio', columns='grupo_etario', values='porcentaje').fillna(0)
+
+    # Solo las columnas que existen y no son N/D
+    orden = ["1. Menores (<15)", "2. Jóvenes (15-29)", "3. Adultos (30-64)", "4. Adultos Mayores (65+)"]
+    cols_finales = [c for c in orden if c in pivot.columns]
+
+    if len(cols_finales) == 0:
+        return
+
+    pivot = pivot[cols_finales]
+
+    # Graficamos
+    plt.stackplot(pivot.index, pivot.T,
+                  labels=pivot.columns,
+                  alpha=0.8,
+                  colors=["#AED6F1", "#3498DB", "#2874A6", "#1B4F72"])
+
+    plt.axvline(x=2000, color='red', linestyle='--', alpha=0.4)
+
+# 3. EJECUCIÓN DEL FACETGRID
+sns.set_style("whitegrid")
+# Usamos sharex=False para que si un año no tiene datos rurales no rompa el urbano
+g = sns.FacetGrid(df_plot, col="area_label", hue="grupo_etario",
+                  height=6, aspect=1.2, palette="Blues_d",
+                  col_order=['Urbano', 'Rural'], sharex=False)
+
+g.map_dataframe(area_stack_plot)
+
+# 4. ESTÉTICA FINAL
+g.set_titles("{col_name}", size=15, fontweight='bold')
+g.set_axis_labels("Año", "Distribución de la Población (%)")
+g.add_legend(title="Grupos Etarios")
+
+for ax in g.axes.flat:
+    ax.set_ylim(0, 100)
+    ax.set_xlim(1990, 2024)
+    # Evitar que se amontonen los años
+    ax.set_xticks([1990, 2000, 2010, 2020, 2024])
+
+plt.subplots_adjust(top=0.8)
+g.fig.suptitle('Transición Demográfica en Ecuador: Urbano vs Rural (1990-2024)', fontsize=18, fontweight='bold', y=1.02)
+
+# 5. GUARDAR
+path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
+ruta_grafico_ur = os.path.join(path_limpias, "Grafico_Demografia_Urbano_Rural.png")
+plt.savefig(ruta_grafico_ur, dpi=300, bbox_inches='tight')
+plt.show()
+
+print(f"✅ Gráfico final guardado sin errores en: {ruta_grafico_ur}")
 
 """##**Provincia**"""
 
@@ -855,151 +1113,295 @@ vars_detectadas = df_prov_audit['Variable_Original_DTA'].unique()
 print(f"📌 Variables originales detectadas: {vars_detectadas}")
 
 import pandas as pd
-import pyreadstat
+
+ruta_master = "/content/drive/MyDrive/Observatorio/Bases_limpias/MASTER_ENEMDU_CONSOLIDADO.dta"
+df_check = pd.read_stata(ruta_master)
+
+print("🔍 RADIOGRAFÍA DEL MASTER")
+print("-" * 50)
+print(f"Total registros: {len(df_check)}")
+print("\nConteo por año:")
+print(df_check['anio'].value_counts().sort_index())
+
+# Ver una muestra de esos registros del 2025
+if 2025 in df_check['anio'].values:
+    print("\n👀 Muestra de registros 2025 (columnas disponibles):")
+    display(df_check[df_check['anio'] == 2025].head(5))
+
+import pandas as pd
+
+# 1. Cargar
+ruta_master = "/content/drive/MyDrive/Observatorio/Bases_limpias/MASTER_ENEMDU_CONSOLIDADO.dta"
+df_master = pd.read_stata(ruta_master)
+
+# 2. Limpiar columnas de provincia que hayan quedado a medias o con errores
+cols_sucias = ['provincia_nombre', 'provincia_cod', 'provincia_nombre_x', 'provincia_nombre_y']
+df_master = df_master.drop(columns=[c for c in cols_sucias if c in df_master.columns])
+
+# 3. Guardar Master impecable
+df_master.to_stata(ruta_master, write_index=False)
+
+print("✨ Master reseteado. Columnas de provincia eliminadas. ¡Listo para el proceso limpio!")
+
+import pandas as pd
 import os
+import pyreadstat
 import numpy as np
 
 # --- 1. CONFIGURACIÓN ---
 path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
 path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
+ruta_master = os.path.join(path_limpias, "MASTER_ENEMDU_CONSOLIDADO.dta")
 ruta_mapa = os.path.join(path_limpias, "Mapa_Maestro_1990_2024.xlsx")
+ruta_respaldo = os.path.join(path_limpias, "provincia_armonizada.dta")
+
+dict_provincias = {
+    '01': 'AZUAY', '02': 'BOLIVAR', '03': 'CAÑAR', '04': 'CARCHI', '05': 'COTOPAXI',
+    '06': 'CHIMBORAZO', '07': 'EL ORO', '08': 'ESMERALDAS', '09': 'GUAYAS', '10': 'IMBABURA',
+    '11': 'LOJA', '12': 'LOS RIOS', '13': 'MANABI', '14': 'MORONA SANTIAGO', '15': 'NAPO',
+    '16': 'PASTAZA', '17': 'PICHINCHA', '18': 'TUNGURAHUA', '19': 'ZAMORA CHINCHIPE',
+    '20': 'GALAPAGOS', '21': 'SUCUMBIOS', '22': 'ORELLANA', '23': 'SANTO DOMINGO',
+    '24': 'SANTA ELENA', '90': 'ZONAS NO DELIMITADAS'
+}
+
+# --- 2. FUNCIONES ---
+def extraer_provincia_wil_v2(row, col):
+    try:
+        val = str(row[col]).strip().split('.')[0]
+        if val in ['nan', '', 'None']: return "N/D"
+        return val.zfill(6)[:2] if len(val) >= 4 else val.zfill(2)
+    except: return "N/D"
+
+def pad_id(val, length):
+    try: return str(int(float(val))).zfill(length)
+    except: return "0" * length
+
+# --- 3. PROCESAMIENTO ---
+print(f"📂 Cargando Master: {ruta_master}")
+df_master = pd.read_stata(ruta_master)
+lista_provincias = []
+
 df_mapa = pd.read_excel(ruta_mapa)
 
-def extraer_provincia_wil(row, columna_usada):
-    try:
-        val = str(row[columna_usada]).strip().replace('.0', '')
-        if val == 'nan' or val == '': return "N/D"
-
-        # Lógica Wil: Estandarizar a 6 dígitos para rebanar los 2 primeros
-        if len(val) >= 5:
-            val_padd = val.zfill(6)
-            prov = val_padd[:2]
-        else:
-            # Para códigos directos (1, 2, 9, 17...)
-            prov = val.zfill(2)
-
-        # Validación DPA Ecuador (01-24 + 90)
-        if prov.isdigit() and (1 <= int(prov) <= 24 or int(prov) == 90):
-            return prov
-        return "N/D"
-    except:
-        return "N/D"
-
-# --- 2. PROCESAMIENTO ---
-datos_prov_acumulados = []
-
 for anio in range(1990, 2025):
-    # Filtrar mapa por el concepto 'Provincia'
     info_anio = df_mapa[(df_mapa['Año'] == anio) & (df_mapa['Concepto_Analisis'] == 'Provincia')]
     if info_anio.empty: continue
 
-    # Detectar variable a usar (prioridad 'prov' sobre 'ciudad' según tu reporte)
-    vars_en_excel = info_anio['Variable_Original_DTA'].values
-    columna_a_usar = 'prov' if 'prov' in vars_en_excel else 'ciudad'
+    vars_excel = info_anio['Variable_Original_DTA'].values
+    columna_dta = 'prov' if 'prov' in vars_excel else 'ciudad'
 
-    # Manejo de rutas por carpetas
-    if 1990 <= anio <= 1999: sub = "1990-1999"
-    elif 2000 <= anio <= 2006: sub = "2000-2006"
-    elif 2007 <= anio <= 2017: sub = "2007-2017"
-    else: sub = os.path.join("2018-presente", "Trimestrales")
+    sub = "1990-1999" if 1990 <= anio <= 1999 else \
+          "2000-2006" if 2000 <= anio <= 2006 else \
+          "2007-2017" if 2007 <= anio <= 2017 else \
+          os.path.join("2018-presente", "Trimestrales")
 
     ruta_input = os.path.join(path_base, sub, f"empleo{anio}.dta")
 
     if os.path.exists(ruta_input):
-        print(f"📍 {anio} OK ({columna_a_usar})", end=" | ")
-        # Leemos solo la columna que necesitamos
-        try:
-            df_t, _ = pyreadstat.read_dta(ruta_input, usecols=[columna_a_usar])
+        print(f"📍 {anio}...", end=" ")
+        _, meta = pyreadstat.read_dta(ruta_input, metadataonly=True)
+        cols_reales = meta.column_names
 
-            df_t['provincia_cod'] = df_t.apply(lambda x: extraer_provincia_wil(x, columna_a_usar), axis=1)
-            df_t['anio'] = anio
-            df_t['id_persona'] = df_t.index
+        id_vars_req = ['ciudad', 'zona', 'sector', 'panelm', 'conglomerado', 'vivienda', 'hogar', 'p01', 'persona', 'formul']
+        needed = list(dict.fromkeys([orig for orig in cols_reales if orig.lower() in [n.lower() for n in (id_vars_req + [columna_dta])]]))
 
-            datos_prov_acumulados.append(df_t[['anio', 'id_persona', 'provincia_cod']])
-        except Exception as e:
-            print(f"⚠️ Error en {anio}: {e}")
-    else:
-        print(f"❌ {anio} Faltante")
+        df_temp = pd.read_stata(ruta_input, columns=needed, convert_categoricals=False)
+        df_temp.columns = df_temp.columns.str.lower()
+        df_temp['anio'] = anio
 
-# Unión final
-df_prov_master = pd.concat(datos_prov_acumulados, ignore_index=True)
-ruta_save = os.path.join(path_limpias, "Master_Provincia_90_24.dta")
-pyreadstat.write_dta(df_prov_master, ruta_save)
+        # Lógica de IDs idéntica al Master
+        if 1990 <= anio <= 2000: comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'formul', 'persona']
+        elif 2001 <= anio <= 2002: comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'persona']
+        elif 2003 <= anio <= 2017: comp = ['ciudad', 'zona', 'sector', 'panelm', 'vivienda', 'hogar', 'p01', 'persona']
+        else: comp = ['ciudad', 'conglomerado', 'panelm', 'vivienda', 'hogar', 'p01']
 
-print(f"\n\n✅ PROCESO TERMINADO. Registros: {len(df_prov_master)}")
+        present_comp = [v for v in comp if v in df_temp.columns]
+        for v in present_comp:
+            l = 6 if v == 'ciudad' else 3 if v in ['zona', 'sector', 'panelm', 'conglomerado'] else 2
+            df_temp[v] = df_temp[v].apply(lambda x: pad_id(x, l))
 
-# Tabla de control: ¿Cómo se ven los códigos por año?
-control_prov = pd.crosstab(df_prov_master['anio'], df_prov_master['provincia_cod'])
+        df_temp['id_persona'] = df_temp[present_comp].agg(''.join, axis=1)
+        df_temp['persona2'] = df_temp.groupby('id_persona').cumcount() + 1
+        mask = df_temp.duplicated(subset=['id_persona'], keep=False)
+        df_temp.loc[mask, 'id_persona'] = df_temp['id_persona'] + df_temp['persona2'].astype(str)
 
-print("📋 TABLA DE CONTROL: CÓDIGOS DE PROVINCIA POR AÑO")
-print("-" * 80)
-# Mostramos una muestra de los códigos para verificar
-display(control_prov[['01', '09', '17', '23', '24']].tail(15))
+        # Provincia
+        df_temp['provincia_cod'] = df_temp.apply(lambda x: extraer_provincia_wil_v2(x, columna_dta.lower()), axis=1)
+        df_temp['provincia_nombre'] = df_temp['provincia_cod'].map(dict_provincias).fillna("N/D")
 
-# Verificación de "N/D"
-total_nd = df_prov_master[df_prov_master['provincia_cod'] == 'N/D'].shape[0]
-print(f"\n❓ Total de registros con N/D: {total_nd} ({round(total_nd/len(df_prov_master)*100, 2)}%)")
+        lista_provincias.append(df_temp[['id_persona', 'anio', 'provincia_cod', 'provincia_nombre']])
+        print("✅")
+
+# --- 4. CONSOLIDACIÓN, RESPALDO Y UNIÓN ---
+print("\n🔄 Generando respaldo y uniendo al Master...")
+df_res_prov = pd.concat(lista_provincias, ignore_index=True).drop_duplicates(subset=['id_persona', 'anio'])
+
+# Guardar respaldo (útil para el futuro)
+df_res_prov.to_stata(ruta_respaldo, write_index=False)
+print(f"💾 Respaldo guardado en: {ruta_respaldo}")
+
+# Merge Left
+df_master = pd.merge(df_master, df_res_prov, on=['id_persona', 'anio'], how='left')
+
+# El "Seguro de Calidad": Borrar registros que no hicieron match (basura/fantasmas)
+antes = len(df_master)
+df_master = df_master.dropna(subset=['provincia_nombre'])
+df_master = df_master[df_master['provincia_nombre'] != "N/D"]
+despues = len(df_master)
+
+# Guardado final
+df_master.to_stata(ruta_master, write_index=False)
+
+print("-" * 50)
+print(f"📉 Registros basura eliminados: {antes - despues}")
+print(f"🚀 MASTER ACTUALIZADO: {len(df_master)} registros limpios.")
+
+"""### **Tabla**"""
 
 import pandas as pd
+
+# 1. Cargar el Master actualizado
+ruta_master = "/content/drive/MyDrive/Observatorio/Bases_limpias/MASTER_ENEMDU_CONSOLIDADO.dta"
+df_final = pd.read_stata(ruta_master)
+
+# 2. Crear la Tabla de Frecuencias (Número de encuestas por provincia y año)
+# Mostramos los últimos años para verificar que el 2024 esté completo y el 2025 haya desaparecido
+años_finales = sorted(df_final['anio'].unique())[-10:]
+tabla_frecuencia = df_final[df_final['anio'].isin(años_finales)].groupby(['provincia_nombre', 'anio']).size().unstack(fill_value=0)
+
+print("📊 AUDITORÍA GEOGRÁFICA: NÚMERO DE ENCUESTAS")
+print("-" * 85)
+display(tabla_frecuencia)
+
+# 3. Crear la Tabla de Participación Porcentual
+# Esto nos ayuda a ver si la representatividad se mantiene estable
+tabla_pct = (df_final.groupby(['anio', 'provincia_nombre']).size() / df_final.groupby('anio').size() * 100).unstack(fill_value=0)
+
+print("\n🌍 DISTRIBUCIÓN PORCENTUAL DE LA MUESTRA (Top Provincias)")
+print("-" * 85)
+# Mostramos las provincias con más peso para los últimos 5 años
+display(tabla_pct.round(2).tail(5))
+
+# 4. Verificación de limpieza
+fantasmas = df_final[df_final['anio'] > 2024].shape[0]
+nulos = df_final['provincia_nombre'].isna().sum()
+
+print("\n🔍 ESTADO DE SALUD DE LA BASE:")
+print(f"✅ Registros del año 2025 encontrados: {fantasmas}")
+print(f"✅ Registros sin provincia (NaN): {nulos}")
+print(f"✅ Total de registros en el Master: {len(df_final)}")
+
+"""**Gráfico**"""
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 
-# --- 1. CONFIGURACIÓN Y MAPEO ---
-# Cargamos el Master de Provincias que generamos
-path_limpias = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-ruta_master_prov = os.path.join(path_limpias, "Master_Provincia_90_24.dta")
-df_prov = pd.read_stata(ruta_master_prov)
+# 1. Cargar datos del Master recién guardado
+ruta_master = "/content/drive/MyDrive/Observatorio/Bases_limpias/MASTER_ENEMDU_CONSOLIDADO.dta"
+df_plot = pd.read_stata(ruta_master)
 
-# Diccionario Maestro para etiquetas legibles (Opcional, pero muy recomendado)
-DICCIONARIO_NOMBRES = {
-    '01': 'Azuay', '02': 'Bolívar', '03': 'Cañar', '04': 'Carchi', '05': 'Cotopaxi',
-    '06': 'Chimborazo', '07': 'El Oro', '08': 'Esmeraldas', '09': 'Guayas', '10': 'Imbabura',
-    '11': 'Loja', '12': 'Los Ríos', '13': 'Manabí', '14': 'Morona S.', '15': 'Napo',
-    '16': 'Pastaza', '17': 'Pichincha', '18': 'Tungurahua', '19': 'Zamora C.',
-    '20': 'Galápagos', '21': 'Sucumbíos', '22': 'Orellana', '23': 'Sto. Domingo', '24': 'Sta. Elena',
-    '90': 'Zonas N.D.'
-}
+# 2. Preparar los datos (Promedio de registros por provincia en los últimos 5 años)
+ultimos_anios = sorted(df_plot['anio'].unique())[-5:]
+df_reciente = df_plot[df_plot['anio'].isin(ultimos_anios)]
 
-# --- 2. PREPARACIÓN DE DATOS (HEATMAP) ---
-# Creamos la tabla de contingencia (Año vs Código de Provincia)
-tabla_heat = pd.crosstab(df_prov['anio'], df_prov['provincia_cod'], normalize='index') * 100
+# Calcular el promedio anual por provincia
+conteo_prov = df_reciente.groupby(['provincia_nombre', 'anio']).size().reset_index(name='n')
+promedio_final = conteo_prov.groupby('provincia_nombre')['n'].mean().sort_values(ascending=False).reset_index()
 
-# Reordenamos las provincias para que sigan el orden lógico DPA (01 a 24)
-columnas_ordenadas = sorted([c for c in tabla_heat.columns if c.isdigit()])
-tabla_heat = tabla_heat[columnas_ordenadas]
+# 3. Crear el gráfico
+plt.figure(figsize=(12, 10))
+sns.set_style("whitegrid")
 
-# Renombramos las columnas usando el diccionario para que el gráfico tenga nombres
-tabla_heat.columns = [DICCIONARIO_NOMBRES.get(c, c) for c in tabla_heat.columns]
+# Paleta de colores degradada
+paleta = sns.color_palette("mako", len(promedio_final))
 
-# --- 3. GENERACIÓN DEL GRÁFICO (HEATMAP) ---
-plt.figure(figsize=(16, 10))
+ax = sns.barplot(
+    x='n',
+    y='provincia_nombre',
+    data=promedio_final,
+    palette=paleta,
+    hue='provincia_nombre',
+    legend=False
+)
 
-# Usamos la paleta "YlGnBu" (de amarillo a azul oscuro) para marcar la densidad
-sns.heatmap(tabla_heat.T, # Transponemos para que las provs queden en el eje Y
-            cmap="YlGnBu",
-            linewidths=.2,
-            cbar_kws={'label': 'Participación en la Muestra (%)'},
-            xticklabels=2, # Mostramos el año cada 2 para que no se amontonen
-            )
+# 4. Personalización y Estética
+plt.title(f'Representatividad Geográfica Promedio\n(Periodo {ultimos_anios[0]} - {ultimos_anios[-1]})',
+          fontsize=16, fontweight='bold', pad=20)
+plt.xlabel('Número Promedio de Personas Encuestadas por Año', fontsize=12)
+plt.ylabel('Provincia', fontsize=12)
 
-# Personalización
-plt.title('Mapa de Calor de Consistencia Provincial: Participación Relativa (1990-2024)', fontsize=16, fontweight='bold')
-plt.ylabel('Provincia (Código DPA)', fontsize=12)
-plt.xlabel('Año de la Encuesta', fontsize=12)
+# Añadir las etiquetas de valor al final de cada barra
+for p in ax.patches:
+    width = p.get_width()
+    ax.annotate(f'{int(width):,}',
+                (width, p.get_y() + p.get_height() / 2),
+                ha='left', va='center',
+                xytext=(5, 0),
+                textcoords='offset points',
+                fontsize=10,
+                fontweight='bold')
 
-# Ajuste de las etiquetas del eje Y para que no se corten
-plt.xticks(rotation=45)
-plt.tight_layout()
+# 5. Guardar el resultado final
+ruta_grafico = "/content/drive/MyDrive/Observatorio/Bases_limpias/Grafico_Distribucion_Provincial.png"
+plt.savefig(ruta_grafico, dpi=300, bbox_inches='tight')
+
 plt.show()
 
-# --- 4. BONUS: CÁLCULO DE N/D (CONFIRMACIÓN) ---
-print("-" * 50)
-print("📌 Verificación final de registros N/D:")
-total_registros = len(df_prov)
-total_nd = df_prov[df_prov['provincia_cod'] == 'N/D'].shape[0]
-print(f"Total registros: {total_registros}")
-print(f"Registros N/D: {total_nd} (0.0%)")
+print(f"✅ Gráfico generado y guardado en: {ruta_grafico}")
+
+"""### **Gráfico**"""
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# 1. Cargar el Master
+ruta_master = "/content/drive/MyDrive/Observatorio/Bases_limpias/MASTER_ENEMDU_CONSOLIDADO.dta"
+df_heat = pd.read_stata(ruta_master)
+
+# 2. Calcular porcentajes por año y provincia
+# Creamos la tabla pivote de Participación %
+tabla_pct = pd.crosstab(df_heat['provincia_nombre'], df_heat['anio'], normalize='columns') * 100
+
+# 3. Configuración estética del gráfico
+plt.figure(figsize=(16, 12)) # Un poco más alto para dar aire a los nombres
+sns.set_context("notebook", font_scale=1.1)
+sns.set_style("white")
+
+# Crear el Heatmap
+# Cambiamos annot=False para quitar las etiquetas numéricas
+ax = sns.heatmap(
+    tabla_pct,
+    annot=False,      # Desactiva las anotaciones
+    cmap="YlGnBu",     # Paleta de colores: Amarillo -> Verde -> Azul oscuro
+    linewidths=0.1,   # Líneas muy finas entre celdas para separar sutilmente
+    cbar_kws={
+        'label': 'Participación Porcentual (%) en la Muestra Anual',
+        'orientation': 'vertical',
+        'shrink': 0.8  # Achica un poco la barra de color para que no sature
+    }
+)
+
+# 4. Personalización de etiquetas y títulos
+plt.title('Mapa de Calor: Intensidad de Muestreo por Provincia y Año\n(Distribución % de la ENEMDU 1990 - 2024)',
+          fontsize=20, fontweight='bold', pad=30)
+plt.xlabel('Año de la Encuesta (Diciembre)', fontsize=14, labelpad=15)
+plt.ylabel('Provincia', fontsize=14, labelpad=15)
+
+# Rotar y ajustar las etiquetas de los ejes para que no se corten
+plt.xticks(rotation=45, ha='right')
+plt.yticks(rotation=0)
+
+# Ajuste automático del diseño para que todo quepa perfectamente
+plt.tight_layout()
+
+# 5. Guardado del gráfico final
+ruta_heatmap_limpio = "/content/drive/MyDrive/Observatorio/Bases_limpias/Heatmap_Provincial_Limpio.png"
+plt.savefig(ruta_heatmap_limpio, dpi=300, bbox_inches='tight')
+
+plt.show()
+
+print(f"✅ Mapa de calor limpio generado y guardado en: {ruta_heatmap_limpio}")
 
 """## **Nivel educativo**"""
 
@@ -1024,290 +1426,244 @@ with pd.option_context('display.max_rows', None, 'display.max_colwidth', 100):
         print("⚠️ No se encontró el concepto. Revisa los nombres en la columna 'Concepto_Analisis'.")
 
 import pandas as pd
-import pyreadstat
 import os
+import pyreadstat
+import numpy as np
 
-# --- 1. FUNCIÓN DE ARMONIZACIÓN (La "Traducción") ---
-def armonizar_educacion_wil(row, col, anio):
+# --- 1. CONFIGURACIÓN ---
+path_base = "/content/drive/MyDrive/Observatorio/Bases/ENEMDU/Originales/Diciembres"
+path_salida = "/content/drive/MyDrive/Observatorio/Bases_limpias"
+ruta_master = os.path.join(path_salida, "MASTER_ENEMDU_CONSOLIDADO.dta")
+ruta_respaldo_edu = os.path.join(path_salida, "educacion_armonizada.dta")
+
+# --- 2. FUNCIONES DE APOYO (Lógica Integrada) ---
+def obtener_columna_edu(anio):
+    return 'p10a' if anio >= 2007 else 'nivinst'
+
+def armonizar_y_clasificar(row, col, anio):
     try:
-        if col not in row or pd.isna(row[col]): return "N/D"
+        if col not in row or pd.isna(row[col]): return "N/D", "N/D"
         v = int(float(row[col]))
 
-        # Época A: 1990 - 2000 (Escala de 5 niveles)
+        # Mapeo de Nivel General
         if anio <= 2000:
-            mapping = {1: "1. Sin Instrucción", 2: "1. Sin Instrucción",
-                       3: "2. Primaria", 4: "3. Secundaria", 5: "4. Superior"}
-
-        # Época B: 2001 - 2002 (Escala de 8 niveles)
+            m = {1:"1. Sin Instrucción", 2:"1. Sin Instrucción", 3:"2. Primaria", 4:"3. Secundaria", 5:"4. Superior"}
         elif 2001 <= anio <= 2002:
-            mapping = {1: "1. Sin Instrucción", 2: "1. Sin Instrucción", 3: "1. Sin Instrucción",
-                       4: "2. Primaria", 5: "3. Secundaria", 6: "4. Superior", 7: "4. Superior",
-                       8: "5. Postgrado"}
-
-        # Época C: 2003 - 2024 (Escala de 10 niveles - Reforma Educativa)
+            m = {1:"1. Sin Instrucción", 2:"1. Sin Instrucción", 3:"1. Sin Instrucción", 4:"2. Primaria", 5:"3. Secundaria", 6:"4. Superior", 7:"4. Superior", 8:"5. Postgrado"}
         else:
-            mapping = {1: "1. Sin Instrucción", 2: "1. Sin Instrucción", 3: "1. Sin Instrucción",
-                       4: "2. Primaria", 5: "2. Primaria", 6: "3. Secundaria", 7: "3. Secundaria",
-                       8: "4. Superior", 9: "4. Superior", 10: "5. Postgrado"}
+            m = {1:"1. Sin Instrucción", 2:"1. Sin Instrucción", 3:"1. Sin Instrucción", 4:"2. Primaria", 5:"2. Primaria", 6:"3. Secundaria", 7:"3. Secundaria", 8:"4. Superior", 9:"4. Superior", 10:"5. Postgrado"}
 
-        return mapping.get(v, "N/D")
-    except:
-        return "N/D"
+        nivel = m.get(v, "N/D")
 
-# --- 2. LOOP DE INTEGRACIÓN ---
-datos_edu_acumulados = []
+        # Clasificación Binaria
+        if nivel in ["4. Superior", "5. Postgrado"]:
+            bi = "Universitario"
+        elif nivel in ["1. Sin Instrucción", "2. Primaria", "3. Secundaria"]:
+            bi = "No Universitario"
+        else:
+            bi = "N/D"
+
+        return nivel, bi
+    except: return "N/D", "N/D"
+
+def pad_id(val, length):
+    try: return str(int(float(val))).zfill(length)
+    except: return "0" * length
+
+# --- 3. PROCESAMIENTO ÚNICO ---
+lista_edu = []
 
 for anio in range(1990, 2025):
-    info_anio = df_mapa[(df_mapa['Año'] == anio) & (df_mapa['Concepto_Analisis'] == 'Educación')]
-    if info_anio.empty: continue
+    col_edu = obtener_columna_edu(anio)
+    sub = "1990-1999" if anio <= 1999 else "2000-2006" if anio <= 2006 else "2007-2017" if anio <= 2017 else os.path.join("2018-presente", "Trimestrales")
+    ruta_in = os.path.join(path_base, sub, f"empleo{anio}.dta")
 
-    # Detectamos cuál variable usar según tu reporte (p10a o nivinst)
-    columna_a_usar = info_anio['Variable_Original_DTA'].iloc[0]
-    # (Si hay dos variables como p10a y p10b, tomamos la categórica p10a)
+    if os.path.exists(ruta_in):
+        print(f"🎓 Procesando {anio}...", end=" ")
 
-    sub = "1990-1999" if anio <= 1999 else "2000-2006" if anio <= 2006 else "2007-2017" if anio <= 2017 else "2018-presente/Trimestrales"
-    ruta = os.path.join(path_base, sub, f"empleo{anio}.dta")
+        # Identificadores (Blindado)
+        if anio <= 2000: comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'formul', 'persona']
+        elif 2001 <= anio <= 2002: comp = ['ciudad', 'zona', 'sector', 'vivienda', 'hogar', 'persona']
+        elif 2003 <= anio <= 2017: comp = ['ciudad', 'zona', 'sector', 'panelm', 'vivienda', 'hogar', 'p01', 'persona']
+        else: comp = ['ciudad', 'conglomerado', 'panelm', 'vivienda', 'hogar', 'p01']
 
-    if os.path.exists(ruta):
-        # Leemos solo la columna de educación
-        df_t, _ = pyreadstat.read_dta(ruta, usecols=[columna_a_usar])
+        _, meta = pyreadstat.read_dta(ruta_in, metadataonly=True)
+        reales = [c.lower() for c in meta.column_names]
+        cols_ok = [c for c in list(set(comp + [col_edu])) if c.lower() in reales]
 
-        # Aplicamos la armonización
-        df_t['nivel_educativo'] = df_t.apply(lambda x: armonizar_educacion_wil(x, columna_a_usar, anio), axis=1)
+        df_t = pd.read_stata(ruta_in, columns=cols_ok, convert_categoricals=False)
+        df_t.columns = df_t.columns.str.lower()
+
+        # ID Blindado
+        id_comp = [c for c in comp if c.lower() in df_t.columns]
+        for v in id_comp:
+            df_t[v] = df_t[v].apply(lambda x: pad_id(x, 6 if v == 'ciudad' else 3 if v in ['zona','sector','panelm','conglomerado'] else 2))
+        df_t['id_persona'] = df_t[id_comp].agg(''.join, axis=1)
+        df_t['persona2'] = df_t.groupby('id_persona').cumcount() + 1
+        mask = df_t.duplicated(subset=['id_persona'], keep=False)
+        df_t.loc[mask, 'id_persona'] = df_t['id_persona'] + df_t['persona2'].astype(str)
+
+        # ARMONIZACIÓN DOBLE (Nivel y Binario)
+        res = df_t.apply(lambda x: armonizar_y_clasificar(x, col_edu, anio), axis=1)
+        df_t['nivel_educativo'] = [r[0] for r in res]
+        df_t['nivel_binario'] = [r[1] for r in res]
         df_t['anio'] = anio
-        df_t['id_persona'] = df_t.index
 
-        datos_edu_acumulados.append(df_t[['anio', 'id_persona', 'nivel_educativo']])
-        print(f"🎓 {anio} OK ({columna_a_usar})", end=" | ")
+        lista_edu.append(df_t[['id_persona', 'anio', 'nivel_educativo', 'nivel_binario']])
+        print("✅")
 
-# Unificar y Guardar
-df_edu_final = pd.concat(datos_edu_acumulados, ignore_index=True)
-df_edu_final.to_stata(os.path.join(path_limpias, "Master_Educacion_90_24.dta"), write_index=False)
+# --- 4. CONSOLIDACIÓN FINAL ---
+df_edu_total = pd.concat(lista_edu, ignore_index=True)
+df_edu_total.to_stata(ruta_respaldo_edu, write_index=False)
 
-# Verificamos la evolución de la educación en Ecuador
-tabla_edu = pd.crosstab(df_edu_final['anio'], df_edu_final['nivel_educativo'], normalize='index') * 100
+# Cargar Master, limpiar columnas viejas y unir
+df_master = pd.read_stata(ruta_master)
+df_master = df_master.drop(columns=['nivel_educativo', 'nivel_binario'], errors='ignore')
+df_master = pd.merge(df_master, df_edu_total, on=['id_persona', 'anio'], how='left')
 
-print("📈 EVOLUCIÓN DEL NIVEL EDUCATIVO (1990-2024)")
-print("-" * 80)
-display(tabla_edu.round(2))
+# Guardar
+df_master.to_stata(ruta_master, write_index=False)
+print(f"\n🚀 PROCESO ULTRA-EFICIENTE TERMINADO")
+print(f"📊 Tabla de control:\n", df_master.groupby(['anio', 'nivel_binario']).size().unstack().tail(5))
+
+"""### **Tabla**"""
+
+import pandas as pd
+
+# 1. Cargar el Master
+ruta_master = "/content/drive/MyDrive/Observatorio/Bases_limpias/MASTER_ENEMDU_CONSOLIDADO.dta"
+df = pd.read_stata(ruta_master)
+
+# 2. Crear tabla de porcentajes
+# Excluimos N/D para ver la distribución real de la fuerza laboral/población estudiantil
+df_validos = df[df['nivel_binario'] != "N/D"]
+
+# Generamos la tabla cruzada normalizada por fila (año)
+tabla_porcentajes = pd.crosstab(
+    df_validos['anio'],
+    df_validos['nivel_binario'],
+    normalize='index'
+) * 100
+
+# 3. Formatear para que se vea impecable
+tabla_porcentajes = tabla_porcentajes.round(2)
+tabla_porcentajes.columns.name = "Distribución %"
+
+# 4. Mostrar y Guardar
+print("📈 Evolución Porcentual del Nivel Educativo (1990 - 2024)")
+print(tabla_porcentajes)
+
+# Guardar reporte en Excel para tus presentaciones
+ruta_reporte = "/content/drive/MyDrive/Observatorio/Bases_limpias/Reporte_Porcentajes_Educacion.xlsx"
+tabla_porcentajes.to_excel(ruta_reporte)
+print(f"\n✅ Reporte guardado en: {ruta_reporte}")
+
+"""### **Gráfico**"""
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# 1. Preparar los datos para la gráfica
-# Usamos la tabla_edu que generamos en el bloque anterior
-plot_data = tabla_edu.copy()
+# 1. Preparar los datos (usando la tabla de porcentajes anterior)
+df_plot = tabla_porcentajes.reset_index()
 
 # 2. Configurar el estilo
-plt.figure(figsize=(14, 8))
+plt.figure(figsize=(12, 6))
 sns.set_style("whitegrid")
 
 # 3. Crear el gráfico de áreas apiladas
-paleta = sns.color_palette("viridis", n_colors=len(plot_data.columns))
-
-plt.stackplot(plot_data.index,
-              [plot_data[col] for col in plot_data.columns],
-              labels=plot_data.columns,
-              colors=paleta,
+plt.stackplot(df_plot['anio'],
+              df_plot['No Universitario'],
+              df_plot['Universitario'],
+              labels=['No Universitario', 'Universitario'],
+              colors=['#ff9999','#66b3ff'],
               alpha=0.8)
 
 # 4. Personalización estética
-plt.title('Evolución de la Estructura Educativa en Ecuador (1990-2024)', fontsize=16, fontweight='bold')
-plt.ylabel('Distribución Porcentual (%)', fontsize=12)
+plt.title('Consistencia Histórica: Evolución del Nivel Educativo (1990-2024)', fontsize=15)
 plt.xlabel('Año', fontsize=12)
-plt.legend(loc='upper left', bbox_to_anchor=(1, 1), title="Nivel Instrucción")
+plt.ylabel('Porcentaje (%)', fontsize=12)
+plt.legend(loc='upper left')
 plt.xlim(1990, 2024)
 plt.ylim(0, 100)
 
-# Añadir una nota sobre la reforma educativa
-plt.annotate('Reforma Educativa\n(10 niveles)', xy=(2003, 50), xytext=(1995, 20),
-             arrowprops=dict(facecolor='black', shrink=0.05, width=1))
+# Añadir una línea vertical en hitos (opcional)
+plt.axvline(x=2007, color='black', linestyle='--', alpha=0.5)
+plt.text(2007.5, 10, 'Cambio a p10a', rotation=0, fontsize=9)
 
 plt.tight_layout()
 plt.show()
-
-"""### **Opcion 2 Nivel educativo**"""
-
-import pandas as pd
-
-# 1. Cargar el mapa maestro actualizado
-ruta_mapa = "/content/drive/MyDrive/Observatorio/Bases_limpias/Mapa_Maestro_1990_2024.xlsx"
-df_mapa = pd.read_excel(ruta_mapa)
-
-# 2. Filtrar por los conceptos de Nivel y Años de estudio
-# Buscamos ambos para ver cómo se emparejan por año
-conceptos_edu = ['Educación', 'Nivel Instrucción', 'Años de estudio', 'Grado aprobado']
-filtro_edu_completo = df_mapa['Concepto_Analisis'].str.contains('|'.join(conceptos_edu), case=False, na=False)
-
-df_edu_duo = df_mapa[filtro_edu_completo][['Año', 'Concepto_Analisis', 'Variable_Original_DTA', 'Etiquetas_Diccionario']].sort_values(['Año', 'Concepto_Analisis'])
-
-# 3. Mostrar reporte enfocado en la transición
-print("📊 AUDITORÍA DE CONSISTENCIA: NIVEL vs. AÑOS (1990-2024)")
-print("-" * 120)
-with pd.option_context('display.max_rows', None, 'display.max_colwidth', 80):
-    print(df_edu_duo.to_string(index=False))
-
-import pandas as pd
-import numpy as np
-import pyreadstat
-import os
-
-datos_escolaridad_corregidos = []
-
-# Supongamos que path_base ya está definido hacia tus carpetas de empleo
-for anio in range(1990, 2025):
-    # 1. Obtener nombres de variables del Mapa Maestro
-    info_anio = df_mapa[df_mapa['Año'] == anio]
-
-    # Buscamos la variable de NIVEL y la de AÑOS
-    try:
-        col_niv = info_anio[info_anio['Variable_Original_DTA'].str.contains('nivinst|p10a', na=False)]['Variable_Original_DTA'].iloc[0]
-        col_ano = info_anio[info_anio['Variable_Original_DTA'].str.contains('anoinst|p10b', na=False)]['Variable_Original_DTA'].iloc[0]
-    except IndexError:
-        print(f"⚠️ {anio}: No se encontraron variables en el mapa.")
-        continue
-
-    # 2. Definir ruta según tu estructura de carpetas
-    sub = "1990-1999" if anio <= 1999 else "2000-2006" if anio <= 2006 else "2007-2017" if anio <= 2017 else "2018-presente/Trimestrales"
-    ruta = os.path.join(path_base, sub, f"empleo{anio}.dta")
-
-    if os.path.exists(ruta):
-        # Leemos solo lo necesario para ahorrar memoria
-        df_t, _ = pyreadstat.read_dta(ruta, usecols=[col_niv, col_ano])
-
-        # FORZAMOS NUMÉRICO: A veces pyreadstat lee como categorías
-        df_t[col_niv] = pd.to_numeric(df_t[col_niv], errors='coerce')
-        df_t[col_ano] = pd.to_numeric(df_t[col_ano], errors='coerce')
-
-        # 3. Aplicamos la lógica de cálculo (Fórmula simplificada para velocidad)
-        def calcular_directo(row, n_col, a_col, a):
-            niv = row[n_col]
-            extra = row[a_col]
-            if pd.isna(niv): return np.nan
-            # Limpiar el código 99 o valores absurdos de años extra
-            extra = extra if (pd.notna(extra) and extra < 15) else 0
-
-            # Base de años según la época (Ajustado a tu auditoría anterior)
-            if a <= 2002:
-                mapping = {1:0, 2:0, 3:0, 4:6, 5:12} # 1990-2002
-            else:
-                mapping = {1:0, 2:0, 3:0, 4:0, 5:0, 6:6, 7:6, 8:12, 9:12, 10:17} # Reforma
-
-            return mapping.get(niv, 0) + extra
-
-        df_t['anios_estudio'] = df_t.apply(lambda x: calcular_directo(x, col_niv, col_ano, anio), axis=1)
-        df_t['anio'] = anio
-
-        datos_escolaridad_corregidos.append(df_t[['anio', 'anios_estudio']])
-        print(f"✅ {anio} Procesado | Media: {df_t['anios_estudio'].mean():.2f}")
-    else:
-        print(f"❌ {anio}: Archivo no encontrado en {ruta}")
-
-# Unificar todo
-df_edu_final = pd.concat(datos_escolaridad_corregidos, ignore_index=True)
-
-# Estadísticas descriptivas finales
-resumen = df_edu_final.groupby('anio')['anios_estudio'].agg(['mean', 'std', 'max', 'count']).round(2)
-display(resumen)
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
+import pandas as pd
 
-# Configuramos el estilo
-plt.figure(figsize=(15, 8))
-sns.set_context("talk")
+# 1. PREPARACIÓN DE DATOS (Filtramos N/D para que el % sea sobre población con nivel reportado)
+df_edu_valid = df_master[df_master['nivel_binario'] != "N/D"].copy()
 
-# Graficamos la media
-plt.plot(resumen.index, resumen['mean'], marker='o', color='#1F618D', linewidth=3, label='Media de Años de Estudio')
+# Mapeo de etiquetas de área
+df_edu_valid['area_label'] = df_edu_valid['area_armonizada'].astype(str).map({
+    '1': 'Urbano', '1.0': 'Urbano', 'Urbano': 'Urbano',
+    '2': 'Rural', '2.0': 'Rural', 'Rural': 'Rural'
+})
 
-# Añadimos áreas de confianza (opcional pero elegante)
-plt.fill_between(resumen.index, resumen['mean'] - 0.5, resumen['mean'] + 0.5, color='#AED6F1', alpha=0.3)
+# Agrupamos por Año, Área y Nivel Binario
+df_edu_plot = df_edu_valid.groupby(['anio', 'area_label', 'nivel_binario']).size().reset_index(name='conteo')
+df_total_edu = df_edu_valid.groupby(['anio', 'area_label']).size().reset_index(name='total')
 
-# Anotaciones de hitos históricos
-plt.axvline(x=2003, color='red', linestyle='--', alpha=0.6)
-plt.text(2003.5, 6, 'Reforma Educativa\n(Educación Básica)', color='red', fontsize=12)
+df_final = pd.merge(df_edu_plot, df_total_edu, on=['anio', 'area_label'])
+df_final['porcentaje'] = (df_final['conteo'] / df_final['total']) * 100
 
-plt.axvline(x=2007, color='green', linestyle='--', alpha=0.6)
-plt.text(2007.5, 9, 'Cambio de Metodología\n(p10a / p10b)', color='green', fontsize=12)
+# 2. FUNCIÓN DE GRÁFICO (Stacked Area)
+def edu_stack_plot(data, **kwargs):
+    if data.empty:
+        return
 
-# Estética
-plt.title('Evolución del Capital Humano en Ecuador (1990-2024)', fontsize=20, fontweight='bold')
-plt.xlabel('Año', fontsize=14)
-plt.ylabel('Promedio de Años de Escolaridad', fontsize=14)
-plt.grid(True, which='both', linestyle='--', alpha=0.5)
-plt.xticks(resumen.index[::2], rotation=45)
-plt.legend()
+    # Pivotamos para tener niveles como columnas
+    pivot = data.pivot(index='anio', columns='nivel_binario', values='porcentaje').fillna(0)
 
-plt.tight_layout()
+    # Ordenamos: No Universitario abajo, Universitario arriba
+    cols = ["No Universitario", "Universitario"]
+    cols_presentes = [c for c in cols if c in pivot.columns]
+
+    if len(cols_presentes) == 0:
+        return
+
+    pivot = pivot[cols_presentes]
+
+    # Graficamos
+    plt.stackplot(pivot.index, pivot.T,
+                  labels=pivot.columns,
+                  alpha=0.8,
+                  colors=['#ff9999','#66b3ff']) # Rojo suave y Azul suave
+
+    # Línea de cambio metodológico
+    plt.axvline(x=2007, color='black', linestyle='--', alpha=0.3)
+
+# 3. EJECUCIÓN DEL FACETGRID
+sns.set_style("whitegrid")
+g = sns.FacetGrid(df_final, col="area_label", hue="nivel_binario",
+                  height=6, aspect=1.2, col_order=['Urbano', 'Rural'], sharex=False)
+
+g.map_dataframe(edu_stack_plot)
+
+# 4. ESTÉTICA FINAL
+g.set_titles("{col_name}", size=15, fontweight='bold')
+g.set_axis_labels("Año", "Distribución de Nivel Educativo (%)")
+g.add_legend(title="Nivel")
+
+for ax in g.axes.flat:
+    ax.set_ylim(0, 100)
+    ax.set_xlim(1990, 2024)
+    ax.set_xticks([1990, 2000, 2007, 2015, 2024])
+
+plt.subplots_adjust(top=0.8)
+g.fig.suptitle('Evolución Educativa en Ecuador: Brecha Urbano vs Rural (1990-2024)',
+               fontsize=18, fontweight='bold', y=1.02)
+
+# 5. GUARDAR
+ruta_grafico_edu_ur = os.path.join(path_limpias, "Grafico_Educacion_Urbano_Rural.png")
+plt.savefig(ruta_grafico_edu_ur, dpi=300, bbox_inches='tight')
 plt.show()
 
-"""**Unir bases**"""
-
-import pandas as pd
-import os
-
-path_guardado = "/content/drive/MyDrive/Observatorio/Bases_limpias"
-
-# 1. Definimos la lista de archivos a unir
-archivos = [
-    "Master_Provincia_90_24.dta",
-    "Master_Edad_90_24.dta",
-    "Master_Educacion_90_24.dta",
-    "Master_Sector_Informal_90_24.dta",
-    "Master_Afiliacion_Estricta_90_24.dta"
-]
-
-print("🧵 Iniciando la costura de bases maestras...")
-
-# 2. Cargamos el primer archivo como base
-df_final = pd.read_stata(os.path.join(path_guardado, archivos[0]))
-print(f"✅ Base inicial cargada: {archivos[0]} ({df_final.shape[0]:,} registros)")
-
-# 3. Unimos los demás archivos uno por uno
-for archivo in archivos[1:]:
-    df_temp = pd.read_stata(os.path.join(path_guardado, archivo))
-
-    # Unimos horizontalmente (asumiendo que el orden de filas es idéntico)
-    # Si tienen una columna 'id' o similar, se usa: on=['anio', 'id']
-    # Si no, concatenamos columnas nuevas descartando las repetidas (como 'anio')
-    columnas_nuevas = df_temp.columns.difference(df_final.columns)
-    df_final = pd.concat([df_final, df_temp[columnas_nuevas]], axis=1)
-
-    print(f"✅ Integrado: {archivo}. Columnas totales: {df_final.shape[1]}")
-
-# 4. Exportación del "Santo Grial" de tu tesis
-ruta_final = os.path.join(path_guardado, "Base_Ecuador_1990_2024.parquet")
-# Uso Parquet porque es 10 veces más rápido y ligero que .dta para archivos gigantes
-df_final.to_parquet(ruta_final, index=False)
-
-print("-" * 50)
-print(f"🏆 ¡LOGRADO! Base única generada en: {ruta_final}")
-
-import pandas as pd
-
-# 1. Cargar la base final (ajusta el nombre si usaste .dta o .parquet)
-ruta_base_final = "/content/drive/MyDrive/Observatorio/Bases_limpias/Base_Ecuador_1990_2024.parquet"
-df_master = pd.read_parquet(ruta_base_final)
-
-def check_final(df):
-    print("📋 INSPECCIÓN TÉCNICA DE LA BASE MAESTRA")
-    print("-" * 80)
-
-    # Check 1: ¿Están todas las variables?
-    print(f"✅ Variables detectadas: {list(df.columns)}")
-
-    # Check 2: ¿Hay filas vacías?
-    nulos = df.isnull().sum().sum()
-    print(f"✅ Total de datos nulos en toda la base: {nulos}")
-
-    # Check 3: Resumen por variable clave
-    print("\n🧐 MUESTRA DE CONSISTENCIA (Primeros 5 registros):")
-    # Correcting the column names to match the actual DataFrame columns
-    display(df[['anio', 'provincia_cod', 'edad_num', 'nivel_educativo', 'sector_informal']].head())
-
-    # Check 4: ¿El sector informal tiene datos en todos los años?
-    print("\n📉 CONTEO DE REGISTROS POR AÑO (Primeros y últimos):")
-    counts = df.groupby('anio').size()
-    print(pd.concat([counts.head(3), counts.tail(3)]))
-
-check_final(df_master)
+print(f"✅ Gráfico de educación guardado en: {ruta_grafico_edu_ur}")
