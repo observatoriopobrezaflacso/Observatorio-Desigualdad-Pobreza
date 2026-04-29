@@ -1335,7 +1335,7 @@
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                scales: { y: { min: 0.3, max: 0.9 } }
+                scales: { y: { min: 0.3, max: 1.0 } }
             }
         });
     }
@@ -1384,7 +1384,7 @@
             type: 'line', data: { labels: years, datasets },
             options: {
                 responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-                scales: { y: { min: 0.3, max: 0.7, title: { display: true, text: 'Coeficiente de Gini' } } },
+                scales: { y: { min: 0.3, max: 1.0, title: { display: true, text: 'Coeficiente de Gini' } } },
                 plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toFixed(3) : '—') } } }
             }
         });
