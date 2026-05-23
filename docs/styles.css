@@ -1,44 +1,37 @@
-/* ===== Design Tokens – Light Theme ===== */
+/* ===== Design Tokens – FLACSO Institutional Theme ===== */
 :root {
-  --bg-primary: #f8fafc;
-  /* very light slate */
-  --bg-secondary: #f1f5f9;
-  /* soft gray */
-  --bg-card: rgba(255, 255, 255, 0.8);
-  /* translucent white */
-  --bg-card-hover: rgba(255, 255, 255, 1);
-  --border-card: rgba(99, 102, 241, 0.2);
+  --flacso-navy: #163970;
+  --flacso-navy-light: #1e4d8a;
+  --flacso-navy-dark: #0f2a54;
+  --flacso-blue: #2563a8;
+  --flacso-sky: #3b82c4;
 
+  --bg-primary: #f4f6f9;
+  --bg-secondary: #e9edf3;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-card-hover: rgba(255, 255, 255, 1);
+  --border-card: rgba(22, 57, 112, 0.15);
 
   --text-primary: #0f172a;
-  /* dark slate */
   --text-secondary: #334155;
-  /* medium slate */
   --text-muted: #64748b;
-  /* muted gray */
 
-  --accent-1: #0891b2;
-  /* deeper cyan */
-  --accent-2: #4f46e5;
-  /* strong indigo */
-  --accent-3: #9333ea;
-  /* vibrant purple */
+  --accent-1: #163970;
+  --accent-2: #2563a8;
+  --accent-3: #3b82c4;
   --accent-4: #d97706;
-  /* warm amber */
   --accent-5: #dc2626;
-  /* strong red */
   --accent-6: #059669;
-  /* emerald */
 
-  --gradient-primary: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-  --gradient-accent: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+  --gradient-primary: linear-gradient(135deg, var(--flacso-navy), var(--flacso-blue));
+  --gradient-accent: linear-gradient(135deg, var(--flacso-blue), var(--flacso-sky));
 
-  --shadow-card: 0 4px 20px rgba(15, 23, 42, 0.08);
-  --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.12);
+  --shadow-card: 0 2px 12px rgba(22, 57, 112, 0.08);
+  --shadow-glow: 0 0 24px rgba(22, 57, 112, 0.10);
 
-  --radius: 16px;
-  --radius-sm: 10px;
-  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ===== Reset & Base ===== */
@@ -70,8 +63,7 @@ body {
   top: 0;
   bottom: 0;
   width: 260px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-card);
+  background: var(--flacso-navy);
   display: flex;
   flex-direction: column;
   z-index: 100;
@@ -79,23 +71,33 @@ body {
 }
 
 .sidebar-header {
-  padding: 28px 24px 20px;
-  border-bottom: 1px solid var(--border-card);
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.sidebar-logo {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 4px;
+  object-fit: contain;
 }
 
 .sidebar-header h1 {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #ffffff;
   line-height: 1.3;
+  background: none;
+  -webkit-text-fill-color: #ffffff;
 }
 
 .sidebar-header .subtitle {
   font-size: 0.72rem;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.5);
   margin-top: 4px;
   text-transform: uppercase;
   letter-spacing: 1.5px;
@@ -119,7 +121,7 @@ body {
   gap: 12px;
   padding: 12px 16px;
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-size: 0.88rem;
   font-weight: 500;
@@ -128,14 +130,14 @@ body {
 }
 
 .nav-items a:hover {
-  color: var(--text-primary);
-  background: rgba(99, 102, 241, 0.08);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .nav-items a.active {
   color: #fff;
-  background: var(--gradient-primary);
-  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.25);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
 }
 
 .nav-items a .nav-icon {
@@ -147,9 +149,9 @@ body {
 
 .sidebar-footer {
   padding: 16px 24px;
-  border-top: 1px solid var(--border-card);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 0.72rem;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* ===== Mobile Menu Toggle ===== */
@@ -208,6 +210,7 @@ body {
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 6px;
+  color: var(--flacso-navy);
 }
 
 .page-header p {
@@ -227,7 +230,7 @@ body {
 }
 
 .card:hover {
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(22, 57, 112, 0.2);
   box-shadow: var(--shadow-card), var(--shadow-glow);
 }
 
@@ -290,29 +293,24 @@ body {
 .scorecard .sc-value {
   font-size: 2.4rem;
   font-weight: 800;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--flacso-navy);
+  -webkit-text-fill-color: var(--flacso-navy);
   line-height: 1.1;
 }
 
 .scorecard:nth-child(2) .sc-value {
-  background: var(--gradient-accent);
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: var(--flacso-blue);
+  -webkit-text-fill-color: var(--flacso-blue);
 }
 
 .scorecard:nth-child(3) .sc-value {
-  background: linear-gradient(135deg, var(--accent-4), var(--accent-5));
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: var(--accent-4);
+  -webkit-text-fill-color: var(--accent-4);
 }
 
 .scorecard:nth-child(4) .sc-value {
-  background: linear-gradient(135deg, var(--accent-6), var(--accent-1));
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: var(--accent-6);
+  -webkit-text-fill-color: var(--accent-6);
 }
 
 .scorecard .sc-label {
@@ -436,12 +434,12 @@ body {
 
 .country-chip.selected {
   background: var(--gradient-primary);
-  border-color: var(--accent-1);
+  border-color: var(--flacso-navy);
   color: #fff;
 }
 
 .country-chip:hover {
-  border-color: var(--accent-1);
+  border-color: var(--flacso-navy);
 }
 
 /* ===== Provincial Table ===== */
@@ -481,7 +479,7 @@ body {
 }
 
 .prov-table tbody tr:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: rgba(22, 57, 112, 0.05);
 }
 
 .prov-bar {
@@ -528,7 +526,7 @@ body {
 /* ===== Hero Section (Inicio) ===== */
 .hero {
   text-align: center;
-  padding: 48px 20px 32px;
+  padding: 48px 20px 36px;
   margin-bottom: 32px;
   position: relative;
 }
@@ -541,22 +539,36 @@ body {
   transform: translateX(-50%);
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(22, 57, 112, 0.06) 0%, transparent 70%);
   pointer-events: none;
 }
 
+.hero-logo {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+}
+
 .hero h2 {
-  font-size: 2.4rem;
+  font-size: 2.2rem;
   font-weight: 800;
+  margin-bottom: 4px;
+  color: var(--flacso-navy);
+  -webkit-text-fill-color: var(--flacso-navy);
+  background: none;
+}
+
+.hero .hero-affiliation {
+  font-size: 0.85rem;
+  color: var(--flacso-blue);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
   margin-bottom: 12px;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .hero p {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   color: var(--text-secondary);
   max-width: 650px;
   margin: 0 auto;
@@ -591,12 +603,12 @@ body {
 .sub-tab.active {
   background: var(--gradient-primary);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.25);
+  box-shadow: 0 2px 8px rgba(22, 57, 112, 0.2);
 }
 
 .sub-tab:hover:not(.active) {
   color: var(--text-primary);
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(22, 57, 112, 0.08);
 }
 
 .sub-tab-content {
@@ -626,27 +638,23 @@ body {
 }
 
 .scorecard:nth-child(5) .sc-value {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: #6366f1;
+  -webkit-text-fill-color: #6366f1;
 }
 
 .scorecard:nth-child(6) .sc-value {
-  background: linear-gradient(135deg, #ec4899, #f43f5e);
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: var(--accent-5);
+  -webkit-text-fill-color: var(--accent-5);
 }
 
 .scorecard:nth-child(7) .sc-value {
-  background: linear-gradient(135deg, #14b8a6, #06b6d4);
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: var(--flacso-sky);
+  -webkit-text-fill-color: var(--flacso-sky);
 }
 
 .scorecard:nth-child(8) .sc-value {
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: var(--accent-4);
+  -webkit-text-fill-color: var(--accent-4);
 }
 
 /* ===== Responsive ===== */

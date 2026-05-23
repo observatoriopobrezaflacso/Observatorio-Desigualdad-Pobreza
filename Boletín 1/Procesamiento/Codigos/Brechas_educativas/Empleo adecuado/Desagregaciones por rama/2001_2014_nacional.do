@@ -392,16 +392,7 @@ twoway ///
 * 9. VERIFICACIÓN DE CATEGORÍAS CONDACT POR AÑO
 * ============================================================
 
-use "$limpias/empleo2011_isic4.dta", clear
-rename *, lower
-tab condact
-tab condact, nol
-
-use "$limpias/empleo2024_isic4.dta", clear
-rename *, lower
-tab condact
-tab condact, nol
-
+keep if area 
 
 
 * ============================================================

@@ -7,7 +7,7 @@
 * Definición de rutas globales para facilitar la portabilidad del código
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global bases "$user_root/Bases"
-global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global out "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global gh "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/"
@@ -52,7 +52,6 @@ foreach y of numlist 1990(1)2025 {
 			replace tiene_ruc = . if inrange(condact, 5, 8)			
 			gen institucion_formal = cond(catetrab == 1, 1, tiene_ruc)
 			
-			s
         }
     }
     
@@ -166,7 +165,7 @@ graph export "$out_plot/historico_${important_variable}.pdf", replace
 
 
 
-
+/*
 
 gen asked_p49 = 0
 label variable asked_p49 "Observation was asked Question 49"
@@ -180,10 +179,6 @@ replace asked_p49 = 1 if p22 == 1
 replace asked_p49 = 0 if p47a == 2
 
 tab asked_p49 if !missing(p49)
-
-
-
-
 
 
 * Final version
@@ -205,3 +200,6 @@ tab asked_p49
 
 
 replace secemp =2 if pea==1 & empleo==1 & p47a==1 & p49==2 & secemp ==.
+
+
+*/
