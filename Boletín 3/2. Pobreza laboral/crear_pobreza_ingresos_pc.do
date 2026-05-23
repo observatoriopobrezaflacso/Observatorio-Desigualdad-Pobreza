@@ -1,0 +1,548 @@
+*------------------------------------------------------------------------------*
+* Create poverty variable in ENEMDU per-capita income datasets
+*------------------------------------------------------------------------------*
+*
+* Rule:
+*   pobreza = 1 if ingtot_per is below the annual December poverty threshold
+*   pobreza = 0 if ingtot_per is at or above the threshold
+*
+* Data selection:
+*   1991-1999 odd years: urban datasets (_urb)
+*   2001 onwards odd years: national datasets (_nac)
+*
+* By default, the script saves modified copies in:
+*   .../ingresos_pc/con_pobreza
+*
+* To overwrite the original datasets, change replace_originals to 1.
+*------------------------------------------------------------------------------*
+
+clear all
+set more off
+version 15.1
+set varabbrev off
+
+global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+global ingresos_pc "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc"
+global lpob "$user_root/Bases/lineas_pobreza"
+
+
+local replace_originals 0
+local outdir "$ingresos_pc/con_pobreza"
+local historico "`outdir'/ing_perca_pobreza_historico.dta"
+local resumen "`outdir'/evolucion_pobreza.dta"
+local resumen_ing_lab "`outdir'/evolucion_pobreza_ing_lab.dta"
+local resumen_ing_lab_sexo "`outdir'/evolucion_pobreza_ing_lab_sexo.dta"
+local resumen_ing_lab_area "`outdir'/evolucion_pobreza_ing_lab_area.dta"
+local resumen_ing_lab_educ "`outdir'/evolucion_pobreza_ing_lab_educacion_superior.dta"
+
+if !`replace_originals' {
+    capture mkdir "`outdir'"
+}
+
+*--- Import annual December poverty thresholds ---*
+tempfile lineas
+
+import excel using "$lineas_xlsx"
+
+rename A anio
+rename C linea_pobreza
+keep anio linea_pobreza
+
+foreach v in anio linea_pobreza {
+    capture confirm numeric variable `v'
+    if _rc {
+        destring `v', replace force
+    }
+}
+
+drop if missing(anio) | missing(linea_pobreza)
+duplicates drop anio, force
+save `lineas', replace
+
+*--- Years requested by source type ---*
+local years_urb 1991 1993 1995 1997 1999
+local years_nac 2001 2003 2005 2007 2009 2011 2013 2015 2017 2019 2021 2023 2025
+local analysis_start 2001
+
+foreach scope in urb nac {
+
+    if "`scope'" == "urb" {
+        local years `years_urb'
+    }
+    else {
+        local years `years_nac'
+    }
+
+    foreach y of local years {
+
+        if `y' == 2025 {
+            local infile "$user_root/Bases/ENEMDU/Originales/Diciembres/2018-presente/Trimestrales/empleo2025.dta"
+        }
+        else if "`scope'" == "nac" {
+            local infile "$ingresos_pc/Nacional/ing_perca_`y'_`scope'_precios2000.dta"
+        }
+        else {
+            local infile "$ingresos_pc/ing_perca_`y'_`scope'_precios2000.dta"
+        }
+        local outfile "`outdir'/ing_perca_`y'_`scope'_precios2000.dta"
+
+        capture confirm file "`infile'"
+        if _rc {
+            display as error "File not found: `infile'"
+            continue
+        }
+
+        quietly use `lineas', clear
+        quietly keep if anio == `y'
+
+        if _N != 1 {
+            display as error "No unique poverty threshold found for year `y'"
+            error 459
+        }
+
+        local lp = linea_pobreza[1]
+
+        use "`infile'", clear
+
+        if `y' >= 1991 & `y' <= 1999 {
+            local ingreso_var ingtot_per_deflated
+        }
+        else if `y' == 2025 {
+            local ingreso_var ingpc
+        }
+        else {
+            local ingreso_var ingtot_per
+        }
+
+        capture confirm variable `ingreso_var'
+        if _rc {
+            display as error "Variable `ingreso_var' not found in `infile'"
+            error 111
+        }
+
+        capture confirm variable ing_lab
+        if _rc {
+            capture confirm variable ing_lab_deflated
+            if !_rc {
+                display as text "Variable ing_lab not found in `infile'; using ing_lab_deflated to create ing_lab."
+                generate double ing_lab = ing_lab_deflated
+            }
+            else {
+                capture confirm variable ingrl
+                if !_rc {
+                    display as text "Variables ing_lab and ing_lab_deflated not found in `infile'; using valid ingrl values to create ing_lab."
+                    generate double ing_lab = ingrl if ingrl >= 0 & ingrl < 999999
+                }
+                else {
+                    display as text "Variables ing_lab, ing_lab_deflated, and ingrl not found in `infile'; generating missing values."
+                    generate double ing_lab = .
+                }
+            }
+        }
+
+        capture drop pobreza
+        capture drop linea_pobreza
+        capture drop cobertura_pobreza
+        capture drop ingreso_pobreza
+        capture drop ingreso_pobreza_var
+        capture drop educacion
+        capture drop educacion_superior
+        
+        capture confirm variable anio
+        if _rc {
+            generate int anio = `y'
+        }
+        else {
+            replace anio = `y' if missing(anio)
+        }
+
+        capture confirm variable sexo
+        if _rc {
+            capture confirm variable p02
+            if !_rc {
+                generate byte sexo = p02
+            }
+            else {
+                generate byte sexo = .
+            }
+        }
+
+        capture confirm variable area
+        if _rc {
+            generate byte area = .
+            replace area = 1 if "`scope'" == "urb"
+        }
+
+        capture confirm variable nnivins
+        if !_rc {
+            generate educacion = nnivins
+        }
+        else {
+            capture confirm variable nivinst
+            if !_rc {
+                generate educacion = nivinst
+            }
+            else {
+                capture confirm variable p10a
+                if !_rc {
+                    generate educacion = p10a
+                }
+                else {
+                    generate byte educacion = .
+                }
+            }
+        }
+
+        generate byte educacion_superior = 0
+
+        if inrange(`y', 1991, 1999) {
+            capture confirm variable nivinst
+            if !_rc {
+                replace educacion_superior = 1 if nivinst == 5
+                replace educacion_superior = . if missing(nivinst)
+            }
+            else {
+                replace educacion_superior = .
+            }
+        }
+        else if `y' == 2001 {
+            capture confirm variable nivinst
+            if !_rc {
+                replace educacion_superior = 1 if inlist(nivinst, 6, 7)
+                replace educacion_superior = . if missing(nivinst)
+            }
+            else {
+                replace educacion_superior = .
+            }
+        }
+        else if inrange(`y', 2003, 2006) {
+            capture confirm variable nivinst
+            if !_rc {
+                replace educacion_superior = 1 if inlist(nivinst, 9, 10)
+                replace educacion_superior = . if missing(nivinst)
+            }
+            else {
+                replace educacion_superior = .
+            }
+        }
+        else if `y' >= 2007 {
+            capture confirm variable p10a
+            if !_rc {
+                replace educacion_superior = 1 if inlist(p10a, 9, 10)
+                replace educacion_superior = . if missing(p10a)
+            }
+            else {
+                replace educacion_superior = .
+            }
+        }
+
+        generate double linea_pobreza = `lp'
+        generate double ingreso_pobreza = `ingreso_var'
+        capture confirm variable ingtot_per
+        if _rc {
+            generate double ingtot_per = ingreso_pobreza
+            label variable ingtot_per "Ingreso per capita usado para pobreza"
+        }
+        generate byte pobreza = (ingreso_pobreza < linea_pobreza) if !missing(ingreso_pobreza)
+        generate str3 cobertura_pobreza = "`scope'"
+        generate str20 ingreso_pobreza_var = "`ingreso_var'"
+
+        label variable linea_pobreza "Linea de pobreza anual diciembre (USD)"
+        label variable ingreso_pobreza "Ingreso usado para pobreza"
+        label variable ingreso_pobreza_var "Variable de ingreso usada para pobreza"
+        label variable pobreza "Ingreso per capita bajo linea de pobreza"
+        label variable cobertura_pobreza "Cobertura de base usada para pobreza"
+        label variable educacion "Nivel de educacion armonizado desde variable original"
+        label variable educacion_superior "Tiene educacion superior"
+        label define pobreza_lbl 0 "No pobre" 1 "Pobre", replace
+        label define educ_sup_lbl 0 "Sin educacion superior" 1 "Con educacion superior", replace
+        label values pobreza pobreza_lbl
+        label values educacion_superior educ_sup_lbl
+
+        quietly count if pobreza == 1
+        local n_pobres = r(N)
+        quietly count if pobreza < .
+        local n_validos = r(N)
+
+        display as text "Year `y' (`scope'): line = " ///
+            as result %9.2f `lp' ///
+            as text ", poor = " ///
+            as result %12.0fc `n_pobres' ///
+            as text " / " ///
+            as result %12.0fc `n_validos'
+
+        if `replace_originals' {
+            save "`infile'", replace
+        }
+        else {
+            save "`outfile'", replace
+        }
+    }
+}
+
+*--- Append processed datasets into one historical file ---*
+clear
+local first_file 1
+local append_vars anio cobertura_pobreza fexp sexo area educacion educacion_superior ing_lab ingtot_per ingreso_pobreza ingreso_pobreza_var pobreza linea_pobreza
+
+foreach scope in urb nac {
+
+    if "`scope'" == "urb" {
+        local years `years_urb'
+    }
+    else {
+        local years `years_nac'
+    }
+
+    foreach y of local years {
+
+        if `replace_originals' {
+            local datafile "$ingresos_pc/ing_perca_`y'_`scope'_precios2000.dta"
+        }
+        else {
+            local datafile "`outdir'/ing_perca_`y'_`scope'_precios2000.dta"
+        }
+
+        capture confirm file "`datafile'"
+        if _rc {
+            display as error "File not found for append: `datafile'"
+            continue
+        }
+
+        if `first_file' {
+            use "`datafile'", clear
+            keep `append_vars'
+            local first_file 0
+        }
+        else {
+            tempfile nextfile
+            preserve
+            use "`datafile'", clear
+            keep `append_vars'
+            save `nextfile', replace
+            restore
+
+            append using `nextfile'
+        }
+    }
+}
+
+keep if anio >= `analysis_start'
+save "`historico'", replace
+
+*--- Poverty evolution plot ---*
+preserve
+
+collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+    if anio >= `analysis_start' & pobreza < . & fexp < ., ///
+    by(anio cobertura_pobreza)
+
+generate tasa_pobreza_pct = 100 * tasa_pobreza
+label variable tasa_pobreza_pct "Pobreza (%)"
+
+egen last_label_year = max(anio)
+generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+    inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+drop last_label_year
+
+save "`resumen'", replace
+
+twoway ///
+    (connected tasa_pobreza_pct anio if cobertura_pobreza == "nac", ///
+        lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+        mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)), ///
+    title("Evolucion de la pobreza") ///
+    subtitle("Ingreso per capita bajo linea de pobreza anual de diciembre") ///
+    xtitle("Anio") ///
+    ytitle("Pobreza (%)") ///
+    ylabel(0(10)100, angle(horizontal)) ///
+    xlabel(2001(2)2025, angle(90)) ///
+    legend(order(1 "Nacional") position(6) rows(1)) ///
+    name(g_pobreza_total, replace) ///
+    graphregion(color(white)) plotregion(color(white))
+
+graph save "`outdir'/evolucion_pobreza.gph", replace
+graph export "`outdir'/evolucion_pobreza.pdf", replace
+
+capture graph export "`outdir'/evolucion_pobreza.png", replace width(2400)
+if _rc {
+    display as text "PNG export skipped because the Graph2png translator is not available."
+}
+
+restore
+
+*--- Poverty evolution among people with observed labor income ---*
+preserve
+
+collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < ., ///
+    by(anio cobertura_pobreza)
+
+generate tasa_pobreza_pct = 100 * tasa_pobreza
+label variable tasa_pobreza_pct "Pobreza (%)"
+
+egen last_label_year = max(anio)
+generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+    inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+drop last_label_year
+
+save "`resumen_ing_lab'", replace
+
+twoway ///
+    (connected tasa_pobreza_pct anio if cobertura_pobreza == "nac", ///
+        lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+        mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)), ///
+    title("Pobreza entre personas con ingreso laboral") ///
+    subtitle("Muestra restringida a observaciones con ing_lab") ///
+    xtitle("Anio") ///
+    ytitle("Pobreza (%)") ///
+    ylabel(0(10)100, angle(horizontal)) ///
+    xlabel(2001(2)2025, angle(90)) ///
+    legend(order(1 "Nacional") position(6) rows(1)) ///
+    name(g_pobreza_ing_lab, replace) ///
+    graphregion(color(white)) plotregion(color(white))
+
+graph save "`outdir'/evolucion_pobreza_ing_lab.gph", replace
+graph export "`outdir'/evolucion_pobreza_ing_lab.pdf", replace
+
+capture graph export "`outdir'/evolucion_pobreza_ing_lab.png", replace width(2400)
+if _rc {
+    display as text "PNG export skipped because the Graph2png translator is not available."
+}
+
+restore
+
+*--- Disaggregation by sex among people with observed labor income ---*
+preserve
+
+collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & sexo < ., ///
+    by(anio sexo)
+
+generate tasa_pobreza_pct = 100 * tasa_pobreza
+label variable tasa_pobreza_pct "Pobreza (%)"
+
+egen last_label_year = max(anio)
+generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+    inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+drop last_label_year
+
+save "`resumen_ing_lab_sexo'", replace
+
+twoway ///
+    (connected tasa_pobreza_pct anio if sexo == 1, ///
+        lcolor(navy) lwidth(medthick) msymbol(circle) mcolor(navy) ///
+        mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)) ///
+    (connected tasa_pobreza_pct anio if sexo == 2, ///
+        lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+        mlabel(lbl) mlabposition(6) mlabsize(vsmall) mlabcolor(gs3)), ///
+    title("Pobreza con ingreso laboral, por sexo") ///
+    subtitle("Muestra restringida a observaciones con ing_lab") ///
+    xtitle("Anio") ///
+    ytitle("Pobreza (%)") ///
+    ylabel(0(10)100, angle(horizontal)) ///
+    xlabel(2001(2)2025, angle(90)) ///
+    legend(order(1 "Hombre" 2 "Mujer") position(6) rows(1)) ///
+    name(g_pobreza_ing_lab_sexo, replace) ///
+    graphregion(color(white)) plotregion(color(white))
+
+graph save "`outdir'/evolucion_pobreza_ing_lab_sexo.gph", replace
+graph export "`outdir'/evolucion_pobreza_ing_lab_sexo.pdf", replace
+
+capture graph export "`outdir'/evolucion_pobreza_ing_lab_sexo.png", replace width(2400)
+if _rc {
+    display as text "PNG export skipped because the Graph2png translator is not available."
+}
+
+restore
+
+*--- Disaggregation by area among people with observed labor income ---*
+preserve
+
+collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & area < ., ///
+    by(anio area)
+
+generate tasa_pobreza_pct = 100 * tasa_pobreza
+label variable tasa_pobreza_pct "Pobreza (%)"
+
+egen last_label_year = max(anio)
+generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+    inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+drop last_label_year
+
+save "`resumen_ing_lab_area'", replace
+
+twoway ///
+    (connected tasa_pobreza_pct anio if area == 1, ///
+        lcolor(navy) lwidth(medthick) msymbol(circle) mcolor(navy) ///
+        mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)) ///
+    (connected tasa_pobreza_pct anio if area == 2, ///
+        lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+        mlabel(lbl) mlabposition(6) mlabsize(vsmall) mlabcolor(gs3)), ///
+    title("Pobreza con ingreso laboral, por area") ///
+    subtitle("Muestra restringida a observaciones con ing_lab") ///
+    xtitle("Anio") ///
+    ytitle("Pobreza (%)") ///
+    ylabel(0(10)100, angle(horizontal)) ///
+    xlabel(2001(2)2025, angle(90)) ///
+    legend(order(1 "Urbana" 2 "Rural") position(6) rows(1)) ///
+    name(g_pobreza_ing_lab_area, replace) ///
+    graphregion(color(white)) plotregion(color(white))
+
+graph save "`outdir'/evolucion_pobreza_ing_lab_area.gph", replace
+graph export "`outdir'/evolucion_pobreza_ing_lab_area.pdf", replace
+
+capture graph export "`outdir'/evolucion_pobreza_ing_lab_area.png", replace width(2400)
+if _rc {
+    display as text "PNG export skipped because the Graph2png translator is not available."
+}
+
+restore
+
+*--- Disaggregation by higher education among people with observed labor income ---*
+preserve
+
+collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & educacion_superior < ., ///
+    by(anio educacion_superior)
+
+generate tasa_pobreza_pct = 100 * tasa_pobreza
+label variable tasa_pobreza_pct "Pobreza (%)"
+
+egen last_label_year = max(anio)
+generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+    inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+drop last_label_year
+
+save "`resumen_ing_lab_educ'", replace
+
+twoway ///
+    (connected tasa_pobreza_pct anio if educacion_superior == 0, ///
+        lcolor(navy) lwidth(medthick) msymbol(circle) mcolor(navy) ///
+        mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)) ///
+    (connected tasa_pobreza_pct anio if educacion_superior == 1, ///
+        lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+        mlabel(lbl) mlabposition(6) mlabsize(vsmall) mlabcolor(gs3)), ///
+    title("Pobreza con ingreso laboral, por educacion superior") ///
+    subtitle("Muestra restringida a observaciones con ing_lab") ///
+    xtitle("Anio") ///
+    ytitle("Pobreza (%)") ///
+    ylabel(0(10)100, angle(horizontal)) ///
+    xlabel(2001(2)2025, angle(90)) ///
+    legend(order(1 "Sin educacion superior" 2 "Con educacion superior") ///
+        position(6) rows(1)) ///
+    name(g_pobreza_ing_lab_educacion, replace) ///
+    graphregion(color(white)) plotregion(color(white))
+
+graph save "`outdir'/evolucion_pobreza_ing_lab_educacion_superior.gph", replace
+graph export "`outdir'/evolucion_pobreza_ing_lab_educacion_superior.pdf", replace
+
+capture graph export "`outdir'/evolucion_pobreza_ing_lab_educacion_superior.png", replace width(2400)
+if _rc {
+    display as text "PNG export skipped because the Graph2png translator is not available."
+}
+
+restore
+
+display as text "Done."

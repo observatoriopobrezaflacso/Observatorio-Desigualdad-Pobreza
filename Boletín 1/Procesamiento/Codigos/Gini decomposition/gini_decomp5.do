@@ -1,519 +1,493 @@
+*===============================================================
+* GINI DECOMPOSITION ANALYSIS - ECUADOR INCOME INEQUALITY
+* Source: ENEMDU Survey Data (1991-2024)
+* Purpose: Compute Gini coefficients and decompose by income source
+*===============================================================
+
+*---------------------------------------------------------------
+* SECTION 1: PATH CONFIGURATION
+*---------------------------------------------------------------
+
 global codes "G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\Procesamiento\Codigos\Ingresos"
 
-*-------------------------------------------------------------
-* SECCIÓN 1: CONFIGURACIÓN DE RUTAS Y DIRECTORIOS
-*-------------------------------------------------------------
-* Definición de rutas globales para facilitar la portabilidad del código
-global bases "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Procesamiento/Bases"
-global raw "$bases/enemdu_diciembres"
-global procesado "$bases/Procesadas"
-global out "G:\Mi unidad\Trabajos\Observatorio de Políticas Públicas\Boletín 1\Outcomes\Gini decomposition"
+global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+
+global gh_root "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza"
+
+global procesado      "$user_root/Bases/ENEMDU/Procesadas"          // Processed data directory
+global out            "$user_root/Boletín 1/Outcomes/Gini decomposition"  // Output directory
+global out_dash       "$gh_root/Dashboards/data/Data final/desigualdad"
 
 
-use ing* anio fexp using "$procesado/ingresos_pc/ing_perca_1991_urb_precios2000.dta", clear
+*---------------------------------------------------------------
+* SECTION 2: BUILD POOLED DATASET (1991–2024)
+* Appends annual per capita income files across urban and national
+* samples. Files before 2000 are urban-only; from 2000 onward,
+* national samples include an area identifier.
+*---------------------------------------------------------------
 
+* Load base file (1991, urban)
+use ing* anio fexp using "$procesado/ingresos_pc/Urbano/ing_perca_1991_urb_precios2000.dta", clear
 
+* Append remaining years
 foreach y of numlist 1992(1)2001 2003 2005 2006(1)2023 2024 {
-    di "**********`y'***********"		
-		
-	if `y' < 2000 local vars ing* anio fexp 
-	else local vars ing* anio area fexp
 
-	if `y' < 2000 local prefix urb
-	else local prefix nac
-		
-    append using "$procesado/ingresos_pc/ing_perca_`y'_`prefix'_precios2000.dta", keep(`vars')
+    di "***** Appending year: `y' *****"
 
+    // Years before 2000: urban only — no area variable
+    if `y' < 2000 local vars    ing* anio fexp
+    else           local vars    ing* anio area fexp
+
+    // Prefix and subfolder depend on whether sample is urban or national
+    if `y' < 2000 local prefix  urb
+    else           local prefix  nac
+
+    if `y' < 2000 local folder  Urbano
+    else           local folder  Nacional
+
+    append using "$procesado/ingresos_pc/`folder'/ing_perca_`y'_`prefix'_precios2000.dta", ///
+        keep(`vars')
 }
 
-
+* Save pooled dataset (all areas, all years)
 save "$procesado/casi_completa.dta", replace
 
+* Save urban-only subsample for analyses that require long time series (incl. 1990s)
 keep if area == 1
 save "$procesado/casi_completa_urb.dta", replace
 
 
+*---------------------------------------------------------------
+* SECTION 3: OVERALL GINI COEFFICIENTS (NATIONAL, 2001–2024)
+* Uses both ineqdeco and sgini for cross-validation.
+* Results are exported to Excel.
+*---------------------------------------------------------------
 
 use "$procesado/casi_completa.dta", clear
+
+* Replace missing income components with zero so observations are retained
 recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
 
-
 /*
-preserve 
-keep if anio == 2007
-sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
-restore 
+* --- Exploratory / diagnostic blocks (kept for reference) ---
+preserve
+    keep if anio == 2007
+    sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
+restore
+
+preserve
+    keep if anio == 2001
+    descogini ingtot_per ingtot_per
+restore
+
+preserve
+    keep if anio == 2011
+    sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
+restore
 */
 
-preserve 
-keep if anio == 2001
-descogini ingtot_per ingtot_per
-restore 
-
-preserve 
-keep if anio == 2011
-sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
-restore 
-
-
-
-mat a = .
+*--- 3a. Gini via ineqdeco ---
+mat a = .   // initialise accumulator matrix
 
 foreach y of numlist 1991/2001 2003 2005 2006 2007/2024 {
 
-di "************`y'****************"
+    di "***** ineqdeco Gini — year: `y' *****"
 
-preserve 
-keep if anio == `y'
-ineqdeco  ingtot_per [w=fexp] 
-restore 
+    preserve
+        keep if anio == `y'
+        ineqdeco ingtot_per [w = fexp]   // returns r(gini)
+    restore
 
-mat a = a\r(gini)
-
+    mat a = a \ r(gini)
 }
 
+* Drop the initialisation row and label
 mat a = a[2..rowsof(a), 1..1]
-
-matrix rownames a = 1991 1992 1993 1994 1995 1996 1997 1998 1999 2000 2001 2003 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024
+matrix rownames a = 1991 1992 1993 1994 1995 1996 1997 1998 1999 2000 2001 ///
+                    2003 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014  ///
+                    2015 2016 2017 2018 2019 2020 2021 2022 2023 2024
 matrix colnames a = ineqdeco
 
 matlist a
 
-
+* Export to Excel (column A = year labels, column B = Gini values)
 putexcel set "$out/Gini.xlsx", replace
-
-putexcel A1 = ("")                    // empty cell before labels
-putexcel A2 = matrix(a), names      // row names
-
+putexcel A1 = ("")           // placeholder so row names align correctly
+putexcel A2 = matrix(a), names
 
 
-
-* With sgini
-
+*--- 3b. Gini via sgini (for comparison) ---
 mat a = .
 
 foreach y of numlist 1991/2001 2003 2005 2006 2007/2024 {
 
-di "************`y'****************"
+    di "***** sgini Gini — year: `y' *****"
 
-preserve 
-keep if anio == `y'
-sgini ingtot_per [pw = fexp]
-restore 
+    preserve
+        keep if anio == `y'
+        sgini ingtot_per [pw = fexp]   // returns r(coeff)
+    restore
 
-mat a = a\r(coeff)
-
+    mat a = a \ r(coeff)
 }
 
 mat a = a[2..rowsof(a), 1..1]
-
-matrix rownames a = 1991 1992 1993 1994 1995 1996 1997 1998 1999 2000 2001 2003 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024
+matrix rownames a = 1991 1992 1993 1994 1995 1996 1997 1998 1999 2000 2001 ///
+                    2003 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014  ///
+                    2015 2016 2017 2018 2019 2020 2021 2022 2023 2024
 matrix colnames a = sgini
 
 matlist a
 
+* Append sgini results to column C of the same Excel sheet
 putexcel C2 = matrix(a), colnames
 
 
-* Gini decomposition
+*---------------------------------------------------------------
+* SECTION 4: GINI SOURCE DECOMPOSITION — NATIONAL, ODD YEARS
+* Decomposes total Gini into contributions from:
+*   Labour income (laboral), capital income (rentas),
+*   remittances (remesas), and cash transfer Bono (bono).
+* Computed for every other year 2001–2023 using sgini.
+*---------------------------------------------------------------
 
+* Initialise accumulator: 16 columns (s×4, g×4, r×4, e×4)
 mat a = ., ., ., ., ., ., ., ., ., ., ., ., ., ., ., .
-
 
 foreach year of numlist 2001(2)2023 {
 
-di "************`year'***************"
+    di "***** Source decomposition — year: `year' *****"
 
-preserve 
+    preserve
+        keep if anio == `year'
 
-keep if anio == `year'
+        // sourcedecomposition returns:
+        //   r(s)          — income shares (vector)
+        //   r(coeffs)     — concentration coefficients (matrix)
+        //   r(r)          — correlation with total income
+        //   r(elasticity) — Gini elasticities
+        qui: sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
 
-qui: sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
-
-mat b = r(coeffs)[1, 1..4]
-
-mat a = a\(r(s), b, r(r), r(elasticity))
-
-restore 
-
-
+        mat b = r(coeffs)[1, 1..4]   // concentration coefficients for 4 sources
+        mat a = a \ (r(s), b, r(r), r(elasticity))
+    restore
 }
 
-mat list a
-
+* Drop initialisation row; label columns and rows
 matrix a = a[2..13, 1..16]
-matrix colnames a = slaboral srentas sremesas sbono  ///
-                    glaboral grentas gremesas gbono ///
-                    rlaboral rrentas rremesas rbono  ///
-                    elaboral erentas eremesas ebono 
+matrix colnames a = slaboral srentas sremesas sbono   ///   income shares
+                    glaboral grentas gremesas gbono    ///   concentration coefficients
+                    rlaboral rrentas rremesas rbono    ///   rank correlations
+                    elaboral erentas eremesas ebono        // Gini elasticities
 
-
-matrix rownames a = 2001 2003 2005 2007 2009 2011 2013 2015 2017 2019 2021 2023 
+matrix rownames a = 2001 2003 2005 2007 2009 2011 2013 2015 2017 2019 2021 2023
 
 mat list a
 
 
-
-
+*--- Convert matrix to dataset for plotting ---
 clear
 svmat double a, names(col)
 
-gen t = 2001 + 2*(_n - 1) 
+gen t = 2001 + 2*(_n - 1)   // year variable
 
+* Express income shares as percentages
 foreach var of varlist slaboral srentas sbono sremesas {
-replace `var' = `var'*100
+    replace `var' = `var' * 100
 }
 
+* Save results table
 
+export excel using "$out/gini_decomposition.xlsx", replace firstrow(var)
+export excel using "$out_dash/gini_decomposition.xlsx", replace firstrow(var)
+
+
+*--- Individual series plots ---
 foreach var of varlist s* g* e* {
 
- if substr("`var'", 1, 1) == "s" local ytitle "Participación ingreso (%)" 
- if substr("`var'", 1, 1) == "g" local ytitle "Gini" 
- if substr("`var'", 1, 1) == "e" local ytitle "Elasticidad ingreso - Gini" 
+    if substr("`var'", 1, 1) == "s" local ytitle "Participación ingreso (%)"
+    if substr("`var'", 1, 1) == "g" local ytitle "Gini"
+    if substr("`var'", 1, 1) == "e" local ytitle "Elasticidad ingreso - Gini"
 
-twoway connected `var' t, ///
-    ytitle(`ytitle') ///
-    xtitle("Año") ///
-    lcolor(dknavy) name(`var', replace) ///
-	xlab(2001(4)2025)
-
+    twoway connected `var' t,          ///
+        ytitle(`ytitle')               ///
+        xtitle("Año")                  ///
+        lcolor(dknavy)                 ///
+        name(`var', replace)           ///
+        xlab(2001(4)2025)              ///
+        legend(pos(6))
 }
 
-	
-local prefix s g e
-	
-foreach pref of local prefix {
-	
- if "`pref'" == "s" local ytitle "Participación ingreso (%)" 
- if "`pref'" == "g" local ytitle "Gini" 
- if "`pref'" == "e" local ytitle "Elasticidad ingreso - Gini" 
+*--- Combined plots: all four sources on one graph, by metric type ---
+* Full decomposition (s/g/e) combining all four income sources
+foreach pref in s g e {
 
-	
-twoway ///
-    (connected `pref'laboral t) ///
-    (connected `pref'rentas  t) ///
-    (connected `pref'bono   t) ///
-    (connected `pref'remesas t), ///
-    ytitle("`ytitle'") ///
-    xtitle("Año") ///
-	xlabel(2001(4)2025) ///
-    legend(order(1 "Laboral" 2 "Rentas" 3 "Bono" 4 "Remesas") ///
-           rows(1)) ///
-    name(comb_`pref', replace)
-	
-twoway ///
-    (connected `pref'laboral t) ///
-    (connected `pref'rentas  t) ///
-    (connected `pref'remesas t), ///
-    ytitle("`ytitle'") ///
-    xtitle("Año") ///
-	xlabel(2001(4)2025) ///
-    legend(order(1 "Laboral" 2 "Rentas" 3 "Remesas") ///
-           rows(1)) ///
-    name(comb_`pref'2, replace)	
-	
-}			
+    if "`pref'" == "s" local ytitle "Participación ingreso (%)"
+    if "`pref'" == "g" local ytitle "Gini"
+    if "`pref'" == "e" local ytitle "Elasticidad ingreso - Gini"
+
+    * All four sources
+    twoway                                                        ///
+        (connected `pref'laboral t)                              ///
+        (connected `pref'rentas  t)                              ///
+        (connected `pref'bono    t)                              ///
+        (connected `pref'remesas t),                             ///
+        ytitle("`ytitle'")                                       ///
+        xtitle("Año")                                            ///
+        xlabel(2001(4)2025)                                      ///
+        legend(order(1 "Laboral" 2 "Rentas" 3 "Bono" 4 "Remesas") rows(1) pos(6)) ///
+        name(comb_`pref', replace)
+
+    * Three sources (excluding Bono, for cleaner visual)
+    twoway                                                        ///
+        (connected `pref'laboral t)                              ///
+        (connected `pref'rentas  t)                              ///
+        (connected `pref'remesas t),                             ///
+        ytitle("`ytitle'")                                       ///
+        xtitle("Año")                                            ///
+        xlabel(2001(4)2025)                                      ///
+        legend(order(1 "Laboral" 2 "Rentas" 3 "Remesas") rows(1) pos(6)) ///
+        name(comb_`pref'2, replace)
+}
 
 
-*** Solo urbano con 90s ***
+*---------------------------------------------------------------
+* SECTION 5: URBAN GINI SOURCE DECOMPOSITION (1991–2023)
+* Urban-only sample allows extending the series back to the 1990s.
+* Only labour and capital income (rentas) are decomposed because
+* remittances and Bono data are not available before 2000.
+*---------------------------------------------------------------
 
 use "$procesado/casi_completa_urb.dta", clear
-
-
 recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
 
-
+* Initialise accumulator: 8 columns (s×2, g×2, r×2, e×2)
 mat a = ., ., ., ., ., ., ., .
-
 
 foreach year of numlist 1991(2)2023 {
 
-preserve 
+    preserve
+        keep if anio == `year'
+        if `year' >= 2000 keep if area == 1   // redundant safety filter for national files
 
-keep if anio == `year'
-if `year' >= 2000 keep if area == 1
+        qui: sgini inglab_per ingrent_per [pw = fexp], sourcedecomposition
 
-qui: sgini inglab_per ingrent_per [pw = fexp], sourcedecomposition 
-
-mat b = r(coeffs)[1, 1..2]
-
-mat a = a\(r(s), b, r(r), r(elasticity))
-
-restore 
-
-
+        mat b = r(coeffs)[1, 1..2]
+        mat a = a \ (r(s), b, r(r), r(elasticity))
+    restore
 }
 
-mat list a
-
 matrix a = a[2..18, 1..8]
-matrix colnames a = slaboral srentas ///
-                    glaboral grentas ///
-                    rlaboral rrentas ///
-                    elaboral erentas 
-
-
-matrix rownames a = 1991 1993 1995 1997 1999 2001 2003 2005 2007 2009 2011 2013 2015 2017 2019 2021 2023 
+matrix colnames a = slaboral srentas glaboral grentas rlaboral rrentas elaboral erentas
+matrix rownames a = 1991 1993 1995 1997 1999 2001 2003 2005 2007 2009 2011 2013 2015 2017 2019 2021 2023
 
 mat list a
 
 clear
 svmat double a, names(col)
 
-gen t = 1991 + 2*(_n - 1) 
+gen t = 1991 + 2*(_n - 1)
 order t
 
-
-
 foreach var of varlist slaboral srentas {
-replace `var' = `var'*100
+    replace `var' = `var' * 100
 }
 
-
+*--- Individual series plots (urban) ---
 foreach var of varlist s* g* e* {
 
- if substr("`var'", 1, 1) == "s" local ytitle "Participación ingreso (%)" 
- if substr("`var'", 1, 1) == "g" local ytitle "Gini" 
- if substr("`var'", 1, 1) == "e" local ytitle "Elasticidad ingreso - Gini" 
+    if substr("`var'", 1, 1) == "s" local ytitle "Participación ingreso (%)"
+    if substr("`var'", 1, 1) == "g" local ytitle "Gini"
+    if substr("`var'", 1, 1) == "e" local ytitle "Elasticidad ingreso - Gini"
 
-twoway connected `var' t, ///
-    ytitle(`ytitle') ///
-    xtitle("Año") ///
-    lcolor(dknavy) name(`var', replace) ///
-	xlab(1991(4)2025)
-
+    twoway connected `var' t,          ///
+        ytitle(`ytitle')               ///
+        xtitle("Año")                  ///
+        lcolor(dknavy)                 ///
+        name(`var', replace)           ///
+        xlab(1991(4)2025)
 }
 
-	
-local prefix s g e
-	
-foreach pref of local prefix {
-	
- if "`pref'" == "s" local ytitle "Participación ingreso (%)" 
- if "`pref'" == "g" local ytitle "Gini" 
- if "`pref'" == "e" local ytitle "Elasticidad ingreso - Gini" 
+*--- Combined plots: labour vs capital income (urban) ---
+foreach pref in s g e {
 
-	
-twoway ///
-    (connected `pref'laboral t) ///
-    (connected `pref'rentas  t), ///
-    ytitle("`ytitle'") ///
-    xtitle("Año") ///
-	xlabel(2001(4)2025) ///
-    legend(order(1 "Laboral" 2 "Rentas") ///
-           rows(1)) ///
-    name(comb_`pref', replace)
-	
-}			
-	
+    if "`pref'" == "s" local ytitle "Participación ingreso (%)"
+    if "`pref'" == "g" local ytitle "Gini"
+    if "`pref'" == "e" local ytitle "Elasticidad ingreso - Gini"
 
-	
-
-* Gini decomposition by quintiles
+    twoway                                                        ///
+        (connected `pref'laboral t)                              ///
+        (connected `pref'rentas  t),                             ///
+        ytitle("`ytitle'")                                       ///
+        xtitle("Año")                                            ///
+        xlabel(2001(4)2025)                                      ///
+        legend(order(1 "Laboral" 2 "Rentas") rows(1))           ///
+        name(comb_`pref', replace)
+}
 
 
+*---------------------------------------------------------------
+* SECTION 6: GINI DECOMPOSITION BY QUINTILE (NATIONAL, 2001–2024)
+* Repeats source decomposition within each income quintile to
+* examine how the contribution of each income source varies
+* across the distribution.
+*---------------------------------------------------------------
 
-use ingtot_per  inglab_per ingrent_per ingrem_per ingbo_per anio fexp using "$procesado/casi_completa.dta" if inrange(anio, 2001, 2024), clear
+use ingtot_per inglab_per ingrent_per ingrem_per ingbo_per anio fexp ///
+    using "$procesado/casi_completa.dta" if inrange(anio, 2001, 2024), clear
 recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
 
-
-
+* Initialise accumulator: 16 columns × (6 years × 5 quintiles) rows
 mat b = ., ., ., ., ., ., ., ., ., ., ., ., ., ., ., .
 
+foreach year of numlist 2001(4)2021 2024 {
 
-foreach year of numlist 2001(4)2021 2024{
+    di "***** Quintile decomposition — year: `year' *****"
 
-di "************`year'***************"
+    forval i = 1/5 {
 
-forval i = 1/5 {
+        di "  Quintile: `i'"
 
-di "**** quintil: `i' ****"
+        preserve
+            keep if anio == `year'
 
+            // Assign quintile based on weighted distribution of total per capita income
+            xtile ing_quants = ingtot_per [w = fexp], nquant(5)
+            keep if ing_quants == `i'
 
-preserve 
+            qui: sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
 
-keep if anio == `year'
-
-xtile ing_quants = ingtot_per [w = fexp], nquant(5)
-
-keep if ing_quants == `i'
-
-qui: sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
-
-mat a = r(coeffs)[1, 1..4]
-mat b = b\(r(s), a, r(r), r(elasticity))
-
-restore 
-
+            mat a = r(coeffs)[1, 1..4]
+            mat b = b \ (r(s), a, r(r), r(elasticity))
+        restore
+    }
 }
-
-}
-
-mat list b
 
 matrix b = b[2..rowsof(b), 1..colsof(b)]
-matrix colnames b = slaboral srentas sremesas sbono  ///
-                    glaboral grentas gremesas gbono ///
-                    rlaboral rrentas rremesas rbono  ///
-                    elaboral erentas eremesas ebono 
-
+matrix colnames b = slaboral srentas sremesas sbono   ///
+                    glaboral grentas gremesas gbono    ///
+                    rlaboral rrentas rremesas rbono    ///
+                    elaboral erentas eremesas ebono
 
 matrix rownames b = 2001q1 2001q2 2001q3 2001q4 2001q5 ///
-					2005q1 2005q2 2005q3 2005q4 2005q5 ///
-					2009q1 2009q2 2009q3 2009q4 2009q5 ///
-					2013q1 2013q2 2013q3 2013q4 2013q5 ///
-					2017q1 2017q2 2017q3 2017q4 2017q5 ///
-					2021q1 2021q2 2021q3 2021q4 2021q5 ///
- 					2024q1 2024q2 2024q3 2024q4 2024q5
-
+                    2005q1 2005q2 2005q3 2005q4 2005q5 ///
+                    2009q1 2009q2 2009q3 2009q4 2009q5 ///
+                    2013q1 2013q2 2013q3 2013q4 2013q5 ///
+                    2017q1 2017q2 2017q3 2017q4 2017q5 ///
+                    2021q1 2021q2 2021q3 2021q4 2021q5 ///
+                    2024q1 2024q2 2024q3 2024q4 2024q5
 mat list b
-	
 
-	
 clear
 svmat double b, names(col)
 
-gen t = 2001 + 4*floor((_n-1)/5)
+* Reconstruct year and quintile identifiers
+gen t = 2001 + 4*floor((_n - 1)/5)
 bysort t: gen q = _n
-
-
-replace t = 2024 if t == 2025
-
+replace t = 2024 if t == 2025   // correct year label for the final group
 order t q
 
 foreach var of varlist slaboral srentas sremesas sbono {
-replace `var' = `var'*100
+    replace `var' = `var' * 100
 }
 
-local suffix laboral rentas remesas bono
-	
-foreach suf of local suffix {
-	
- if "`suf'" == "laboral" local ytitle "Participación ingreso laboral (%)" 
- if "`suf'" == "rentas"  local ytitle "Participación ingreso rentas (%)" 
- if "`suf'" == "remesas" local ytitle "Participación ingreso remesas(%)" 
- if "`suf'" == "bono"    local ytitle "Participación ingreso bono (%)" 
+*--- Plot income shares by quintile for each income source ---
+foreach suf in laboral rentas remesas bono {
 
-	
-twoway ///
-(connected s`suf' t if q==1, sort) ///
-(connected s`suf' t if q==2, sort) ///
-(connected s`suf' t if q==3, sort) ///
-(connected s`suf' t if q==4, sort) ///
-(connected s`suf' t if q==5, sort), ///
-legend( ///
-    title("Quintil", size(small)) ///
-    order(1 "1" 2 "2" 3 "3" 4 "4" 5 "5") ///
-    cols(5) ///
-) ///
-xtitle("Year") ///
-ytitle("`ytitle'") ///
-name("`suf'", replace)
+    if "`suf'" == "laboral" local ytitle "Participación ingreso laboral (%)"
+    if "`suf'" == "rentas"  local ytitle "Participación ingreso rentas (%)"
+    if "`suf'" == "remesas" local ytitle "Participación ingreso remesas (%)"
+    if "`suf'" == "bono"    local ytitle "Participación ingreso bono (%)"
 
-}	
+    twoway                                    ///
+        (connected s`suf' t if q == 1, sort)  ///
+        (connected s`suf' t if q == 2, sort)  ///
+        (connected s`suf' t if q == 3, sort)  ///
+        (connected s`suf' t if q == 4, sort)  ///
+        (connected s`suf' t if q == 5, sort), ///
+        legend(title("Quintil", size(small)) order(1 "1" 2 "2" 3 "3" 4 "4" 5 "5") cols(5)) ///
+        xtitle("Year")                         ///
+        ytitle("`ytitle'")                     ///
+        name("`suf'", replace)
+}
 
 
+*---------------------------------------------------------------
+* SECTION 7: GINI DECOMPOSITION BY QUARTILE (NATIONAL, 2001–2024)
+* Same as Section 6 but using quartiles (4 groups) instead of
+* quintiles (5 groups).
+*---------------------------------------------------------------
 
-
-
-* Gini decomposition by cuartiles
-
-
-
-use ingtot_per  inglab_per ingrent_per ingrem_per ingbo_per anio fexp using "$procesado/casi_completa.dta" if inrange(anio, 2001, 2024), clear
+use ingtot_per inglab_per ingrent_per ingrem_per ingbo_per anio fexp ///
+    using "$procesado/casi_completa.dta" if inrange(anio, 2001, 2024), clear
 recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
-
-
 
 mat b = ., ., ., ., ., ., ., ., ., ., ., ., ., ., ., .
 
+foreach year of numlist 2001(4)2021 2024 {
 
-foreach year of numlist 2001(4)2021 2024{
+    di "***** Quartile decomposition — year: `year' *****"
 
-di "************`year'***************"
+    forval i = 1/4 {
 
-forval i = 1/4 {
+        di "  Quartile: `i'"
 
-di "**** quintil: `i' ****"
+        preserve
+            keep if anio == `year'
 
+            xtile ing_quants = ingtot_per [w = fexp], nquant(4)
+            keep if ing_quants == `i'
 
-preserve 
+            qui: sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
 
-keep if anio == `year'
-
-xtile ing_quants = ingtot_per [w = fexp], nquant(4)
-
-keep if ing_quants == `i'
-
-qui: sgini inglab_per ingrent_per ingrem_per ingbo_per [pw = fexp], sourcedecomposition
-
-mat a = r(coeffs)[1, 1..4]
-mat b = b\(r(s), a, r(r), r(elasticity))
-
-restore 
-
+            mat a = r(coeffs)[1, 1..4]
+            mat b = b \ (r(s), a, r(r), r(elasticity))
+        restore
+    }
 }
-
-}
-
-mat list b
 
 matrix b = b[2..rowsof(b), 1..colsof(b)]
-matrix colnames b = slaboral srentas sremesas sbono  ///
-                    glaboral grentas gremesas gbono ///
-                    rlaboral rrentas rremesas rbono  ///
-                    elaboral erentas eremesas ebono 
-
+matrix colnames b = slaboral srentas sremesas sbono   ///
+                    glaboral grentas gremesas gbono    ///
+                    rlaboral rrentas rremesas rbono    ///
+                    elaboral erentas eremesas ebono
 
 matrix rownames b = 2001q1 2001q2 2001q3 2001q4 ///
-					2005q1 2005q2 2005q3 2005q4 ///
-					2009q1 2009q2 2009q3 2009q4 ///
-					2013q1 2013q2 2013q3 2013q4 ///
-					2017q1 2017q2 2017q3 2017q4 ///
-					2021q1 2021q2 2021q3 2021q4 ///
- 					2024q1 2024q2 2024q3 2024q4
-
+                    2005q1 2005q2 2005q3 2005q4 ///
+                    2009q1 2009q2 2009q3 2009q4 ///
+                    2013q1 2013q2 2013q3 2013q4 ///
+                    2017q1 2017q2 2017q3 2017q4 ///
+                    2021q1 2021q2 2021q3 2021q4 ///
+                    2024q1 2024q2 2024q3 2024q4
 mat list b
-	
 
-	
 clear
 svmat double b, names(col)
 
-gen t = 2001 + 4*floor((_n-1)/4)
+gen t = 2001 + 4*floor((_n - 1)/4)
 bysort t: gen q = _n
-
-
 replace t = 2024 if t == 2025
-
 order t q
 
 foreach var of varlist slaboral srentas sremesas sbono {
-replace `var' = `var'*100
+    replace `var' = `var' * 100
 }
 
-local suffix laboral rentas remesas bono
-	
-foreach suf of local suffix {
-	
- if "`suf'" == "laboral" local ytitle "Participación ingreso laboral (%)" 
- if "`suf'" == "rentas"  local ytitle "Participación ingreso rentas (%)" 
- if "`suf'" == "remesas" local ytitle "Participación ingreso remesas(%)" 
- if "`suf'" == "bono"    local ytitle "Participación ingreso bono (%)" 
+*--- Plot income shares by quartile for each income source ---
+foreach suf in laboral rentas remesas bono {
 
-	
-twoway ///
-(connected s`suf' t if q==1, sort) ///
-(connected s`suf' t if q==2, sort) ///
-(connected s`suf' t if q==3, sort) ///
-(connected s`suf' t if q==4, sort), ///
-legend( ///
-    title("Cuartil", size(small)) ///
-    order(1 "1" 2 "2" 3 "3" 4 "4") ///
-    cols(5) ///
-) ///
-xtitle("Year") ///
-ytitle("`ytitle'") ///
-name("`suf'", replace)
+    if "`suf'" == "laboral" local ytitle "Participación ingreso laboral (%)"
+    if "`suf'" == "rentas"  local ytitle "Participación ingreso rentas (%)"
+    if "`suf'" == "remesas" local ytitle "Participación ingreso remesas (%)"
+    if "`suf'" == "bono"    local ytitle "Participación ingreso bono (%)"
 
-}	
+    twoway                                    ///
+        (connected s`suf' t if q == 1, sort)  ///
+        (connected s`suf' t if q == 2, sort)  ///
+        (connected s`suf' t if q == 3, sort)  ///
+        (connected s`suf' t if q == 4, sort), ///
+        legend(title("Cuartil", size(small)) order(1 "1" 2 "2" 3 "3" 4 "4") cols(5)) ///
+        xtitle("Year")                         ///
+        ytitle("`ytitle'")                     ///
+        name("`suf'", replace)
+}
