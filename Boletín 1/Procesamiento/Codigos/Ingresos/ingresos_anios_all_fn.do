@@ -780,7 +780,7 @@ quietly {
     * PASO 4: Deflactar variables de ingreso a precios del año base
     *---------------------------------------------------------
     * Aplicar deflactor a todas las variables de ingreso existentes
-    foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingtot_per ingrl ing_rem ingbon ing_cap ing_pen {
+    foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingtot_per inglab_per ingrl ing_rem ingbon ing_cap ing_pen {
         capture confirm variable `v'
         if !_rc {
             recode `v' (0 = .) (999999 = .) (-1 = 0) 

@@ -249,7 +249,7 @@ foreach y of numlist 2001(2)2007 2008(1)2025  {
 *--- Append processed datasets into one historical file ---*
 clear
 local first_file 1
-local append_vars anio cobertura_pobreza fexp sexo area educacion educacion_superior ing_lab ingtot_per ingreso_pobreza ingreso_pobreza_var pobreza linea_pobreza p24 edad ingtot_per_deflated
+local append_vars anio cobertura_pobreza fexp sexo area educacion educacion_superior ing_lab ingtot_per ingreso_pobreza ingreso_pobreza_var pobreza linea_pobreza p24 edad ingtot_per_deflated inglab_per_deflated
 
 foreach y of numlist 2001(2)2007 2008(1)2025  {
 
