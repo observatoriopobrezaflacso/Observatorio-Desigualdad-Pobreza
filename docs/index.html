@@ -4,12 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Observatorio de Desigualdad y Pobreza</title>
+  <title>Observatorio de Desigualdad, Pobreza y Empleo— FLACSO Ecuador</title>
   <meta name="description"
-    content="Dashboard interactivo de indicadores de pobreza y desigualdad en Ecuador — Observatorio de Políticas Públicas">
+    content="Dashboard interactivo de indicadores de pobreza y desigualdad en Ecuador — FLACSO Ecuador">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="icons/flacso_logo.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -21,12 +22,12 @@
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <h1>Observatorio de Desigualdad y Pobreza</h1>
-      <div class="subtitle">Ecuador</div>
+      <img src="icons/flacso_logo.png" alt="FLACSO Ecuador" class="sidebar-logo">
+      <h1>Observatorio de Desigualdad, Pobreza y Empleo</h1>
     </div>
     <ul class="nav-items">
       <li><a href="#" class="active" data-page="inicio"><span class="nav-icon">🏠</span> Inicio</a></li>
-      <li><a href="#" data-page="pobreza"><span class="nav-icon"><img src="icons/poverty.png" alt="" style="width:1.2em;height:1.2em;vertical-align:middle;"></span> Pobreza</a></li>
+      <li><a href="#" data-page="pobreza"><span class="nav-icon"><img src="icons/poverty.png" alt="" style="width:1.2em;height:1.2em;vertical-align:middle;border-radius:3px;"></span> Pobreza</a></li>
       <li><a href="#" data-page="ingresos"><span class="nav-icon">💰</span> Ingresos</a></li>
       <li><a href="#" data-page="empleo"><span class="nav-icon">💼</span> Empleo</a></li>
       <li><a href="#" data-page="desigualdad"><span class="nav-icon" style="display:inline-block;transform:rotate(-20deg)">⚖️</span> Desigualdad</a></li>
@@ -43,7 +44,9 @@
     <!-- ==================== INICIO ==================== -->
     <section class="page active" id="page-inicio">
       <div class="hero">
-        <h2>Observatorio de Desigualdad y Pobreza</h2>
+        <img src="icons/flacso_logo.png" alt="FLACSO Ecuador" class="hero-logo">
+        <h2>Observatorio de Desigualdad, Pobreza y Empleo</h2>
+        <p class="hero-affiliation">FLACSO Ecuador</p>
         <p>Un tablero interactivo para monitorear indicadores de pobreza y desigualdad en Ecuador, con datos históricos
           y comparaciones regionales.</p>
       </div>
@@ -584,7 +587,7 @@
               <li>No tiene empleo adecuado (gana menos del salario mínimo legal o trabaja menos de cuarenta horas a la semana cuando desearía trabajar más).</li>
             </ol>
             <p>La <strong>tasa de informalidad</strong> se calcula como el porcentaje del empleo informal respecto al empleo total. El universo de análisis son los ocupados en edad de trabajar (se excluye a inactivos, desempleados y menores de 15 años).</p>
-            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">Fuente: Mideros, A., Valdivieso, S. y Cevallos, M. Á. (2026). <em>Boletín 3: Informalidad, pobreza laboral y homicidios de infantes</em>. Observatorio de Desigualdad y Pobreza, FLACSO Ecuador.</p>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">Fuente: Mideros, A., Valdivieso, S. y Cevallos, M. Á. (2026). <em>Boletín 3: Informalidad, pobreza laboral y homicidios de infantes</em>. Observatorio de Desigualdad, Pobreza y Empleo, FLACSO Ecuador.</p>
           </div>
         </div>
       </div>

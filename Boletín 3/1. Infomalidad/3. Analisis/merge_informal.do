@@ -7,7 +7,7 @@ set more off
 
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 global bases "$user_root/Bases"
-global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global variables_base "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
 global bases_armonizadas "$user_root/Bases/ENEMDU/Procesadas/analisis informalidad/Santiago"

@@ -134,7 +134,7 @@
 * Definición de rutas globales para facilitar la portabilidad del código
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global bases "$user_root/Bases"
-global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global out "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global gh "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/"
@@ -149,7 +149,7 @@ import delimited "$salarios/Salario unificado y componentes salariales.csv", cle
 encode componentesalarial, gen(componente)
 drop componentesalarial 
 keep if componente == 6 & mes == "Diciembre"
-rename (año valor) (anio salario_min)
+rename (año valorsalariocomponenteendolares) (anio salario_min)
 replace salario_min = subinstr(salario_min, ",", ".", .)
 destring salario_min, replace
 keep anio salario_min
@@ -181,7 +181,8 @@ drop in 1
 tempfile adec_acumulado
 save `adec_acumulado', replace
 
-foreach y of numlist 1991(1)2023 2024 {
+foreach y of numlist 1991(1)2025 {
+*foreach y of numlist 2023 {
 
 di "*****************   `y'   ************************"
 
@@ -415,6 +416,15 @@ quietly {
 	replace adec = 1 if pean == 1 & edad >= edadmin & empleo == 1 & w == 1 & t == 0 & d_d == 0
 
 }
+
+
+	cap confirm variable condactn 
+	if   !_rc local condact_var condactn
+	else      local condact_var condact
+	decode `condact_var', gen(condact_str)
+
+	replace adec = 0 if condact_str == "Otro empleo no pleno"
+
 	*mean adec [iw = fexp]
 	*mean w [iw = fexp]
 	*mean t [iw = fexp]
@@ -429,11 +439,11 @@ quietly {
 	}
 	else      local area_var 
 	
-    keep id_persona $important_variable anio `area_var' ila
+    keep id_persona $important_variable anio `area_var' ila fexp
 	
 	append using `adec_acumulado'
 	
-    keep id_persona $important_variable anio `area_var' ila
+    keep id_persona $important_variable anio `area_var' ila fexp
 	
 	save `adec_acumulado', replace
 *    save "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta", replace
@@ -450,7 +460,8 @@ use "$out/historico_adec.dta", clear
 
 replace area = 1 if area == .
 
-tab anio adec, row missing
+tab anio adec [iw = fexp], nofreq row missing
+tab anio adec [iw = fexp], nofreq row
 
 
 preserve

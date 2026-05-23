@@ -6,7 +6,7 @@
 * Definición de rutas globales para facilitar la portabilidad del código
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global bases "$user_root/Bases"
-global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global out "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global gh "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/"

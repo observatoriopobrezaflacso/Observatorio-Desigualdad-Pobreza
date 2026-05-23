@@ -441,13 +441,12 @@
     function renderPobrezaEdad() {
         const indicator = getSelectedPovIndicator();
         const mapInd = indicator === 'Pobreza' ? 'Pobreza' : indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
-        const data = DATA.pobrezaEdad.filter(r => r.indicador === mapInd && r.valor != null);
+        const data = DATA.pobrezaEdad.filter(r => r.indicador === mapInd && r.valor != null && r.grupoEtario !== 'Niños (0-17)');
         if (!data.length) { showNoData('chart-pov-edad'); return; }
         clearNoData('chart-pov-edad');
         const byGrupo = groupBy(data, 'grupoEtario');
         const years = uniqueSorted(data.map(r => r.anio));
         const ageColors = {
-            'Niños (0-17)': COLORS.rose,
             'Jóvenes (18-29)': COLORS.amber,
             'Adultos (30-64)': COLORS.indigo,
             'Adultos mayores (65+)': COLORS.purple
@@ -632,7 +631,7 @@
     function renderPobrezaBarEdad() {
         const indicator = getSelectedPovIndicator();
         const mapInd = indicator === 'Pobreza Extrema' ? 'Pobreza extrema' : indicator;
-        const data = DATA.pobrezaEdad.filter(r => r.indicador === mapInd && r.valor != null);
+        const data = DATA.pobrezaEdad.filter(r => r.indicador === mapInd && r.valor != null && r.grupoEtario !== 'Niños (0-17)');
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years.length ? years[years.length - 1] : null;
         if (!latestYear) { showNoData('chart-pov-bar-edad'); return; }
@@ -889,11 +888,11 @@
 
     // ── Serie Histórica by Edad ───────────────────────────────────
     function renderIngEdadSerie() {
-        const data = DATA.ingresosEdad;
-        if (!data || !data.length) return;
+        const data = (DATA.ingresosEdad || []).filter(r => r.grupoEtario !== 'Niños (0-17)');
+        if (!data.length) return;
         const byGrupo = groupBy(data, 'grupoEtario');
         const years = uniqueSorted(data.map(r => r.anio));
-        const ageColors = { 'Niños (0-17)': COLORS.rose, 'Jóvenes (18-29)': COLORS.amber, 'Adultos (30-64)': COLORS.indigo, 'Adultos mayores (65+)': COLORS.purple };
+        const ageColors = { 'Jóvenes (18-29)': COLORS.amber, 'Adultos (30-64)': COLORS.indigo, 'Adultos mayores (65+)': COLORS.purple };
         const datasets = Object.entries(byGrupo).map(([grupo, rows]) => {
             const c = ageColors[grupo] || COLORS.cyan;
             const map = {}; rows.forEach(r => map[r.anio] = r.valor);
@@ -1010,8 +1009,8 @@
     }
 
     function renderIngBarEdad() {
-        const data = DATA.ingresosEdad;
-        if (!data || !data.length) { showNoData('chart-ing-bar-edad'); return; }
+        const data = (DATA.ingresosEdad || []).filter(r => r.grupoEtario !== 'Niños (0-17)');
+        if (!data.length) { showNoData('chart-ing-bar-edad'); return; }
         clearNoData('chart-ing-bar-edad');
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years[years.length - 1];
@@ -1279,11 +1278,11 @@
     }
 
     function renderInglabEdadSerie() {
-        const data = DATA.inglabEdad;
-        if (!data || !data.length) return;
+        const data = (DATA.inglabEdad || []).filter(r => r.grupoEtario !== 'Niños (0-17)');
+        if (!data.length) return;
         const byGrupo = groupBy(data, 'grupoEtario');
         const years = uniqueSorted(data.map(r => r.anio));
-        const ageColors = { 'Niños (0-17)': COLORS.rose, 'Jóvenes (18-29)': COLORS.amber, 'Adultos (30-64)': COLORS.indigo, 'Adultos mayores (65+)': COLORS.purple };
+        const ageColors = { 'Jóvenes (18-29)': COLORS.amber, 'Adultos (30-64)': COLORS.indigo, 'Adultos mayores (65+)': COLORS.purple };
         const datasets = Object.entries(byGrupo).map(([grupo, rows]) => {
             const c = ageColors[grupo] || COLORS.cyan;
             const map = {}; rows.forEach(r => map[r.anio] = r.valor);
@@ -1375,8 +1374,8 @@
     }
 
     function renderInglabBarEdad() {
-        const data = DATA.inglabEdad;
-        if (!data || !data.length) { showNoData('chart-inglab-bar-edad'); return; }
+        const data = (DATA.inglabEdad || []).filter(r => r.grupoEtario !== 'Niños (0-17)');
+        if (!data.length) { showNoData('chart-inglab-bar-edad'); return; }
         clearNoData('chart-inglab-bar-edad');
         const years = uniqueSorted(data.map(r => r.anio));
         const latestYear = years[years.length - 1];

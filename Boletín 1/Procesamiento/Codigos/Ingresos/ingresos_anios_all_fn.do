@@ -24,7 +24,7 @@ global bases "$user_root/Bases"
 global bases_90s "$enemdu_diciembres/1990-1999"
 global bases_2000_2006 "$enemdu_diciembres/2000-2006"
 global bases_2007_2017 "$enemdu_diciembres/2007-2017"
-global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
+global bases_2018_presente "$enemdu_diciembres/2018-presente/Mensuales"
 
 global procesado "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc"
 
@@ -887,8 +887,8 @@ quietly {
 end
 
 **# Usage
-s
-foreach y of numlist 2006 {
+
+foreach y of numlist 2017(1)2025 {
     mk_ingtot, year(`y')
 }
 
