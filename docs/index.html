@@ -29,7 +29,6 @@
       <li><a href="#" data-page="pobreza"><span class="nav-icon"><img src="icons/poverty.png" alt="" style="width:1.2em;height:1.2em;vertical-align:middle;"></span> Pobreza</a></li>
       <li><a href="#" data-page="ingresos"><span class="nav-icon">💰</span> Ingresos</a></li>
       <li><a href="#" data-page="empleo"><span class="nav-icon">💼</span> Empleo</a></li>
-      <li><a href="#" data-page="crecimiento"><span class="nav-icon">📈</span> Distribución del Crecimiento</a></li>
       <li><a href="#" data-page="desigualdad"><span class="nav-icon" style="display:inline-block;transform:rotate(-20deg)">⚖️</span> Desigualdad</a></li>
       <li><a href="#" data-page="violencia"><span class="nav-icon">🪦</span> Violencia y Mortalidad</a></li>
     </ul>
@@ -209,7 +208,8 @@
       <div class="sub-tabs" id="ingresos-tabs">
         <button class="sub-tab active" data-subtab="percapita">Ingreso per Cápita</button>
         <button class="sub-tab" data-subtab="laboral">Ingreso Laboral</button>
-        <button class="sub-tab" data-subtab="descomposicion">Descomposición</button>
+        <button class="sub-tab" data-subtab="descomposicion">Composición</button>
+        <button class="sub-tab" data-subtab="dist-crecimiento">Distribución Crecimiento</button>
       </div>
 
       <!-- TAB: Ingreso per cápita -->
@@ -455,6 +455,35 @@
         </div>
       </div>
 
+      <!-- TAB: Distribución Crecimiento -->
+      <div class="sub-tab-content" id="ingresos-dist-crecimiento">
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Curvas de Incidencia del Crecimiento por Decil</div>
+            <p style="margin:0 0 10px 0;font-size:0.88rem;color:var(--text-secondary);line-height:1.6;padding:0 4px;">La curva muestra la tasa de crecimiento anualizado del ingreso per cápita para cada decil de la distribución entre dos años seleccionados. Si la curva es decreciente (mayor crecimiento en los deciles más bajos), la distribución se volvió más igualitaria en el período; si es creciente, la desigualdad aumentó.</p>
+            <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+              <div class="filter-group">
+                <label>Cobertura</label>
+                <select id="gic-area">
+                  <option value="nac">Nacional</option>
+                  <option value="urb">Urbano</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Año inicial</label>
+                <select id="gic-year-start"></select>
+              </div>
+              <div class="filter-group">
+                <label>Año final</label>
+                <select id="gic-year-end"></select>
+              </div>
+            </div>
+            <div class="chart-container tall"><canvas id="chart-gic"></canvas></div>
+          </div>
+        </div>
+
+      </div>
+
     </section>
 
     <!-- ==================== EMPLEO ==================== -->
@@ -465,7 +494,7 @@
       </div>
 
       <div class="sub-tabs" id="empleo-tabs">
-        <button class="sub-tab active" data-subtab="empleo-main">Empleo</button>
+        <button class="sub-tab active" data-subtab="empleo-main">Empleo adecuado</button>
         <button class="sub-tab" data-subtab="empleo-informalidad">Informalidad</button>
         <button class="sub-tab" data-subtab="empleo-pobreza-laboral">Pobreza Laboral</button>
       </div>
@@ -524,6 +553,19 @@
               <tbody></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title">Crecimiento del Empleo Adecuado por Sector</div>
+          <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+            <div class="filter-group">
+              <label>Período</label>
+              <select id="crec-empleo-sector-period"></select>
+            </div>
+          </div>
+          <div class="chart-container tall"><canvas id="chart-crec-empleo"></canvas></div>
         </div>
       </div>
       </div>
@@ -641,53 +683,6 @@
       </div>
 
     </section>
-
-    <!-- ==================== DISTRIBUCIÓN DEL CRECIMIENTO ==================== -->
-    <section class="page" id="page-crecimiento">
-      <div class="page-header">
-        <h2>Distribución del Crecimiento</h2>
-        <p>Curvas de Incidencia del Crecimiento (GIC) y crecimiento del ingreso por grupos</p>
-      </div>
-
-      <div class="grid-full">
-        <div class="card">
-          <div class="card-title">Curvas de Incidencia del Crecimiento por Decil</div>
-          <p style="margin:0 0 10px 0;font-size:0.88rem;color:var(--text-secondary);line-height:1.6;padding:0 4px;">La curva muestra la tasa de crecimiento anualizado del ingreso per cápita para cada decil de la distribución entre dos años seleccionados. Si la curva es decreciente (mayor crecimiento en los deciles más bajos), la distribución se volvió más igualitaria en el período; si es creciente, la desigualdad aumentó.</p>
-          <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
-            <div class="filter-group">
-              <label>Cobertura</label>
-              <select id="gic-area">
-                <option value="nac">Nacional</option>
-                <option value="urb">Urbano</option>
-              </select>
-            </div>
-            <div class="filter-group">
-              <label>Año inicial</label>
-              <select id="gic-year-start"></select>
-            </div>
-            <div class="filter-group">
-              <label>Año final</label>
-              <select id="gic-year-end"></select>
-            </div>
-          </div>
-          <div class="chart-container tall"><canvas id="chart-gic"></canvas></div>
-        </div>
-      </div>
-
-      <div class="grid-full">
-        <div class="card">
-          <div class="card-title">Crecimiento del Empleo por Sector</div>
-          <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
-            <div class="filter-group">
-              <label>Período</label>
-              <select id="crec-empleo-sector-period"></select>
-            </div>
-          </div>
-          <div class="chart-container tall"><canvas id="chart-crec-empleo"></canvas></div>
-        </div>
-      </div>
-    </section>
-
     <!-- ==================== DESIGUALDAD ==================== -->
     <section class="page" id="page-desigualdad">
       <div class="page-header">
@@ -916,8 +911,8 @@
       </div>
 
       <div class="sub-tabs" id="violencia-tabs">
-        <button class="sub-tab active" data-subtab="violencia-educacion">Por Nivel Educativo</button>
-        <button class="sub-tab" data-subtab="violencia-nna">Homicidios NNA y Jóvenes</button>
+        <button class="sub-tab active" data-subtab="violencia-educacion">Jóvenes y Adultos</button>
+        <button class="sub-tab" data-subtab="violencia-nna">Niños y Adolescentes</button>
       </div>
 
       <!-- Sub-tab: Mortalidad por Educación -->
@@ -958,20 +953,16 @@
         </div>
       </div>
 
-      <!-- Sub-tab: Homicidios NNA y Jóvenes por Etnia -->
+      <!-- Sub-tab: Homicidios NNA por Etnia -->
       <div class="sub-tab-content" id="violencia-violencia-nna">
         <div class="page-header" style="margin-top:0;">
-          <h3>Homicidios en NNA y Jóvenes por Etnia</h3>
+          <h3>Homicidios en Niños, Niñas y Adolescentes por Etnia</h3>
           <p>Tasas por cada 100.000 hab. — Población afrodescendiente vs. otras etnias</p>
         </div>
-        <div class="grid-2">
+        <div class="grid-full">
           <div class="card">
             <div class="card-title">Tasa de Homicidios — Niños, Niñas y Adolescentes (NNA)</div>
             <div class="chart-container"><canvas id="chart-homicidios-nna"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Tasa de Homicidios — Jóvenes (por etnia)</div>
-            <div class="chart-container"><canvas id="chart-homicidios-jovenes-etnia"></canvas></div>
           </div>
         </div>
       </div>

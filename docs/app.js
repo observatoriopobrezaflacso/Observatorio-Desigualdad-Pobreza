@@ -91,7 +91,7 @@
             if (pageId === 'pobreza') renderPobreza();
             if (pageId === 'ingresos') renderIngresos();
             if (pageId === 'empleo') renderEmpleo();
-            if (pageId === 'crecimiento') renderCrecimiento();
+
             if (pageId === 'desigualdad') renderDesigualdad();
             if (pageId === 'violencia') renderViolenciaPage();
         });
@@ -740,6 +740,8 @@
             renderInglabInner();
         } else if (tabId === 'descomposicion') {
             renderDecomposicion();
+        } else if (tabId === 'dist-crecimiento') {
+            renderCrecimiento();
         }
         ingresosRendered = true;
     }
@@ -1453,6 +1455,7 @@
             renderEmpleoSeries();
             renderEmpleoBarCharts();
             renderEmpleoSigTable();
+            renderCrecEmpleo();
         } else if (tabId === 'empleo-informalidad') {
             renderInformalidad();
         } else if (tabId === 'empleo-pobreza-laboral') {
@@ -2015,13 +2018,8 @@
     /* ============================================================
        PAGE: DISTRIBUCIÓN DEL CRECIMIENTO
        ============================================================ */
-    let crecimientoRendered = false;
-
     function renderCrecimiento() {
         renderGIC();
-        if (crecimientoRendered) return;
-        renderCrecEmpleo();
-        crecimientoRendered = true;
     }
 
     // Growth Incidence Curve — pre-computed from xlsx files
@@ -2559,6 +2557,7 @@
             { label: 'Top 10%', key: '10% más rico', color: COLORS.amber },
             { label: 'Clase media (P50-P90)', key: 'Clase media (P50-P90)', color: COLORS.indigo },
             { label: '50% más pobre', key: '50% más pobre', color: COLORS.emerald },
+            { label: '35% más pobre', key: '35% más pobre', color: COLORS.lime },
         ];
         const datasets = series.map(s => ({
             label: s.label,
@@ -2706,7 +2705,6 @@
 
     function renderHomicidiosNNA() {
         renderHomicidiosEtnia('chart-homicidios-nna', DATA.homicidiosNna, 'Homicidios NNA');
-        renderHomicidiosEtnia('chart-homicidios-jovenes-etnia', DATA.homicidiosJovenesEtnia, 'Homicidios Jóvenes');
     }
 
     function renderHomicidiosEtnia(canvasId, rawData, title) {
