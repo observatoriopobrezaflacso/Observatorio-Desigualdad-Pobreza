@@ -8,7 +8,7 @@ clear
 global limpias "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 * Cargar base 2001 con variables relevantes
-use rama1 nivinst condact fexp area  using "$limpias/empleo2001.dta", clear
+use rama1 nivinst condact fexp area  using "$limpias/empleo2001_isic4.dta", clear
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2001             // diferenciación por año
 rename nivinst p10a_2001
@@ -16,7 +16,7 @@ gen anio = "2001_"                      // marca de año para reshape futuro
 
 
 * Cargar base 2010 con variables relevantes
-append using "$limpias/empleo2010.dta", keep(rama1 p10a CONDACT fexp are) 
+append using "$limpias/empleo2010_isic4.dta", keep(rama1 p10a condact* fexp area) 
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2010             // diferenciación por año
@@ -24,7 +24,7 @@ replace anio = "2010_" if anio == ""    // completar años faltantes
 
 * Cargar base 2011 con variables relevantes
 append using ///
-    "$limpias/empleo2011.dta", keep(rama1 p10a CONDACT fexp area ) 
+    "$limpias/empleo2011_isic4.dta", keep(rama1 p10a condact* fexp area ) 
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2011             // diferenciación por año
@@ -32,7 +32,7 @@ replace anio = "2011_" if anio == ""    // completar años faltantes
 	
 * Añadir base 2024
 append using ///
-    "$limpias/empleo2024.dta", keep(condact fexp area  rama1 p10a) force
+    "$limpias/empleo2024_isic4.dta", keep(condact fexp area  rama1 p10a) force
 
 replace anio = "2024_" if anio == ""    // completar años faltantes
 rename condact condact_2024
@@ -392,12 +392,12 @@ twoway ///
 * 9. VERIFICACIÓN DE CATEGORÍAS CONDACT POR AÑO
 * ============================================================
 
-use "$limpias/empleo2011.dta", clear
+use "$limpias/empleo2011_isic4.dta", clear
 rename *, lower
 tab condact
 tab condact, nol
 
-use "$limpias/empleo2024.dta", clear
+use "$limpias/empleo2024_isic4.dta", clear
 rename *, lower
 tab condact
 tab condact, nol

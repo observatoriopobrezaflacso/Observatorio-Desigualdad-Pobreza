@@ -1,0 +1,417 @@
+
+  ___  ____  ____  ____  ____ (R)
+ /__    /   ____/   /   ____/
+___/   /   /___/   /   /___/   16.0   Copyright 1985-2019 StataCorp LLC
+  Statistics/Data Analysis            StataCorp
+                                      4905 Lakeway Drive
+     Special Edition                  College Station, Texas 77845 USA
+                                      800-STATA-PC        http://www.stata.com
+                                      979-696-4600        stata@stata.com
+                                      979-696-4601 (fax)
+
+Single-user Stata perpetual license:
+       Serial number:  12345678910
+         Licensed to:  Santiago Valdivieso
+                       None
+
+Notes:
+      1.  Stata is running in batch mode.
+      2.  Unicode is supported; see help unicode_advice.
+      3.  Maximum number of variables is set to 5000; see help set_maxvar.
+
+. do descriptiva_ramas.do 
+
+. *----------------------------------------------------------------------------
+> -
+. * descriptiva_ramas.do
+. *
+. * Apila las bases armonizadas (empleo<anio>_isic4.dta) y produce la
+. * distribucion porcentual de empleo por rama (Seccion CIIU Rev. 4) por anio.
+. *----------------------------------------------------------------------------
+> -
+. 
+. clear all
+
+. set more off
+
+. set linesize 220
+
+. 
+. global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+
+. global out       "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. global wd        "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama"
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 1: Apilar bases armonizadas
+. *-----------------------------------------------------------------------------
+. 
+. tempfile pooled
+
+. local first = 1
+
+. 
+. forval anio = 1991/2025 {
+  2. 
+.         local fp "$out/empleo`anio'_isic4.dta"
+  3.         capture confirm file "`fp'"
+  4.         if _rc {
+  5.                 di as error "  Sin archivo armonizado para `anio'; se omite."
+  6.                 continue
+  7.         }
+  8. 
+.         use rama1 using "`fp'", clear
+  9.         gen int anio = `anio'
+ 10. 
+.         if `first' {
+ 11.                 save `pooled', replace
+ 12.                 local first = 0
+ 13.         }
+ 14.         else {
+ 15.                 append using `pooled'
+ 16.                 save `pooled', replace
+ 17.         }
+ 18. }
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 not found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St00263.000001 saved
+
+. 
+. use `pooled', clear
+
+. 
+. * Conservar solo observaciones con rama identificada.
+. drop if missing(rama1)
+(1,316,070 observations deleted)
+
+. decode rama1, gen(rama1_str)
+
+. replace rama1_str = "" if rama1_str == "."
+(0 real changes made)
+
+. 
+. * Etiqueta corta para la tabla (solo la letra de la seccion).
+. gen seccion = substr(rama1_str, 1, 1)
+
+. drop if missing(seccion) | seccion == ""
+(0 observations deleted)
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 2: Identificar las ramas mas grandes en el tiempo
+. *-----------------------------------------------------------------------------
+. 
+. preserve
+
+.         contract seccion
+
+.         egen total = total(_freq)
+
+.         gen share_total = 100 * _freq / total
+
+.         gsort -share_total
+
+.         di as text _newline "Top 8 ramas (Seccion) - share global de empleo 1991-2025"
+
+Top 8 ramas (Seccion) - share global de empleo 1991-2025
+
+.         list seccion _freq share_total in 1/8, sep(0) noobs abbrev(15)
+
+  +--------------------------------+
+  | seccion    _freq   share_total |
+  |--------------------------------|
+  |       A   327075      30.48599 |
+  |       G   183112      17.06749 |
+  |       C   118097      11.00758 |
+  |       P    57370      5.347339 |
+  |       I    55799       5.20091 |
+  |       F    55775      5.198673 |
+  |       H    51204      4.772619 |
+  |       O    44267      4.126036 |
+  +--------------------------------+
+
+. restore
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 3: Distribucion porcentual por anio (tabla larga)
+. *-----------------------------------------------------------------------------
+. 
+. preserve
+
+.         contract anio seccion
+
+.         bysort anio: egen total_anio = total(_freq)
+
+.         gen share = 100 * _freq / total_anio
+
+.         keep anio seccion share
+
+.         reshape wide share, i(anio) j(seccion) string
+(note: j = A B C D E F G H I J K L M N O P Q R S T U)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                      725   ->      35
+Number of variables                   3   ->      22
+j variable (21 values)          seccion   ->   (dropped)
+xij variables:
+                                  share   ->   shareA shareB ... shareU
+-----------------------------------------------------------------------------
+
+.         format share* %5.1f
+
+.         di as text _newline "Distribucion porcentual del empleo por rama (Seccion CIIU Rev. 4) por anio"
+
+Distribucion porcentual del empleo por rama (Seccion CIIU Rev. 4) por anio
+
+.         list, sep(0) noobs abbrev(10)
+
+  +---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+  | anio   shareA   shareB   shareC   shareD   shareE   shareF   shareG   shareH   shareI   shareJ   shareK   shareL   shareM   shareN   shareO   shareP   shareQ   shareR   shareS   shareT   shareU |
+  |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+  | 1991     10.9      9.0     20.3      0.6      0.5      1.0     11.9      4.3      5.7      0.4      2.3        .      1.3      1.7      7.0      8.0      4.0      0.6      2.8      7.5      0.1 |
+  | 1992     10.4      9.0     19.6      0.5      0.3      1.1     11.4      4.2      6.7      0.4      2.2        .      2.0      1.8      6.0      8.6      4.1      0.6      3.3      7.5      0.0 |
+  | 1993     10.2      8.6     21.1      0.7      0.3      1.0     12.4      4.2      5.8      0.5      2.2        .      1.7      1.6      6.7      8.3      3.7      0.6      3.2      7.1      0.0 |
+  | 1994      9.7      8.7     19.2      0.6      0.3      1.2     12.1      4.4      6.3      0.5      2.0        .      1.8      1.0      8.1      9.4      3.7      0.8      2.7      7.4      0.0 |
+  | 1995      9.0      8.2     17.8      0.6      0.6      1.2     16.6      3.9      5.8      0.4      2.1        .      2.0      1.3      7.0      8.9      3.8      0.8      2.9      7.0      0.1 |
+  | 1996      9.5      8.3     18.3      0.5      0.1      1.1     13.6      4.1      6.3      0.6      2.1        .      1.9      1.2      7.6      9.2      4.0      0.7      4.2      6.6      0.0 |
+  | 1997      9.5      8.0     19.2      0.2      0.2      1.3     12.8      3.7      6.3      0.6      2.0        .      1.8      1.3      9.0      8.8      3.8      1.0      3.8      6.7      0.1 |
+  | 1998     10.5      8.0     18.4      0.5      0.4      1.4     11.4      4.9      7.0      0.5      2.0        .      1.9      2.1      5.4      9.1      3.7      0.9      3.0      9.0      0.1 |
+  | 1999      9.3      8.4     17.7      0.5      0.6      1.2     13.6      4.5      6.6      0.4      1.9        .      1.9      1.7      5.9      8.8      3.7      1.0      3.6      8.6      0.0 |
+  | 2000     31.9      0.6     12.0      0.3      0.2      5.6     19.1      4.3      3.2      0.9      0.8      0.1      1.1      1.2      3.4      5.2      2.1      0.4      3.0      4.8      0.0 |
+  | 2001     36.7      0.6     12.3      0.3      0.2      4.8     18.0      3.6      3.2      0.8      0.6      0.0      1.0      1.4      3.2      4.2      1.7      0.6      2.2      4.3      0.0 |
+  | 2002      9.3      0.7     14.7      0.4      0.2      6.8     27.0      5.5      4.5      1.0      1.2      0.1      1.9      2.1      4.2      6.9      3.1      0.6      3.0      6.6      0.0 |
+  | 2003     40.8      0.6     10.3      0.2      0.2      5.1     16.7      3.7      2.6      0.7      0.6      0.0      1.0      1.1      3.4      4.8      1.7      0.4      2.8      3.3      0.0 |
+  | 2004     42.8      0.5      9.5      0.3      0.2      4.8     16.6      3.8      3.0      0.8      0.6      0.0      0.9      1.0      2.9      4.8      1.8      0.3      2.7      2.7      0.0 |
+  | 2005     40.9      0.5      9.3      0.3      0.2      4.9     17.0      4.2      3.3      0.8      0.6      0.0      1.1      1.1      3.0      4.8      1.8      0.4      2.5      3.4      0.0 |
+  | 2006     41.1      0.6      9.2      0.2      0.2      5.1     17.1      3.8      3.6      0.9      0.6      0.0      1.1      1.1      2.9      4.8      1.7      0.4      2.4      2.8      0.0 |
+  | 2007     38.7      0.6      9.8      0.3      0.2      5.5     16.7      4.1      4.0      1.3      0.7      0.0      1.0      1.2      3.1      5.1      2.0      0.4      2.5      2.8      0.0 |
+  | 2008     37.2      0.5     10.2      0.3      0.2      5.8     16.5      4.1      4.2      1.4      0.7      0.0      1.1      1.2      3.4      5.3      2.1      0.4      2.6      2.8        . |
+  | 2009     37.0      0.6     10.1      0.3      0.3      5.8     17.2      4.3      3.8      1.3      0.6      0.0      1.2      1.3      3.0      5.3      2.0      0.4      2.6      2.9      0.0 |
+  | 2010     36.6      0.7     10.2      0.3      0.2      5.7     16.7      4.4      4.0      1.1      0.6      0.0      1.1      1.6      3.4      5.6      2.1      0.4      2.6      2.5      0.0 |
+  | 2011     34.2      0.6     10.0      0.3      0.3      5.5     18.2      4.9      4.3      1.2      0.8      0.1      1.5      1.8      3.4      5.5      2.5      0.4      2.3      2.3      0.0 |
+  | 2012     34.9      0.6      9.6      0.2      0.3      5.9     17.4      5.0      4.5      1.2      0.8      0.1      1.4      1.8      3.6      5.5      2.3      0.3      2.4      2.3      0.0 |
+  | 2013     36.1      0.7      9.6      0.3      0.4      6.8     15.8      4.6      4.7      1.0      0.7      0.2      1.3      1.9      3.8      4.8      2.0      0.5      2.3      2.4      0.0 |
+  | 2014     32.9      1.2      9.5      0.3      0.5      6.8     16.4      5.0      5.1      1.0      0.8      0.2      1.3      2.0      4.9      4.9      2.2      0.6      2.3      2.1      0.0 |
+  | 2015     33.0      1.0      8.9      0.4      0.3      6.7     16.1      5.4      5.6      1.0      0.7      0.1      1.5      2.1      5.1      5.0      2.2      0.6      2.4      2.0      0.0 |
+  | 2016     34.1      1.0      9.1      0.3      0.3      5.9     16.3      5.2      5.8      0.8      0.6      0.2      1.4      2.0      4.7      4.8      2.3      0.7      2.4      2.1      0.0 |
+  | 2017     33.3      0.8      9.3      0.4      0.3      5.7     16.7      5.1      6.0      0.9      0.7      0.2      1.5      2.0      4.7      4.7      2.7      0.7      2.4      2.0      0.0 |
+  | 2018     31.2      0.6     10.4      0.3      0.3      5.8     17.7      5.4      6.0      0.9      0.7      0.2      2.0      2.4      3.3      4.3      2.7      0.7      2.6      2.5      0.0 |
+  | 2019     32.3      0.6      9.9      0.3      0.3      5.3     17.3      5.4      6.1      0.8      0.7      0.2      2.1      2.4      3.3      4.3      2.8      0.7      2.6      2.6      0.0 |
+  | 2020     32.4      0.8      9.4      0.3      0.3      4.7     19.1      5.0      5.7      1.0      0.9      0.3      2.1      2.4      3.3      4.2      2.8      0.5      2.5      2.2      0.0 |
+  | 2021     25.4      0.8     10.5      0.3      0.4      5.5     19.8      5.8      6.9      0.9      1.0      0.3      2.2      2.8      3.9      4.6      3.0      0.7      2.8      2.3      0.0 |
+  | 2022     23.5      0.7     10.4      0.2      0.4      5.8     19.7      5.7      7.1      1.0      1.1      0.3      2.4      3.0      4.1      4.8      3.5      0.8      2.9      2.6      0.0 |
+  | 2023     24.0      0.7     10.0      0.3      0.4      5.5     19.2      5.8      7.2      1.0      1.0      0.3      2.5      3.5      4.0      4.9      3.4      0.8      2.9      2.5      0.0 |
+  | 2024     24.4      0.8     10.1      0.3      0.4      5.7     19.0      5.7      7.3      0.9      1.0      0.3      2.5      3.2      3.9      4.9      3.3      0.9      2.7      2.6      0.0 |
+  | 2025     23.0      0.7     10.3      0.3      0.4      6.1     18.9      5.6      7.3      1.0      0.9      0.3      2.7      3.4      3.9      5.0      3.4      0.8      3.1      2.7      0.0 |
+  +---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+.         export delimited using "$wd/distribucion_ramas_por_anio.csv", replace
+(note: file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/distribucion_ramas_por_anio.csv not found)
+file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/distribucion_ramas_por_anio.csv saved
+
+.         di as text _newline "CSV guardado en: $wd/distribucion_ramas_por_anio.csv"
+
+CSV guardado en: /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/distribucion_ramas_por_anio.csv
+
+. restore
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 4: Tabla compacta con las 8 ramas mayores en el tiempo
+. *-----------------------------------------------------------------------------
+. 
+. * Las 8 ramas mas grandes globalmente 1991-2025 (segun share total):
+. *   A Agricultura, G Comercio, C Manufactura, P Ensenanza,
+. *   I Alojamiento/comidas, F Construccion, H Transporte, O Adm. publica.
+. preserve
+
+.         contract anio seccion
+
+.         bysort anio: egen total_anio = total(_freq)
+
+.         gen share = 100 * _freq / total_anio
+
+.         keep if inlist(seccion, "A","C","F","G","H","I","O","P")
+(445 observations deleted)
+
+.         keep anio seccion share
+
+.         reshape wide share, i(anio) j(seccion) string
+(note: j = A C F G H I O P)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                      280   ->      35
+Number of variables                   3   ->       9
+j variable (8 values)           seccion   ->   (dropped)
+xij variables:
+                                  share   ->   shareA shareC ... shareP
+-----------------------------------------------------------------------------
+
+.         order anio shareA shareG shareC shareP shareI shareF shareH shareO
+
+.         label var shareA "A.Agric"
+
+.         label var shareG "G.Comer"
+
+.         label var shareC "C.Manuf"
+
+.         label var shareP "P.Educ"
+
+.         label var shareI "I.Aloj/Com"
+
+.         label var shareF "F.Const"
+
+.         label var shareH "H.Tport"
+
+.         label var shareO "O.AdmPub"
+
+.         format share* %5.1f
+
+.         di as text _newline "Tabla compacta: % de empleo en las 8 ramas mas grandes (CIIU Rev. 4)"
+
+Tabla compacta: % de empleo en las 8 ramas mas grandes (CIIU Rev. 4)
+
+.         list anio share*, sep(5) noobs abbrev(10)
+
+  +------------------------------------------------------------------------------+
+  | anio   shareA   shareG   shareC   shareP   shareI   shareF   shareH   shareO |
+  |------------------------------------------------------------------------------|
+  | 1991     10.9     11.9     20.3      8.0      5.7      1.0      4.3      7.0 |
+  | 1992     10.4     11.4     19.6      8.6      6.7      1.1      4.2      6.0 |
+  | 1993     10.2     12.4     21.1      8.3      5.8      1.0      4.2      6.7 |
+  | 1994      9.7     12.1     19.2      9.4      6.3      1.2      4.4      8.1 |
+  | 1995      9.0     16.6     17.8      8.9      5.8      1.2      3.9      7.0 |
+  |------------------------------------------------------------------------------|
+  | 1996      9.5     13.6     18.3      9.2      6.3      1.1      4.1      7.6 |
+  | 1997      9.5     12.8     19.2      8.8      6.3      1.3      3.7      9.0 |
+  | 1998     10.5     11.4     18.4      9.1      7.0      1.4      4.9      5.4 |
+  | 1999      9.3     13.6     17.7      8.8      6.6      1.2      4.5      5.9 |
+  | 2000     31.9     19.1     12.0      5.2      3.2      5.6      4.3      3.4 |
+  |------------------------------------------------------------------------------|
+  | 2001     36.7     18.0     12.3      4.2      3.2      4.8      3.6      3.2 |
+  | 2002      9.3     27.0     14.7      6.9      4.5      6.8      5.5      4.2 |
+  | 2003     40.8     16.7     10.3      4.8      2.6      5.1      3.7      3.4 |
+  | 2004     42.8     16.6      9.5      4.8      3.0      4.8      3.8      2.9 |
+  | 2005     40.9     17.0      9.3      4.8      3.3      4.9      4.2      3.0 |
+  |------------------------------------------------------------------------------|
+  | 2006     41.1     17.1      9.2      4.8      3.6      5.1      3.8      2.9 |
+  | 2007     38.7     16.7      9.8      5.1      4.0      5.5      4.1      3.1 |
+  | 2008     37.2     16.5     10.2      5.3      4.2      5.8      4.1      3.4 |
+  | 2009     37.0     17.2     10.1      5.3      3.8      5.8      4.3      3.0 |
+  | 2010     36.6     16.7     10.2      5.6      4.0      5.7      4.4      3.4 |
+  |------------------------------------------------------------------------------|
+  | 2011     34.2     18.2     10.0      5.5      4.3      5.5      4.9      3.4 |
+  | 2012     34.9     17.4      9.6      5.5      4.5      5.9      5.0      3.6 |
+  | 2013     36.1     15.8      9.6      4.8      4.7      6.8      4.6      3.8 |
+  | 2014     32.9     16.4      9.5      4.9      5.1      6.8      5.0      4.9 |
+  | 2015     33.0     16.1      8.9      5.0      5.6      6.7      5.4      5.1 |
+  |------------------------------------------------------------------------------|
+  | 2016     34.1     16.3      9.1      4.8      5.8      5.9      5.2      4.7 |
+  | 2017     33.3     16.7      9.3      4.7      6.0      5.7      5.1      4.7 |
+  | 2018     31.2     17.7     10.4      4.3      6.0      5.8      5.4      3.3 |
+  | 2019     32.3     17.3      9.9      4.3      6.1      5.3      5.4      3.3 |
+  | 2020     32.4     19.1      9.4      4.2      5.7      4.7      5.0      3.3 |
+  |------------------------------------------------------------------------------|
+  | 2021     25.4     19.8     10.5      4.6      6.9      5.5      5.8      3.9 |
+  | 2022     23.5     19.7     10.4      4.8      7.1      5.8      5.7      4.1 |
+  | 2023     24.0     19.2     10.0      4.9      7.2      5.5      5.8      4.0 |
+  | 2024     24.4     19.0     10.1      4.9      7.3      5.7      5.7      3.9 |
+  | 2025     23.0     18.9     10.3      5.0      7.3      6.1      5.6      3.9 |
+  +------------------------------------------------------------------------------+
+
+.         export delimited using "$wd/ramas_top_por_anio.csv", replace
+(note: file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/ramas_top_por_anio.csv not found)
+file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/ramas_top_por_anio.csv saved
+
+.         di as text _newline "CSV guardado en: $wd/ramas_top_por_anio.csv"
+
+CSV guardado en: /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/ramas_top_por_anio.csv
+
+. restore
+
+. 
+end of do-file

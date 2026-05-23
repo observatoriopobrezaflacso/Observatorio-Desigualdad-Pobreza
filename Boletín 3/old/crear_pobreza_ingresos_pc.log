@@ -1,0 +1,1096 @@
+
+  ___  ____  ____  ____  ____ (R)
+ /__    /   ____/   /   ____/
+___/   /   /___/   /   /___/   16.0   Copyright 1985-2019 StataCorp LLC
+  Statistics/Data Analysis            StataCorp
+                                      4905 Lakeway Drive
+     Special Edition                  College Station, Texas 77845 USA
+                                      800-STATA-PC        http://www.stata.com
+                                      979-696-4600        stata@stata.com
+                                      979-696-4601 (fax)
+
+Single-user Stata perpetual license:
+       Serial number:  12345678910
+         Licensed to:  Santiago Valdivieso
+                       None
+
+Notes:
+      1.  Stata is running in batch mode.
+      2.  Unicode is supported; see help unicode_advice.
+      3.  Maximum number of variables is set to 5000; see help set_maxvar.
+
+. do crear_pobreza_ingresos_pc.do 
+
+. *----------------------------------------------------------------------------
+> --*
+. * Create poverty variable in ENEMDU per-capita income datasets
+. *----------------------------------------------------------------------------
+> --*
+. *
+. * Rule:
+. *   pobreza = 1 if ingtot_per is below the annual December poverty threshold
+. *   pobreza = 0 if ingtot_per is at or above the threshold
+. *
+. * Data selection:
+. *   1991-1999 odd years: urban datasets (_urb)
+. *   2001 onwards odd years: national datasets (_nac)
+. *
+. * By default, the script saves modified copies in:
+. *   .../ingresos_pc/con_pobreza
+. *
+. * To overwrite the original datasets, change replace_originals to 1.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.p
+> obreza@flacso.edu.ec/Mi unidad"
+
+. global ingresos_pc "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. local replace_originals 0
+
+. local outdir "$ingresos_pc/con_pobreza"
+
+. local historico "`outdir'/ing_perca_pobreza_historico.dta"
+
+. local resumen "`outdir'/evolucion_pobreza.dta"
+
+. local resumen_ing_lab "`outdir'/evolucion_pobreza_ing_lab.dta"
+
+. local resumen_ing_lab_sexo "`outdir'/evolucion_pobreza_ing_lab_sexo.dta"
+
+. local resumen_ing_lab_area "`outdir'/evolucion_pobreza_ing_lab_area.dta"
+
+. local resumen_ing_lab_educ "`outdir'/evolucion_pobreza_ing_lab_educacion_supe
+> rior.dta"
+
+. 
+. if !`replace_originals' {
+.     capture mkdir "`outdir'"
+. }
+
+. 
+. *--- Import annual December poverty thresholds ---*
+. tempfile lineas
+
+. 
+. import excel using "$lineas_xlsx", ///
+>     sheet("Resumen Anual (Diciembre)") cellrange(A4:D39) clear
+(4 vars, 36 obs)
+
+. 
+. rename A anio
+
+. rename C linea_pobreza
+
+. keep anio linea_pobreza
+
+. 
+. foreach v in anio linea_pobreza {
+  2.     capture confirm numeric variable `v'
+  3.     if _rc {
+  4.         destring `v', replace force
+  5.     }
+  6. }
+
+. 
+. drop if missing(anio) | missing(linea_pobreza)
+(0 observations deleted)
+
+. duplicates drop anio, force
+
+Duplicates in terms of anio
+
+(0 observations are duplicates)
+
+. save `lineas', replace
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000001 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000001 saved
+
+. 
+. *--- Years requested by source type ---*
+. local years_urb 1991 1993 1995 1997 1999
+
+. local years_nac 2001 2003 2005 2007 2009 2011 2013 2015 2017 2019 2021 2023 2
+> 025
+
+. local analysis_start 2001
+
+. 
+. foreach scope in urb nac {
+  2. 
+.     if "`scope'" == "urb" {
+  3.         local years `years_urb'
+  4.     }
+  5.     else {
+  6.         local years `years_nac'
+  7.     }
+  8. 
+.     foreach y of local years {
+  9. 
+.         if `y' == 2025 {
+ 10.             local infile "$user_root/Bases/ENEMDU/Originales/Diciembres/20
+> 18-presente/Trimestrales/empleo2025.dta"
+ 11.         }
+ 12.         else if "`scope'" == "nac" {
+ 13.             local infile "$ingresos_pc/Nacional/ing_perca_`y'_`scope'_prec
+> ios2000.dta"
+ 14.         }
+ 15.         else {
+ 16.             local infile "$ingresos_pc/ing_perca_`y'_`scope'_precios2000.d
+> ta"
+ 17.         }
+ 18.         local outfile "`outdir'/ing_perca_`y'_`scope'_precios2000.dta"
+ 19. 
+.         capture confirm file "`infile'"
+ 20.         if _rc {
+ 21.             display as error "File not found: `infile'"
+ 22.             continue
+ 23.         }
+ 24. 
+.         quietly use `lineas', clear
+ 25.         quietly keep if anio == `y'
+ 26. 
+.         if _N != 1 {
+ 27.             display as error "No unique poverty threshold found for year `
+> y'"
+ 28.             error 459
+ 29.         }
+ 30. 
+.         local lp = linea_pobreza[1]
+ 31. 
+.         use "`infile'", clear
+ 32. 
+.         if `y' >= 1991 & `y' <= 1999 {
+ 33.             local ingreso_var ingtot_per_deflated
+ 34.         }
+ 35.         else if `y' == 2025 {
+ 36.             local ingreso_var ingpc
+ 37.         }
+ 38.         else {
+ 39.             local ingreso_var ingtot_per
+ 40.         }
+ 41. 
+.         capture confirm variable `ingreso_var'
+ 42.         if _rc {
+ 43.             display as error "Variable `ingreso_var' not found in `infile'
+> "
+ 44.             error 111
+ 45.         }
+ 46. 
+.         capture confirm variable ing_lab
+ 47.         if _rc {
+ 48.             capture confirm variable ing_lab_deflated
+ 49.             if !_rc {
+ 50.                 display as text "Variable ing_lab not found in `infile'; u
+> sing ing_lab_deflated to create ing_lab."
+ 51.                 generate double ing_lab = ing_lab_deflated
+ 52.             }
+ 53.             else {
+ 54.                 capture confirm variable ingrl
+ 55.                 if !_rc {
+ 56.                     display as text "Variables ing_lab and ing_lab_deflate
+> d not found in `infile'; using valid ingrl values to create ing_lab."
+ 57.                     generate double ing_lab = ingrl if ingrl >= 0 & ingrl 
+> < 999999
+ 58.                 }
+ 59.                 else {
+ 60.                     display as text "Variables ing_lab, ing_lab_deflated, 
+> and ingrl not found in `infile'; generating missing values."
+ 61.                     generate double ing_lab = .
+ 62.                 }
+ 63.             }
+ 64.         }
+ 65. 
+.         capture drop pobreza
+ 66.         capture drop linea_pobreza
+ 67.         capture drop cobertura_pobreza
+ 68.         capture drop ingreso_pobreza
+ 69.         capture drop ingreso_pobreza_var
+ 70.         capture drop educacion
+ 71.         capture drop educacion_superior
+ 72.         
+.         capture confirm variable anio
+ 73.         if _rc {
+ 74.             generate int anio = `y'
+ 75.         }
+ 76.         else {
+ 77.             replace anio = `y' if missing(anio)
+ 78.         }
+ 79. 
+.         capture confirm variable sexo
+ 80.         if _rc {
+ 81.             capture confirm variable p02
+ 82.             if !_rc {
+ 83.                 generate byte sexo = p02
+ 84.             }
+ 85.             else {
+ 86.                 generate byte sexo = .
+ 87.             }
+ 88.         }
+ 89. 
+.         capture confirm variable area
+ 90.         if _rc {
+ 91.             generate byte area = .
+ 92.             replace area = 1 if "`scope'" == "urb"
+ 93.         }
+ 94. 
+.         capture confirm variable nnivins
+ 95.         if !_rc {
+ 96.             generate educacion = nnivins
+ 97.         }
+ 98.         else {
+ 99.             capture confirm variable nivinst
+100.             if !_rc {
+101.                 generate educacion = nivinst
+102.             }
+103.             else {
+104.                 capture confirm variable p10a
+105.                 if !_rc {
+106.                     generate educacion = p10a
+107.                 }
+108.                 else {
+109.                     generate byte educacion = .
+110.                 }
+111.             }
+112.         }
+113. 
+.         generate byte educacion_superior = 0
+114. 
+.         if inrange(`y', 1991, 1999) {
+115.             capture confirm variable nivinst
+116.             if !_rc {
+117.                 replace educacion_superior = 1 if nivinst == 5
+118.                 replace educacion_superior = . if missing(nivinst)
+119.             }
+120.             else {
+121.                 replace educacion_superior = .
+122.             }
+123.         }
+124.         else if `y' == 2001 {
+125.             capture confirm variable nivinst
+126.             if !_rc {
+127.                 replace educacion_superior = 1 if inlist(nivinst, 6, 7)
+128.                 replace educacion_superior = . if missing(nivinst)
+129.             }
+130.             else {
+131.                 replace educacion_superior = .
+132.             }
+133.         }
+134.         else if inrange(`y', 2003, 2006) {
+135.             capture confirm variable nivinst
+136.             if !_rc {
+137.                 replace educacion_superior = 1 if inlist(nivinst, 9, 10)
+138.                 replace educacion_superior = . if missing(nivinst)
+139.             }
+140.             else {
+141.                 replace educacion_superior = .
+142.             }
+143.         }
+144.         else if `y' >= 2007 {
+145.             capture confirm variable p10a
+146.             if !_rc {
+147.                 replace educacion_superior = 1 if inlist(p10a, 9, 10)
+148.                 replace educacion_superior = . if missing(p10a)
+149.             }
+150.             else {
+151.                 replace educacion_superior = .
+152.             }
+153.         }
+154. 
+.         generate double linea_pobreza = `lp'
+155.         generate double ingreso_pobreza = `ingreso_var'
+156.         capture confirm variable ingtot_per
+157.         if _rc {
+158.             generate double ingtot_per = ingreso_pobreza
+159.             label variable ingtot_per "Ingreso per capita usado para pobre
+> za"
+160.         }
+161.         generate byte pobreza = (ingreso_pobreza < linea_pobreza) if !miss
+> ing(ingreso_pobreza)
+162.         generate str3 cobertura_pobreza = "`scope'"
+163.         generate str20 ingreso_pobreza_var = "`ingreso_var'"
+164. 
+.         label variable linea_pobreza "Linea de pobreza anual diciembre (USD)"
+165.         label variable ingreso_pobreza "Ingreso usado para pobreza"
+166.         label variable ingreso_pobreza_var "Variable de ingreso usada para
+>  pobreza"
+167.         label variable pobreza "Ingreso per capita bajo linea de pobreza"
+168.         label variable cobertura_pobreza "Cobertura de base usada para pob
+> reza"
+169.         label variable educacion "Nivel de educacion armonizado desde vari
+> able original"
+170.         label variable educacion_superior "Tiene educacion superior"
+171.         label define pobreza_lbl 0 "No pobre" 1 "Pobre", replace
+172.         label define educ_sup_lbl 0 "Sin educacion superior" 1 "Con educac
+> ion superior", replace
+173.         label values pobreza pobreza_lbl
+174.         label values educacion_superior educ_sup_lbl
+175. 
+.         quietly count if pobreza == 1
+176.         local n_pobres = r(N)
+177.         quietly count if pobreza < .
+178.         local n_validos = r(N)
+179. 
+.         display as text "Year `y' (`scope'): line = " ///
+>             as result %9.2f `lp' ///
+>             as text ", poor = " ///
+>             as result %12.0fc `n_pobres' ///
+>             as text " / " ///
+>             as result %12.0fc `n_validos'
+180. 
+.         if `replace_originals' {
+181.             save "`infile'", replace
+182.         }
+183.         else {
+184.             save "`outfile'", replace
+185.         }
+186.     }
+187. }
+(0 real changes made)
+(39,071 missing values generated)
+(39,071 real changes made)
+(5,261 missing values generated)
+(3,760 real changes made)
+(5,261 real changes made, 5,261 to missing)
+(537 missing values generated)
+(537 missing values generated)
+Year 1991 (urb): line =      1.60, poor =            0 /       38,534
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_199
+> 1_urb_precios2000.dta saved
+(0 real changes made)
+(37,735 missing values generated)
+(37,735 real changes made)
+(4,765 missing values generated)
+(3,834 real changes made)
+(4,765 real changes made, 4,765 to missing)
+(1,307 missing values generated)
+(1,307 missing values generated)
+Year 1993 (urb): line =      3.36, poor =            0 /       36,428
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_199
+> 3_urb_precios2000.dta saved
+(0 real changes made)
+(36,568 missing values generated)
+(36,568 real changes made)
+(4,564 missing values generated)
+(4,240 real changes made)
+(4,564 real changes made, 4,564 to missing)
+(1,356 missing values generated)
+(1,356 missing values generated)
+Year 1995 (urb): line =      5.17, poor =            0 /       35,212
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_199
+> 5_urb_precios2000.dta saved
+(0 real changes made)
+(36,684 missing values generated)
+(36,684 real changes made)
+(4,520 missing values generated)
+(4,509 real changes made)
+(4,520 real changes made, 4,520 to missing)
+(1,315 missing values generated)
+(1,315 missing values generated)
+Year 1997 (urb): line =      8.48, poor =            0 /       35,369
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_199
+> 7_urb_precios2000.dta saved
+(0 real changes made)
+(40,072 missing values generated)
+(40,072 real changes made)
+(4,971 missing values generated)
+(5,205 real changes made)
+(4,971 real changes made, 4,971 to missing)
+(1,128 missing values generated)
+(1,128 missing values generated)
+Year 1999 (urb): line =     19.55, poor =            0 /       38,944
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_199
+> 9_urb_precios2000.dta saved
+(0 real changes made)
+(6,890 missing values generated)
+(6,262 real changes made)
+(6,890 real changes made, 6,890 to missing)
+(3,586 missing values generated)
+(3,586 missing values generated)
+Year 2001 (nac): line =     45.73, poor =       33,709 /       57,163
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_200
+> 1_nac_precios2000.dta saved
+(0 real changes made)
+(8,956 missing values generated)
+(6,517 real changes made)
+(8,956 real changes made, 8,956 to missing)
+(279 missing values generated)
+(279 missing values generated)
+Year 2003 (nac): line =     53.04, poor =       50,030 /       82,038
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_200
+> 3_nac_precios2000.dta saved
+(0 real changes made)
+(7,135 missing values generated)
+(6,647 real changes made)
+(7,135 real changes made, 7,135 to missing)
+(1,221 missing values generated)
+(1,221 missing values generated)
+Year 2005 (nac): line =     55.77, poor =       37,377 /       75,829
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_200
+> 5_nac_precios2000.dta saved
+(0 real changes made)
+(7,191 missing values generated)
+(7,228 real changes made)
+(7,191 real changes made, 7,191 to missing)
+(1,292 missing values generated)
+(1,292 missing values generated)
+Year 2007 (nac): line =     59.27, poor =       32,175 /       75,630
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_200
+> 7_nac_precios2000.dta saved
+(0 real changes made)
+(6,499 missing values generated)
+(7,913 real changes made)
+(6,499 real changes made, 6,499 to missing)
+(1,070 missing values generated)
+(1,070 missing values generated)
+Year 2009 (nac): line =     67.29, poor =       32,416 /       77,808
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_200
+> 9_nac_precios2000.dta saved
+(0 real changes made)
+(5,551 missing values generated)
+(7,936 real changes made)
+(5,551 real changes made, 5,551 to missing)
+(912 missing values generated)
+(912 missing values generated)
+Year 2011 (nac): line =     73.29, poor =       23,141 /       68,741
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_201
+> 1_nac_precios2000.dta saved
+(0 real changes made)
+(6,962 missing values generated)
+(8,371 real changes made)
+(6,962 real changes made, 6,962 to missing)
+(497 missing values generated)
+(497 missing values generated)
+Year 2013 (nac): line =     78.40, poor =       24,763 /       80,889
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_201
+> 3_nac_precios2000.dta saved
+(0 real changes made)
+(10,257 missing values generated)
+(12,776 real changes made)
+(10,257 real changes made, 10,257 to missing)
+(1,088 missing values generated)
+(1,088 missing values generated)
+Year 2015 (nac): line =     84.02, poor =       31,110 /      111,733
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_201
+> 5_nac_precios2000.dta saved
+(0 real changes made)
+(8,495 missing values generated)
+(13,292 real changes made)
+(8,495 real changes made, 8,495 to missing)
+(676 missing values generated)
+(676 missing values generated)
+Year 2017 (nac): line =     84.80, poor =       27,636 /      109,607
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_201
+> 7_nac_precios2000.dta saved
+(0 real changes made)
+(3,787 missing values generated)
+(8,136 real changes made)
+(3,787 real changes made, 3,787 to missing)
+(313 missing values generated)
+(313 missing values generated)
+Year 2019 (nac): line =     84.97, poor =       11,879 /       58,895
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_201
+> 9_nac_precios2000.dta saved
+(0 real changes made)
+(1,888 missing values generated)
+(5,371 real changes made)
+(1,888 real changes made, 1,888 to missing)
+(239 missing values generated)
+(239 missing values generated)
+Year 2021 (nac): line =     85.81, poor =        5,883 /       29,787
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_202
+> 1_nac_precios2000.dta saved
+(0 real changes made)
+(1,634 missing values generated)
+(5,058 real changes made)
+(1,634 real changes made, 1,634 to missing)
+(138 missing values generated)
+(138 missing values generated)
+Year 2023 (nac): line =     90.22, poor =        4,835 /       28,168
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_202
+> 3_nac_precios2000.dta saved
+Variables ing_lab and ing_lab_deflated not found in /Users/vero/Library/CloudSt
+> orage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/O
+> riginales/Diciembres/2018-presente/Trimestrales/empleo2025.dta; using valid i
+> ngrl values to create ing_lab.
+(47,385 missing values generated)
+(4,272 missing values generated)
+(15,550 real changes made)
+(4,272 real changes made, 4,272 to missing)
+(477 missing values generated)
+(477 missing values generated)
+(477 missing values generated)
+Year 2025 (nac): line =     92.43, poor =       12,609 /       83,266
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_202
+> 5_nac_precios2000.dta saved
+
+. 
+. *--- Append processed datasets into one historical file ---*
+. clear
+
+. local first_file 1
+
+. local append_vars anio cobertura_pobreza fexp sexo area educacion educacion_s
+> uperior ing_lab ingtot_per ingreso_pobreza ingreso_pobreza_var pobreza linea_
+> pobreza
+
+. 
+. foreach scope in urb nac {
+  2. 
+.     if "`scope'" == "urb" {
+  3.         local years `years_urb'
+  4.     }
+  5.     else {
+  6.         local years `years_nac'
+  7.     }
+  8. 
+.     foreach y of local years {
+  9. 
+.         if `replace_originals' {
+ 10.             local datafile "$ingresos_pc/ing_perca_`y'_`scope'_precios2000
+> .dta"
+ 11.         }
+ 12.         else {
+ 13.             local datafile "`outdir'/ing_perca_`y'_`scope'_precios2000.dta
+> "
+ 14.         }
+ 15. 
+.         capture confirm file "`datafile'"
+ 16.         if _rc {
+ 17.             display as error "File not found for append: `datafile'"
+ 18.             continue
+ 19.         }
+ 20. 
+.         if `first_file' {
+ 21.             use "`datafile'", clear
+ 22.             keep `append_vars'
+ 23.             local first_file 0
+ 24.         }
+ 25.         else {
+ 26.             tempfile nextfile
+ 27.             preserve
+ 28.             use "`datafile'", clear
+ 29.             keep `append_vars'
+ 30.             save `nextfile', replace
+ 31.             restore
+ 32. 
+.             append using `nextfile'
+ 33.         }
+ 34.     }
+ 35. }
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000002 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000002 saved
+(label sexo already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000004 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000004 saved
+(label sexo already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000006 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000006 saved
+(label sexo already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000008 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000008 saved
+(note: variable fexp was int, now float to accommodate using data's values)
+(label sexo already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000a no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000a saved
+(label sexo already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000c no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000c saved
+(label sexo already defined)
+(label area already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000e no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000e saved
+(label sexo already defined)
+(label area already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000g no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000g saved
+(note: variable area was byte, now double to accommodate using data's values)
+(note: variable ing_lab was float, now double to accommodate using data's
+       values)
+(note: variable fexp was float, now double to accommodate using data's
+       values)
+(label area already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000i no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000i saved
+(label ingrl already defined)
+(label area already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000k no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000k saved
+(label area already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000m no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000m saved
+(label area already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000o no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000o saved
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000q no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000q saved
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000s no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000s saved
+(label labels0 already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000u no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000u saved
+(label labels0 already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000w no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.00000w saved
+(label labels0 already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000010 no
+> t found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St58289.000010 saved
+(note: variable ingtot_per was float, now double to accommodate using data's
+       values)
+(label labels0 already defined)
+(label pobreza_lbl already defined)
+(label educ_sup_lbl already defined)
+
+. 
+. keep if anio >= `analysis_start'
+(190,130 observations deleted)
+
+. save "`historico'", replace
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/ing_perca_pob
+> reza_historico.dta saved
+
+. 
+. *--- Poverty evolution plot ---*
+. preserve
+
+. 
+. collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+>     if anio >= `analysis_start' & pobreza < . & fexp < ., ///
+>     by(anio cobertura_pobreza)
+
+. 
+. generate tasa_pobreza_pct = 100 * tasa_pobreza
+
+. label variable tasa_pobreza_pct "Pobreza (%)"
+
+. 
+. egen last_label_year = max(anio)
+
+. generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+>     inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+(9 missing values generated)
+
+. drop last_label_year
+
+. 
+. save "`resumen'", replace
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_pob
+> reza.dta saved
+
+. 
+. twoway ///
+>     (connected tasa_pobreza_pct anio if cobertura_pobreza == "nac", ///
+>         lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+>         mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)), ///
+>     title("Evolucion de la pobreza") ///
+>     subtitle("Ingreso per capita bajo linea de pobreza anual de diciembre") /
+> //
+>     xtitle("Anio") ///
+>     ytitle("Pobreza (%)") ///
+>     ylabel(0(10)100, angle(horizontal)) ///
+>     xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Nacional") position(6) rows(1)) ///
+>     name(g_pobreza_total, replace) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. 
+. graph save "`outdir'/evolucion_pobreza.gph", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza.gph saved)
+
+. graph export "`outdir'/evolucion_pobreza.pdf", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza.pdf written in PDF format)
+
+. 
+. capture graph export "`outdir'/evolucion_pobreza.png", replace width(2400)
+
+. if _rc {
+.     display as text "PNG export skipped because the Graph2png translator is n
+> ot available."
+PNG export skipped because the Graph2png translator is not available.
+. }
+
+. 
+. restore
+
+. 
+. *--- Poverty evolution among people with observed labor income ---*
+. preserve
+
+. 
+. collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+>     if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < ., ///
+>     by(anio cobertura_pobreza)
+
+. 
+. generate tasa_pobreza_pct = 100 * tasa_pobreza
+
+. label variable tasa_pobreza_pct "Pobreza (%)"
+
+. 
+. egen last_label_year = max(anio)
+
+. generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+>     inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+(9 missing values generated)
+
+. drop last_label_year
+
+. 
+. save "`resumen_ing_lab'", replace
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_pob
+> reza_ing_lab.dta saved
+
+. 
+. twoway ///
+>     (connected tasa_pobreza_pct anio if cobertura_pobreza == "nac", ///
+>         lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+>         mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)), ///
+>     title("Pobreza entre personas con ingreso laboral") ///
+>     subtitle("Muestra restringida a observaciones con ing_lab") ///
+>     xtitle("Anio") ///
+>     ytitle("Pobreza (%)") ///
+>     ylabel(0(10)100, angle(horizontal)) ///
+>     xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Nacional") position(6) rows(1)) ///
+>     name(g_pobreza_ing_lab, replace) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. 
+. graph save "`outdir'/evolucion_pobreza_ing_lab.gph", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab.gph saved)
+
+. graph export "`outdir'/evolucion_pobreza_ing_lab.pdf", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab.pdf written in PDF format)
+
+. 
+. capture graph export "`outdir'/evolucion_pobreza_ing_lab.png", replace width(
+> 2400)
+
+. if _rc {
+.     display as text "PNG export skipped because the Graph2png translator is n
+> ot available."
+PNG export skipped because the Graph2png translator is not available.
+. }
+
+. 
+. restore
+
+. 
+. *--- Disaggregation by sex among people with observed labor income ---*
+. preserve
+
+. 
+. collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+>     if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & sexo
+>  < ., ///
+>     by(anio sexo)
+
+. 
+. generate tasa_pobreza_pct = 100 * tasa_pobreza
+
+. label variable tasa_pobreza_pct "Pobreza (%)"
+
+. 
+. egen last_label_year = max(anio)
+
+. generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+>     inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+(18 missing values generated)
+
+. drop last_label_year
+
+. 
+. save "`resumen_ing_lab_sexo'", replace
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_pob
+> reza_ing_lab_sexo.dta saved
+
+. 
+. twoway ///
+>     (connected tasa_pobreza_pct anio if sexo == 1, ///
+>         lcolor(navy) lwidth(medthick) msymbol(circle) mcolor(navy) ///
+>         mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)) ///
+>     (connected tasa_pobreza_pct anio if sexo == 2, ///
+>         lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+>         mlabel(lbl) mlabposition(6) mlabsize(vsmall) mlabcolor(gs3)), ///
+>     title("Pobreza con ingreso laboral, por sexo") ///
+>     subtitle("Muestra restringida a observaciones con ing_lab") ///
+>     xtitle("Anio") ///
+>     ytitle("Pobreza (%)") ///
+>     ylabel(0(10)100, angle(horizontal)) ///
+>     xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Hombre" 2 "Mujer") position(6) rows(1)) ///
+>     name(g_pobreza_ing_lab_sexo, replace) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. 
+. graph save "`outdir'/evolucion_pobreza_ing_lab_sexo.gph", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab_sexo.gph saved)
+
+. graph export "`outdir'/evolucion_pobreza_ing_lab_sexo.pdf", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab_sexo.pdf written in PDF format)
+
+. 
+. capture graph export "`outdir'/evolucion_pobreza_ing_lab_sexo.png", replace w
+> idth(2400)
+
+. if _rc {
+.     display as text "PNG export skipped because the Graph2png translator is n
+> ot available."
+PNG export skipped because the Graph2png translator is not available.
+. }
+
+. 
+. restore
+
+. 
+. *--- Disaggregation by area among people with observed labor income ---*
+. preserve
+
+. 
+. collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+>     if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & area
+>  < ., ///
+>     by(anio area)
+
+. 
+. generate tasa_pobreza_pct = 100 * tasa_pobreza
+
+. label variable tasa_pobreza_pct "Pobreza (%)"
+
+. 
+. egen last_label_year = max(anio)
+
+. generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+>     inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+(18 missing values generated)
+
+. drop last_label_year
+
+. 
+. save "`resumen_ing_lab_area'", replace
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_pob
+> reza_ing_lab_area.dta saved
+
+. 
+. twoway ///
+>     (connected tasa_pobreza_pct anio if area == 1, ///
+>         lcolor(navy) lwidth(medthick) msymbol(circle) mcolor(navy) ///
+>         mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)) ///
+>     (connected tasa_pobreza_pct anio if area == 2, ///
+>         lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+>         mlabel(lbl) mlabposition(6) mlabsize(vsmall) mlabcolor(gs3)), ///
+>     title("Pobreza con ingreso laboral, por area") ///
+>     subtitle("Muestra restringida a observaciones con ing_lab") ///
+>     xtitle("Anio") ///
+>     ytitle("Pobreza (%)") ///
+>     ylabel(0(10)100, angle(horizontal)) ///
+>     xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Urbana" 2 "Rural") position(6) rows(1)) ///
+>     name(g_pobreza_ing_lab_area, replace) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. 
+. graph save "`outdir'/evolucion_pobreza_ing_lab_area.gph", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab_area.gph saved)
+
+. graph export "`outdir'/evolucion_pobreza_ing_lab_area.pdf", replace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab_area.pdf written in PDF format)
+
+. 
+. capture graph export "`outdir'/evolucion_pobreza_ing_lab_area.png", replace w
+> idth(2400)
+
+. if _rc {
+.     display as text "PNG export skipped because the Graph2png translator is n
+> ot available."
+PNG export skipped because the Graph2png translator is not available.
+. }
+
+. 
+. restore
+
+. 
+. *--- Disaggregation by higher education among people with observed labor inco
+> me ---*
+. preserve
+
+. 
+. collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
+>     if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & educ
+> acion_superior < ., ///
+>     by(anio educacion_superior)
+
+. 
+. generate tasa_pobreza_pct = 100 * tasa_pobreza
+
+. label variable tasa_pobreza_pct "Pobreza (%)"
+
+. 
+. egen last_label_year = max(anio)
+
+. generate str5 lbl = string(tasa_pobreza_pct, "%3.1f") if ///
+>     inlist(anio, 2001, 2009, 2017) | anio == last_label_year
+(18 missing values generated)
+
+. drop last_label_year
+
+. 
+. save "`resumen_ing_lab_educ'", replace
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_pob
+> reza_ing_lab_educacion_superior.dta saved
+
+. 
+. twoway ///
+>     (connected tasa_pobreza_pct anio if educacion_superior == 0, ///
+>         lcolor(navy) lwidth(medthick) msymbol(circle) mcolor(navy) ///
+>         mlabel(lbl) mlabposition(12) mlabsize(vsmall) mlabcolor(gs3)) ///
+>     (connected tasa_pobreza_pct anio if educacion_superior == 1, ///
+>         lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon) ///
+>         mlabel(lbl) mlabposition(6) mlabsize(vsmall) mlabcolor(gs3)), ///
+>     title("Pobreza con ingreso laboral, por educacion superior") ///
+>     subtitle("Muestra restringida a observaciones con ing_lab") ///
+>     xtitle("Anio") ///
+>     ytitle("Pobreza (%)") ///
+>     ylabel(0(10)100, angle(horizontal)) ///
+>     xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Sin educacion superior" 2 "Con educacion superior") ///
+>         position(6) rows(1)) ///
+>     name(g_pobreza_ing_lab_educacion, replace) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. 
+. graph save "`outdir'/evolucion_pobreza_ing_lab_educacion_superior.gph", repla
+> ce
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab_educacion_superior.gph saved)
+
+. graph export "`outdir'/evolucion_pobreza_ing_lab_educacion_superior.pdf", rep
+> lace
+(file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/con_pobreza/evolucion_po
+> breza_ing_lab_educacion_superior.pdf written in PDF format)
+
+. 
+. capture graph export "`outdir'/evolucion_pobreza_ing_lab_educacion_superior.p
+> ng", replace width(2400)
+
+. if _rc {
+.     display as text "PNG export skipped because the Graph2png translator is n
+> ot available."
+PNG export skipped because the Graph2png translator is not available.
+. }
+
+. 
+. restore
+
+. 
+. display as text "Done."
+Done.
+
+. 
+end of do-file

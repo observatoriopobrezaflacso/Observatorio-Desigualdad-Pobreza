@@ -1,0 +1,3554 @@
+
+  ___  ____  ____  ____  ____ (R)
+ /__    /   ____/   /   ____/
+___/   /   /___/   /   /___/   16.0   Copyright 1985-2019 StataCorp LLC
+  Statistics/Data Analysis            StataCorp
+                                      4905 Lakeway Drive
+     Special Edition                  College Station, Texas 77845 USA
+                                      800-STATA-PC        http://www.stata.com
+                                      979-696-4600        stata@stata.com
+                                      979-696-4601 (fax)
+
+Single-user Stata perpetual license:
+       Serial number:  12345678910
+         Licensed to:  Santiago Valdivieso
+                       None
+
+Notes:
+      1.  Stata is running in batch mode.
+      2.  Unicode is supported; see help unicode_advice.
+      3.  Maximum number of variables is set to 5000; see help set_maxvar.
+
+. do 00_master.do 
+
+. *----------------------------------------------------------------------------
+> -
+. * 00_master.do
+. *
+. * Ejecuta toda la cadena de armonizacion de ramas de ENEMDU:
+. *   1) CIIU Rev. 2  -> Rev. 3.1   (1990-1999)
+. *   2) CIIU Rev. 3  -> Rev. 3.1   (2000-2006)
+. *   3) CIIU Rev. 3.1 -> Rev. 4    (1991-2012) + pass-through (2013-2025)
+. *   4) Tabla descriptiva: % de las ramas mas grandes por anio.
+. *----------------------------------------------------------------------------
+> -
+. 
+. clear all
+
+. set more off
+
+. version 16
+
+. 
+. global wd "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pob
+> reza/Boletín 3/2. Armonización de variables/rama"
+
+. 
+. cd "$wd"
+/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 
+> 3/2. Armonización de variables/rama
+
+. 
+. di as text "================ STEP 1: Rev 2 -> Rev 3.1 (1990-1999) ===========
+> ====="
+================ STEP 1: Rev 2 -> Rev 3.1 (1990-1999) ================
+
+. do "isic2_31.do"
+
+. clear
+
+. 
+. * Definicion de rutas globales para facilitar la portabilidad del codigo
+. global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.p
+> obreza@flacso.edu.ec/Mi unidad"
+
+. 
+. global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/
+> Trimestrales"
+
+. 
+. global isic "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. global out "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. 
+. *----------------------------------------------------------------------------
+> -
+. * STEP 1: Preparar correspondencia CIIU Rev. 2 -> CIIU Rev. 3.1
+. *----------------------------------------------------------------------------
+> --
+. 
+. import delimited using "$isic/ISIC2_ISIC31.txt", clear stringcols(_all)
+(5 vars, 562 obs)
+
+. 
+. rename (rev2 rev31) (isic2code isic31code)
+
+. destring partial2 partial31, replace ignore("\")
+partial2: all characters numeric; replaced as byte
+partial31: all characters numeric; replaced as byte
+
+. 
+. replace isic2code  = strtrim(isic2code)
+(0 real changes made)
+
+. replace isic31code = strtrim(isic31code)
+(0 real changes made)
+
+. drop if missing(isic2code) | missing(isic31code)
+(0 observations deleted)
+
+. 
+. replace isic2code  = substr("0000" + isic2code,  -4, .)
+(2 real changes made)
+
+. replace isic31code = substr("0000" + isic31code, -4, .)
+(23 real changes made)
+
+. 
+. * En codigos con multiples correspondencias se prioriza:
+. * 1) correspondencia no parcial, 2) destino no parcial, 3) mismo codigo.
+. gen byte exact_match = isic2code == isic31code
+
+. gsort isic2code partial2 partial31 -exact_match isic31code
+
+. duplicates drop isic2code, force
+
+Duplicates in terms of isic2code
+
+(402 observations deleted)
+
+. 
+. rename isic2code  p40_old
+
+. rename isic31code p40
+
+. 
+. keep p40_old p40
+
+. tempfile crosswalk_clean_2_31
+
+. save `crosswalk_clean_2_31'
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+
+. 
+. *----------------------------------------------------------------------------
+> -
+. * STEP 2: Actualizar bases 1990-1999 de CIIU Rev. 2 a Rev. 3.1
+. *----------------------------------------------------------------------------
+> --
+. 
+. forval anio = 1990/1999 {
+  2. 
+.         di "********************************`anio'***************************
+> *****"
+  3. 
+.         * 1990 fue grabado en latin1; los demas anos abren sin problema.
+.         capture noisily use "$bases/empleo`anio'.dta", clear
+  4.         if _rc {
+  5.                 di as error "  AVISO: empleo`anio'.dta no se pudo abrir di
+> rectamente."
+  6.                 di as error "  Intente: unicode encoding set Latin1 ; unic
+> ode translate ""$bases/empleo`anio'.dta"""
+  7.                 continue
+  8.         }
+  9. 
+.         * Algunos anos (p.ej. 1999) ya traen una variable rama1 con el codigo
+>  de 4
+.         * digitos; se preserva como respaldo para evitar conflictos de nombre
+> s.
+.         capture confirm variable rama1
+ 10.         if !_rc rename rama1 rama1_codigo_orig
+ 11. 
+.         rename rama p40_old
+ 12.         tostring p40_old, replace force
+ 13.         replace p40_old = strtrim(p40_old)
+ 14.         replace p40_old = substr("0000" + p40_old, -4, .) if p40_old != ""
+>  & p40_old != "."
+ 15. 
+.         merge m:1 p40_old using `crosswalk_clean_2_31', keep(master match)
+ 16. 
+.         * Lista codigos no mapeados para revision manual.
+.         tab p40_old if missing(p40) & p40_old != ""
+ 17. 
+.         rename p40_old rama_old_isic2
+ 18.         drop _merge
+ 19. 
+.         * Extrae los primeros 2 digitos del nuevo codigo CIIU Rev. 3.1.
+.         gen isic2 = substr(p40, 1, 2)
+ 20.         gen rama_new = ""
+ 21. 
+.         * Mapeo de divisiones a secciones CIIU Rev. 3.1.
+.         replace rama_new = "A" if isic2 >= "01" & isic2 <= "02"
+ 22.         replace rama_new = "B" if isic2 == "05"
+ 23.         replace rama_new = "C" if isic2 >= "10" & isic2 <= "14"
+ 24.         replace rama_new = "D" if isic2 >= "15" & isic2 <= "37"
+ 25.         replace rama_new = "E" if isic2 >= "40" & isic2 <= "41"
+ 26.         replace rama_new = "F" if isic2 == "45"
+ 27.         replace rama_new = "G" if isic2 >= "50" & isic2 <= "52"
+ 28.         replace rama_new = "H" if isic2 == "55"
+ 29.         replace rama_new = "I" if isic2 >= "60" & isic2 <= "64"
+ 30.         replace rama_new = "J" if isic2 >= "65" & isic2 <= "67"
+ 31.         replace rama_new = "K" if isic2 >= "70" & isic2 <= "74"
+ 32.         replace rama_new = "L" if isic2 == "75"
+ 33.         replace rama_new = "M" if isic2 == "80"
+ 34.         replace rama_new = "N" if isic2 == "85"
+ 35.         replace rama_new = "O" if isic2 >= "90" & isic2 <= "93"
+ 36.         replace rama_new = "P" if isic2 >= "95" & isic2 <= "97"
+ 37.         replace rama_new = "Q" if isic2 == "99"
+ 38. 
+.         * Codificacion deterministica: la letra define directamente el numero
+.         * (A=1, B=2, ..., Q=17) independiente de las secciones presentes.
+.         * strpos retorna 1 cuando la aguja es vacia, asi que se filtra explic
+> ito.
+.         gen byte rama_final = strpos("ABCDEFGHIJKLMNOPQ", rama_new) if rama_n
+> ew != ""
+ 39.         replace rama_final = . if rama_final == 0
+ 40. 
+.         label define isic31_secciones ///
+>                 1 "Agricultura, caza y silvicultura" ///
+>                 2 "Pesca" ///
+>                 3 "Explotacion de minas y canteras" ///
+>                 4 "Industria manufacturera" ///
+>                 5 "Electricidad, gas y agua" ///
+>                 6 "Construccion" ///
+>                 7 "Comercio al por mayor y al por menor; reparacion de vehicu
+> los automotores, motocicletas y efectos personales y enseres domesticos" ///
+>                 8 "Hoteles y restaurantes" ///
+>                 9 "Transporte, almacenamiento y comunicaciones" ///
+>                 10 "Intermediacion financiera" ///
+>                 11 "Actividades inmobiliarias, empresariales y de alquiler" /
+> //
+>                 12 "Administracion publica y defensa; seguridad social de afi
+> liacion obligatoria" ///
+>                 13 "Educacion" ///
+>                 14 "Servicios sociales y de salud" ///
+>                 15 "Otras actividades de servicios comunitarios, sociales y p
+> ersonales" ///
+>                 16 "Actividades de los hogares como empleadores y actividades
+>  de produccion no diferenciada de los hogares" ///
+>                 17 "Organizaciones y organos extraterritoriales", replace
+ 41. 
+.         label values rama_final isic31_secciones
+ 42.         rename rama_final rama1
+ 43. 
+.         drop isic2 rama_new
+ 44. 
+.         save "$out/empleo`anio'_isic31.dta", replace
+ 45. 
+. }
+********************************1990********************************
+p40_old was int now str4
+(0 real changes made)
+(13,921 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        25,421
+        from master                    25,421  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            11,790  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      8,895       34.99       34.99
+       0000 |     13,921       54.76       89.75
+       2114 |          1        0.00       89.76
+       6101 |          5        0.02       89.78
+       6102 |          5        0.02       89.80
+       6103 |          9        0.04       89.83
+       6104 |         13        0.05       89.88
+       6105 |          4        0.02       89.90
+       6106 |          2        0.01       89.91
+       6107 |        120        0.47       90.38
+       6108 |          1        0.00       90.38
+       6201 |        669        2.63       93.01
+       6202 |         70        0.28       93.29
+       6203 |        262        1.03       94.32
+       6204 |        113        0.44       94.76
+       6205 |        116        0.46       95.22
+       6206 |         62        0.24       95.46
+       6207 |         18        0.07       95.54
+       6208 |         25        0.10       95.63
+       6209 |         78        0.31       95.94
+       6210 |        108        0.42       96.37
+       6211 |          5        0.02       96.38
+       6212 |         33        0.13       96.51
+       6213 |         28        0.11       96.62
+       6214 |          5        0.02       96.64
+       6215 |        117        0.46       97.10
+       6216 |        127        0.50       97.60
+       6217 |        490        1.93       99.53
+       6218 |         25        0.10       99.63
+       6219 |          9        0.04       99.67
+       6220 |         85        0.33      100.00
+------------+-----------------------------------
+      Total |     25,421      100.00
+(25,421 missing values generated)
+(37,211 missing values generated)
+(1,063 real changes made)
+(106 real changes made)
+(1,132 real changes made)
+(2,564 real changes made)
+(138 real changes made)
+(98 real changes made)
+(1,175 real changes made)
+(699 real changes made)
+(608 real changes made)
+(247 real changes made)
+(434 real changes made)
+(765 real changes made)
+(1,036 real changes made)
+(528 real changes made)
+(388 real changes made)
+(803 real changes made)
+(6 real changes made)
+(25,421 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1990_isic3
+> 1.dta saved
+********************************1991********************************
+p40_old was int now str4
+(0 real changes made)
+(22,958 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        25,804
+        from master                    25,804  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            13,267  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+       0000 |     22,957       88.97       88.97
+       0930 |          1        0.00       88.97
+       6101 |          2        0.01       88.98
+       6102 |          3        0.01       88.99
+       6103 |          4        0.02       89.01
+       6104 |         12        0.05       89.05
+       6105 |          6        0.02       89.08
+       6106 |          4        0.02       89.09
+       6107 |        140        0.54       89.63
+       6201 |        671        2.60       92.23
+       6202 |         67        0.26       92.49
+       6203 |        276        1.07       93.56
+       6204 |         89        0.34       93.91
+       6205 |        137        0.53       94.44
+       6206 |         87        0.34       94.78
+       6207 |         21        0.08       94.86
+       6208 |         32        0.12       94.98
+       6209 |         89        0.34       95.33
+       6210 |        106        0.41       95.74
+       6211 |         10        0.04       95.78
+       6212 |         27        0.10       95.88
+       6213 |         57        0.22       96.10
+       6214 |         21        0.08       96.18
+       6215 |        118        0.46       96.64
+       6216 |        138        0.53       97.17
+       6217 |        605        2.34       99.52
+       6218 |         57        0.22       99.74
+       6219 |          6        0.02       99.76
+       6220 |         61        0.24      100.00
+------------+-----------------------------------
+      Total |     25,804      100.00
+(25,804 missing values generated)
+(39,071 missing values generated)
+(1,265 real changes made)
+(176 real changes made)
+(1,194 real changes made)
+(2,687 real changes made)
+(140 real changes made)
+(107 real changes made)
+(1,646 real changes made)
+(760 real changes made)
+(570 real changes made)
+(307 real changes made)
+(425 real changes made)
+(926 real changes made)
+(1,067 real changes made)
+(532 real changes made)
+(456 real changes made)
+(994 real changes made)
+(15 real changes made)
+(25,804 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1991_isic3
+> 1.dta saved
+********************************1992********************************
+p40_old was int now str4
+(0 real changes made)
+(12,939 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,535
+        from master                    24,535  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            13,553  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      8,462       34.49       34.49
+       0000 |     12,939       52.74       87.23
+       6101 |          6        0.02       87.25
+       6102 |          7        0.03       87.28
+       6103 |          6        0.02       87.30
+       6104 |         13        0.05       87.36
+       6105 |         15        0.06       87.42
+       6106 |         11        0.04       87.46
+       6107 |        157        0.64       88.10
+       6108 |          2        0.01       88.11
+       6201 |        724        2.95       91.06
+       6202 |         85        0.35       91.41
+       6203 |        323        1.32       92.72
+       6204 |         93        0.38       93.10
+       6205 |        148        0.60       93.71
+       6206 |         81        0.33       94.04
+       6207 |         20        0.08       94.12
+       6208 |         36        0.15       94.27
+       6209 |        163        0.66       94.93
+       6210 |        115        0.47       95.40
+       6211 |         14        0.06       95.46
+       6212 |         32        0.13       95.59
+       6213 |         43        0.18       95.76
+       6214 |          9        0.04       95.80
+       6215 |         97        0.40       96.19
+       6216 |        174        0.71       96.90
+       6217 |        613        2.50       99.40
+       6218 |         74        0.30       99.70
+       6219 |          6        0.02       99.73
+       6220 |         67        0.27      100.00
+------------+-----------------------------------
+      Total |     24,535      100.00
+(24,535 missing values generated)
+(38,088 missing values generated)
+(1,275 real changes made)
+(132 real changes made)
+(1,217 real changes made)
+(2,653 real changes made)
+(110 real changes made)
+(128 real changes made)
+(1,644 real changes made)
+(909 real changes made)
+(575 real changes made)
+(300 real changes made)
+(529 real changes made)
+(818 real changes made)
+(1,164 real changes made)
+(554 real changes made)
+(517 real changes made)
+(1,022 real changes made)
+(6 real changes made)
+(24,535 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1992_isic3
+> 1.dta saved
+********************************1993********************************
+p40_old was int now str4
+(0 real changes made)
+(13,129 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,433
+        from master                    24,433  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            13,302  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      8,387       34.33       34.33
+       0000 |     13,129       53.73       88.06
+       6101 |         13        0.05       88.11
+       6102 |          7        0.03       88.14
+       6103 |         15        0.06       88.20
+       6104 |         21        0.09       88.29
+       6105 |         11        0.05       88.34
+       6106 |         16        0.07       88.40
+       6107 |        121        0.50       88.90
+       6108 |          8        0.03       88.93
+       6201 |        705        2.89       91.81
+       6202 |         90        0.37       92.18
+       6203 |        310        1.27       93.45
+       6204 |         94        0.38       93.84
+       6205 |         97        0.40       94.23
+       6206 |         69        0.28       94.52
+       6207 |         14        0.06       94.57
+       6208 |         30        0.12       94.70
+       6209 |        120        0.49       95.19
+       6210 |        105        0.43       95.62
+       6211 |         13        0.05       95.67
+       6212 |         33        0.14       95.80
+       6213 |         41        0.17       95.97
+       6214 |         53        0.22       96.19
+       6215 |         98        0.40       96.59
+       6216 |        163        0.67       97.26
+       6217 |        559        2.29       99.55
+       6218 |         37        0.15       99.70
+       6219 |          1        0.00       99.70
+       6220 |         72        0.29      100.00
+       7110 |          1        0.00      100.00
+------------+-----------------------------------
+      Total |     24,433      100.00
+(24,433 missing values generated)
+(37,735 missing values generated)
+(1,215 real changes made)
+(143 real changes made)
+(1,148 real changes made)
+(2,807 real changes made)
+(127 real changes made)
+(114 real changes made)
+(1,737 real changes made)
+(777 real changes made)
+(559 real changes made)
+(287 real changes made)
+(448 real changes made)
+(888 real changes made)
+(1,106 real changes made)
+(500 real changes made)
+(490 real changes made)
+(951 real changes made)
+(5 real changes made)
+(24,433 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1993_isic3
+> 1.dta saved
+********************************1994********************************
+p40_old was int now str4
+(0 real changes made)
+(13,389 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,756
+        from master                    24,756  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,653  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      8,231       33.25       33.25
+       0000 |     13,388       54.08       87.33
+       0226 |          1        0.00       87.33
+       6101 |         19        0.08       87.41
+       6102 |         13        0.05       87.46
+       6103 |         43        0.17       87.64
+       6104 |         19        0.08       87.71
+       6105 |         25        0.10       87.81
+       6106 |         19        0.08       87.89
+       6107 |        102        0.41       88.30
+       6108 |          6        0.02       88.33
+       6201 |        730        2.95       91.27
+       6202 |         67        0.27       91.55
+       6203 |        278        1.12       92.67
+       6204 |        114        0.46       93.13
+       6205 |        140        0.57       93.69
+       6206 |         86        0.35       94.04
+       6207 |         14        0.06       94.10
+       6208 |         43        0.17       94.27
+       6209 |        102        0.41       94.68
+       6210 |        137        0.55       95.24
+       6211 |          7        0.03       95.27
+       6212 |         67        0.27       95.54
+       6213 |         52        0.21       95.75
+       6214 |         60        0.24       95.99
+       6215 |         94        0.38       96.37
+       6216 |        185        0.75       97.12
+       6217 |        616        2.49       99.60
+       6218 |         42        0.17       99.77
+       6219 |          3        0.01       99.79
+       6220 |         53        0.21      100.00
+------------+-----------------------------------
+      Total |     24,756      100.00
+(24,756 missing values generated)
+(37,409 missing values generated)
+(1,033 real changes made)
+(196 real changes made)
+(1,099 real changes made)
+(2,431 real changes made)
+(85 real changes made)
+(141 real changes made)
+(1,590 real changes made)
+(791 real changes made)
+(563 real changes made)
+(256 real changes made)
+(369 real changes made)
+(1,022 real changes made)
+(1,191 real changes made)
+(472 real changes made)
+(473 real changes made)
+(937 real changes made)
+(4 real changes made)
+(24,756 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1994_isic3
+> 1.dta saved
+********************************1995********************************
+p40_old was int now str4
+(0 real changes made)
+(13,238 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        23,778
+        from master                    23,778  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,790  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      7,849       33.01       33.01
+       0000 |     13,238       55.67       88.68
+       6101 |          3        0.01       88.70
+       6102 |         10        0.04       88.74
+       6103 |          3        0.01       88.75
+       6104 |         19        0.08       88.83
+       6105 |         27        0.11       88.94
+       6106 |         20        0.08       89.03
+       6107 |         70        0.29       89.32
+       6108 |          6        0.03       89.35
+       6201 |        447        1.88       91.23
+       6202 |         71        0.30       91.53
+       6203 |        269        1.13       92.66
+       6204 |        103        0.43       93.09
+       6205 |        114        0.48       93.57
+       6206 |         65        0.27       93.84
+       6207 |         14        0.06       93.90
+       6208 |         51        0.21       94.12
+       6209 |        149        0.63       94.74
+       6210 |        150        0.63       95.37
+       6211 |          1        0.00       95.38
+       6212 |         29        0.12       95.50
+       6213 |         49        0.21       95.71
+       6214 |         31        0.13       95.84
+       6215 |        119        0.50       96.34
+       6216 |        185        0.78       97.11
+       6217 |        549        2.31       99.42
+       6218 |         70        0.29       99.72
+       6219 |          7        0.03       99.75
+       6220 |         60        0.25      100.00
+------------+-----------------------------------
+      Total |     23,778      100.00
+(23,778 missing values generated)
+(36,568 missing values generated)
+(997 real changes made)
+(158 real changes made)
+(1,048 real changes made)
+(2,271 real changes made)
+(102 real changes made)
+(131 real changes made)
+(2,165 real changes made)
+(746 real changes made)
+(499 real changes made)
+(264 real changes made)
+(419 real changes made)
+(891 real changes made)
+(1,135 real changes made)
+(490 real changes made)
+(565 real changes made)
+(896 real changes made)
+(13 real changes made)
+(23,778 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1995_isic3
+> 1.dta saved
+********************************1996********************************
+p40_old was int now str4
+(0 real changes made)
+(13,687 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,369
+        from master                    24,369  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,895  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      7,804       32.02       32.02
+       0000 |     13,687       56.17       88.19
+       6101 |         30        0.12       88.31
+       6102 |         15        0.06       88.37
+       6103 |         27        0.11       88.49
+       6104 |         15        0.06       88.55
+       6105 |         16        0.07       88.61
+       6106 |         35        0.14       88.76
+       6107 |        119        0.49       89.24
+       6108 |          2        0.01       89.25
+       6201 |        722        2.96       92.22
+       6202 |         71        0.29       92.51
+       6203 |        250        1.03       93.53
+       6204 |        103        0.42       93.96
+       6205 |        119        0.49       94.44
+       6206 |         73        0.30       94.74
+       6207 |         21        0.09       94.83
+       6208 |         22        0.09       94.92
+       6209 |        124        0.51       95.43
+       6210 |        102        0.42       95.85
+       6211 |          4        0.02       95.86
+       6212 |         43        0.18       96.04
+       6213 |         55        0.23       96.27
+       6214 |         27        0.11       96.38
+       6215 |        113        0.46       96.84
+       6216 |        190        0.78       97.62
+       6217 |        450        1.85       99.47
+       6218 |         45        0.18       99.65
+       6219 |          5        0.02       99.67
+       6220 |         80        0.33      100.00
+------------+-----------------------------------
+      Total |     24,369      100.00
+(24,369 missing values generated)
+(37,264 missing values generated)
+(1,091 real changes made)
+(138 real changes made)
+(1,067 real changes made)
+(2,360 real changes made)
+(63 real changes made)
+(115 real changes made)
+(1,813 real changes made)
+(807 real changes made)
+(530 real changes made)
+(276 real changes made)
+(423 real changes made)
+(979 real changes made)
+(1,180 real changes made)
+(516 real changes made)
+(676 real changes made)
+(855 real changes made)
+(6 real changes made)
+(24,369 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1996_isic3
+> 1.dta saved
+********************************1997********************************
+p40_old was int now str4
+(0 real changes made)
+(13,182 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        23,823
+        from master                    23,823  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,861  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      7,779       32.65       32.65
+       0000 |     13,182       55.33       87.99
+       3417 |          1        0.00       87.99
+       6101 |         26        0.11       88.10
+       6102 |         30        0.13       88.23
+       6103 |         43        0.18       88.41
+       6104 |         41        0.17       88.58
+       6105 |         28        0.12       88.70
+       6106 |         64        0.27       88.96
+       6107 |        211        0.89       89.85
+       6108 |         17        0.07       89.92
+       6201 |        629        2.64       92.56
+       6202 |         82        0.34       92.91
+       6203 |        219        0.92       93.83
+       6204 |         83        0.35       94.17
+       6205 |         86        0.36       94.53
+       6206 |         45        0.19       94.72
+       6207 |         15        0.06       94.79
+       6208 |         47        0.20       94.98
+       6209 |        111        0.47       95.45
+       6210 |        149        0.63       96.08
+       6211 |          7        0.03       96.10
+       6212 |         48        0.20       96.31
+       6213 |         36        0.15       96.46
+       6214 |         43        0.18       96.64
+       6215 |         87        0.37       97.00
+       6216 |        193        0.81       97.81
+       6217 |        436        1.83       99.64
+       6218 |         31        0.13       99.77
+       6219 |          7        0.03       99.80
+       6220 |         47        0.20      100.00
+------------+-----------------------------------
+      Total |     23,823      100.00
+(23,823 missing values generated)
+(36,684 missing values generated)
+(1,156 real changes made)
+(69 real changes made)
+(1,025 real changes made)
+(2,463 real changes made)
+(34 real changes made)
+(150 real changes made)
+(1,677 real changes made)
+(810 real changes made)
+(473 real changes made)
+(256 real changes made)
+(416 real changes made)
+(1,155 real changes made)
+(1,127 real changes made)
+(494 real changes made)
+(681 real changes made)
+(867 real changes made)
+(8 real changes made)
+(23,823 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1997_isic3
+> 1.dta saved
+********************************1998********************************
+p40_old was int now str4
+(0 real changes made)
+(13,971 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        26,073
+        from master                    26,073  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            14,436  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      8,735       33.50       33.50
+       0000 |     13,971       53.58       87.09
+       6101 |         17        0.07       87.15
+       6102 |         15        0.06       87.21
+       6103 |         39        0.15       87.36
+       6104 |         43        0.16       87.52
+       6105 |         25        0.10       87.62
+       6106 |         25        0.10       87.72
+       6107 |        219        0.84       88.56
+       6108 |          8        0.03       88.59
+       6201 |        744        2.85       91.44
+       6202 |         95        0.36       91.80
+       6203 |        326        1.25       93.05
+       6204 |        102        0.39       93.45
+       6205 |        135        0.52       93.96
+       6206 |         68        0.26       94.22
+       6207 |         23        0.09       94.31
+       6208 |         39        0.15       94.46
+       6209 |        156        0.60       95.06
+       6210 |        172        0.66       95.72
+       6211 |          5        0.02       95.74
+       6212 |         41        0.16       95.90
+       6213 |         58        0.22       96.12
+       6214 |         38        0.15       96.26
+       6215 |         96        0.37       96.63
+       6216 |        167        0.64       97.27
+       6217 |        601        2.31       99.58
+       6218 |         57        0.22       99.80
+       6219 |          3        0.01       99.81
+       6220 |         50        0.19      100.00
+------------+-----------------------------------
+      Total |     26,073      100.00
+(26,073 missing values generated)
+(40,509 missing values generated)
+(1,303 real changes made)
+(215 real changes made)
+(1,149 real changes made)
+(2,650 real changes made)
+(102 real changes made)
+(163 real changes made)
+(1,704 real changes made)
+(1,013 real changes made)
+(708 real changes made)
+(295 real changes made)
+(601 real changes made)
+(775 real changes made)
+(1,309 real changes made)
+(541 real changes made)
+(601 real changes made)
+(1,298 real changes made)
+(9 real changes made)
+(26,073 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1998_isic3
+> 1.dta saved
+********************************1999********************************
+p40_old was int now str4
+(0 real changes made)
+(13,523 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        25,207
+        from master                    25,207  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            14,865  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      8,654       34.33       34.33
+       0000 |     13,523       53.65       87.98
+       6101 |         26        0.10       88.08
+       6102 |         24        0.10       88.18
+       6103 |         23        0.09       88.27
+       6104 |         17        0.07       88.34
+       6105 |         30        0.12       88.46
+       6106 |         40        0.16       88.61
+       6107 |        159        0.63       89.25
+       6108 |          9        0.04       89.28
+       6201 |        687        2.73       92.01
+       6202 |         68        0.27       92.28
+       6203 |        348        1.38       93.66
+       6204 |        118        0.47       94.12
+       6205 |        113        0.45       94.57
+       6206 |         62        0.25       94.82
+       6207 |         14        0.06       94.87
+       6208 |         24        0.10       94.97
+       6209 |        104        0.41       95.38
+       6210 |        153        0.61       95.99
+       6211 |          7        0.03       96.02
+       6212 |         48        0.19       96.21
+       6213 |         54        0.21       96.42
+       6214 |         30        0.12       96.54
+       6215 |         88        0.35       96.89
+       6216 |        146        0.58       97.47
+       6217 |        529        2.10       99.57
+       6218 |         48        0.19       99.76
+       6219 |          9        0.04       99.79
+       6220 |         52        0.21      100.00
+------------+-----------------------------------
+      Total |     25,207      100.00
+(25,207 missing values generated)
+(40,072 missing values generated)
+(1,185 real changes made)
+(199 real changes made)
+(1,255 real changes made)
+(2,635 real changes made)
+(116 real changes made)
+(132 real changes made)
+(2,076 real changes made)
+(980 real changes made)
+(669 real changes made)
+(279 real changes made)
+(571 real changes made)
+(872 real changes made)
+(1,309 real changes made)
+(552 real changes made)
+(745 real changes made)
+(1,283 real changes made)
+(7 real changes made)
+(25,207 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1999_isic3
+> 1.dta saved
+
+. 
+end of do-file
+
+. 
+. di as text "================ STEP 2: Rev 3 -> Rev 3.1 (2000-2006) ===========
+> ====="
+================ STEP 2: Rev 3 -> Rev 3.1 (2000-2006) ================
+
+. do "isic3_31.do"
+
+. clear
+
+. 
+. * Definicion de rutas globales para facilitar la portabilidad del codigo
+. global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.p
+> obreza@flacso.edu.ec/Mi unidad"
+
+. 
+. global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/
+> Trimestrales"
+
+. 
+. global isic "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. global out "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. 
+. *----------------------------------------------------------------------------
+> -
+. * STEP 1: Preparar correspondencia CIIU Rev. 3 -> CIIU Rev. 3.1
+. *----------------------------------------------------------------------------
+> --
+. 
+. * El archivo .rtf contiene una tabla tipo CSV desde la fila 10.
+. * bindquote(nobind) evita que comillas internas en la descripcion corten la i
+> mportacion.
+. import delimited using "$isic/ISIC3_ISIC31.rtf", clear ///
+>         varnames(10) colrange(1:4) stringcols(_all) bindquote(nobind)
+(4 vars, 317 obs)
+
+. 
+. rename *, lower
+  (all newnames==oldnames)
+
+. 
+. rename (rev3 rev31) (isic3code isic31code)
+
+. destring parcial3 parcial31, replace ignore("\")
+parcial3: all characters numeric; replaced as byte
+(1 missing value generated)
+parcial31: all characters numeric; replaced as byte
+(1 missing value generated)
+
+. 
+. replace isic3code = strtrim(isic3code)
+(0 real changes made)
+
+. replace isic31code = strtrim(isic31code)
+(0 real changes made)
+
+. replace isic3code = subinstr(isic3code, `"""', "", .)
+(316 real changes made)
+
+. replace isic31code = subinstr(isic31code, `"""', "", .)
+(316 real changes made)
+
+. drop if missing(isic3code) | missing(isic31code) | isic3code == "n/a"
+(3 observations deleted)
+
+. 
+. replace isic3code = substr("0000" + isic3code, -4, .)
+(0 real changes made)
+
+. replace isic31code = substr("0000" + isic31code, -4, .)
+(0 real changes made)
+
+. 
+. * En codigos con multiples correspondencias se prioriza:
+. * 1) correspondencia no parcial, 2) destino no parcial, 3) mismo codigo.
+. gen byte exact_match = isic3code == isic31code
+
+. gsort isic3code parcial3 parcial31 -exact_match isic31code
+
+. duplicates drop isic3code, force
+
+Duplicates in terms of isic3code
+
+(22 observations deleted)
+
+. 
+. rename isic3code p40_old
+
+. rename isic31code p40
+
+. 
+. keep p40_old p40
+
+. tempfile crosswalk_clean_3_31
+
+. save `crosswalk_clean_3_31'
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+
+. 
+. *----------------------------------------------------------------------------
+> -
+. * STEP 2: Actualizar bases 2000-2006 de CIIU Rev. 3 a Rev. 3.1
+. *----------------------------------------------------------------------------
+> --
+. 
+. forval anio = 2000/2006 {
+  2. 
+.         di "********************************`anio'***************************
+> *****"
+  3. 
+.         capture noisily use "$bases/empleo`anio'.dta", clear
+  4. 
+.         * Preserva cualquier rama1 preexistente para evitar conflictos al
+.         * generar la nueva seccion Rev. 3.1.
+.         capture confirm variable rama1
+  5.         if !_rc rename rama1 rama1_codigo_orig
+  6. 
+.         rename rama p40_old
+  7.         tostring p40_old, replace force
+  8.         replace p40_old = strtrim(p40_old)
+  9.         replace p40_old = substr("0000" + p40_old, -4, .) if p40_old != ""
+>  & p40_old != "."
+ 10. 
+.         merge m:1 p40_old using `crosswalk_clean_3_31', keep(master match)
+ 11. 
+.         * Lista codigos no mapeados para revision manual.
+.         tab p40_old if missing(p40) & p40_old != ""
+ 12. 
+.         rename p40_old rama_old_isic3
+ 13.         drop _merge
+ 14. 
+.         * Extrae los primeros 2 digitos del nuevo codigo CIIU Rev. 3.1.
+.         gen isic2 = substr(p40, 1, 2)
+ 15.         gen rama_new = ""
+ 16. 
+.         * Mapeo de divisiones a secciones CIIU Rev. 3.1.
+.         replace rama_new = "A" if isic2 >= "01" & isic2 <= "02"
+ 17.         replace rama_new = "B" if isic2 == "05"
+ 18.         replace rama_new = "C" if isic2 >= "10" & isic2 <= "14"
+ 19.         replace rama_new = "D" if isic2 >= "15" & isic2 <= "37"
+ 20.         replace rama_new = "E" if isic2 >= "40" & isic2 <= "41"
+ 21.         replace rama_new = "F" if isic2 == "45"
+ 22.         replace rama_new = "G" if isic2 >= "50" & isic2 <= "52"
+ 23.         replace rama_new = "H" if isic2 == "55"
+ 24.         replace rama_new = "I" if isic2 >= "60" & isic2 <= "64"
+ 25.         replace rama_new = "J" if isic2 >= "65" & isic2 <= "67"
+ 26.         replace rama_new = "K" if isic2 >= "70" & isic2 <= "74"
+ 27.         replace rama_new = "L" if isic2 == "75"
+ 28.         replace rama_new = "M" if isic2 == "80"
+ 29.         replace rama_new = "N" if isic2 == "85"
+ 30.         replace rama_new = "O" if isic2 >= "90" & isic2 <= "93"
+ 31.         replace rama_new = "P" if isic2 >= "95" & isic2 <= "97"
+ 32.         replace rama_new = "Q" if isic2 == "99"
+ 33. 
+.         * Codificacion deterministica: la letra define directamente el numero
+.         * (A=1, B=2, ..., Q=17) independiente de las secciones presentes.
+.         * strpos retorna 1 cuando la aguja es vacia, asi que se filtra explic
+> ito.
+.         gen byte rama_final = strpos("ABCDEFGHIJKLMNOPQ", rama_new) if rama_n
+> ew != ""
+ 34.         replace rama_final = . if rama_final == 0
+ 35. 
+.         label define isic31_secciones ///
+>                 1 "Agricultura, caza y silvicultura" ///
+>                 2 "Pesca" ///
+>                 3 "Explotacion de minas y canteras" ///
+>                 4 "Industria manufacturera" ///
+>                 5 "Electricidad, gas y agua" ///
+>                 6 "Construccion" ///
+>                 7 "Comercio al por mayor y al por menor; reparacion de vehicu
+> los automotores, motocicletas y efectos personales y enseres domesticos" ///
+>                 8 "Hoteles y restaurantes" ///
+>                 9 "Transporte, almacenamiento y comunicaciones" ///
+>                 10 "Intermediacion financiera" ///
+>                 11 "Actividades inmobiliarias, empresariales y de alquiler" /
+> //
+>                 12 "Administracion publica y defensa; seguridad social de afi
+> liacion obligatoria" ///
+>                 13 "Educacion" ///
+>                 14 "Servicios sociales y de salud" ///
+>                 15 "Otras actividades de servicios comunitarios, sociales y p
+> ersonales" ///
+>                 16 "Actividades de los hogares como empleadores y actividades
+>  de produccion no diferenciada de los hogares" ///
+>                 17 "Organizaciones y organos extraterritoriales", replace
+ 36. 
+.         label values rama_final isic31_secciones
+ 37.         rename rama_final rama1
+ 38. 
+.         drop isic2 rama_new
+ 39. 
+.         save "$out/empleo`anio'_isic31.dta", replace
+ 40.         
+. }
+********************************2000********************************
+p40_old was int now str4
+(0 real changes made)
+(37,140 real changes made)
+(note: variable p40_old was str4, now str6 to accommodate using data's
+       values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        35,244
+        from master                    35,244  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            27,225  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |      6,747       19.14       19.14
+       0000 |     28,432       80.67       99.82
+       0002 |          1        0.00       99.82
+       0005 |          1        0.00       99.82
+       0110 |         21        0.06       99.88
+       0114 |          1        0.00       99.88
+       1420 |          1        0.00       99.89
+       1530 |          1        0.00       99.89
+       2210 |          2        0.01       99.90
+       2920 |          1        0.00       99.90
+       3200 |          1        0.00       99.90
+       3609 |          2        0.01       99.91
+       5000 |          1        0.00       99.91
+       5120 |          5        0.01       99.92
+       5222 |          1        0.00       99.93
+       5230 |         16        0.05       99.97
+       5250 |          2        0.01       99.98
+       6510 |          1        0.00       99.98
+       7520 |          2        0.01       99.99
+       7592 |          1        0.00       99.99
+       8000 |          1        0.00       99.99
+       8020 |          1        0.00       99.99
+       9210 |          1        0.00      100.00
+       9300 |          1        0.00      100.00
+------------+-----------------------------------
+      Total |     35,244      100.00
+(35,244 missing values generated)
+(62,469 missing values generated)
+(8,191 real changes made)
+(493 real changes made)
+(160 real changes made)
+(3,266 real changes made)
+(125 real changes made)
+(1,539 real changes made)
+(5,341 real changes made)
+(870 real changes made)
+(1,272 real changes made)
+(208 real changes made)
+(635 real changes made)
+(940 real changes made)
+(1,412 real changes made)
+(573 real changes made)
+(897 real changes made)
+(1,300 real changes made)
+(3 real changes made)
+(35,244 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2000_isic3
+> 1.dta saved
+********************************2001********************************
+p40_old was int now str4
+(0 real changes made)
+(11,188 real changes made)
+(note: variable p40_old was str4, now str6 to accommodate using data's
+       values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        30,342
+        from master                    30,342  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            30,407  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     30,017       98.93       98.93
+       0101 |          1        0.00       98.93
+       0110 |          1        0.00       98.94
+       0114 |          1        0.00       98.94
+       0119 |          3        0.01       98.95
+       0123 |          2        0.01       98.96
+       0129 |          3        0.01       98.97
+       0131 |          3        0.01       98.98
+       0133 |          1        0.00       98.98
+       0136 |          1        0.00       98.98
+       0190 |          1        0.00       98.98
+       0192 |          1        0.00       98.99
+       0211 |          1        0.00       98.99
+       0229 |          1        0.00       98.99
+       0650 |          1        0.00       99.00
+       0999 |          1        0.00       99.00
+       1122 |          1        0.00       99.00
+       1222 |          1        0.00       99.01
+       1420 |          1        0.00       99.01
+       1424 |          1        0.00       99.01
+       1500 |          2        0.01       99.02
+       1510 |          1        0.00       99.02
+       1521 |          1        0.00       99.03
+       1540 |          1        0.00       99.03
+       1545 |          1        0.00       99.03
+       1559 |          1        0.00       99.04
+       1591 |          1        0.00       99.04
+       1593 |          1        0.00       99.04
+       1602 |          1        0.00       99.05
+       1603 |          1        0.00       99.05
+       1630 |          1        0.00       99.05
+       1710 |          1        0.00       99.06
+       1801 |          1        0.00       99.06
+       1811 |          1        0.00       99.06
+       1851 |          1        0.00       99.07
+       1923 |          1        0.00       99.07
+       1930 |          2        0.01       99.08
+       2011 |          1        0.00       99.08
+       2018 |          1        0.00       99.08
+       2020 |          3        0.01       99.09
+       2024 |          6        0.02       99.11
+       2050 |          2        0.01       99.12
+       2095 |          1        0.00       99.12
+       2120 |          1        0.00       99.13
+       2121 |          1        0.00       99.13
+       2148 |          1        0.00       99.13
+       2204 |          1        0.00       99.14
+       2309 |          1        0.00       99.14
+       2513 |          2        0.01       99.15
+       2521 |          1        0.00       99.15
+       2522 |          1        0.00       99.15
+       2523 |          1        0.00       99.16
+       2770 |          1        0.00       99.16
+       2920 |          1        0.00       99.16
+       2928 |          1        0.00       99.17
+       3023 |          1        0.00       99.17
+       3259 |          1        0.00       99.17
+       3450 |          1        0.00       99.18
+       3471 |          1        0.00       99.18
+       3474 |          1        0.00       99.18
+       3611 |          1        0.00       99.19
+       3621 |          1        0.00       99.19
+       4160 |          1        0.00       99.19
+       4500 |         18        0.06       99.25
+       4512 |          1        0.00       99.26
+       4522 |          1        0.00       99.26
+       5023 |          2        0.01       99.27
+       5052 |          1        0.00       99.27
+       5080 |          1        0.00       99.27
+       5111 |          1        0.00       99.27
+       5113 |          2        0.01       99.28
+       5119 |          2        0.01       99.29
+       5120 |          4        0.01       99.30
+       5129 |          1        0.00       99.30
+       5130 |          1        0.00       99.31
+       5132 |          2        0.01       99.31
+       5152 |          2        0.01       99.32
+       5159 |          1        0.00       99.32
+       5162 |          2        0.01       99.33
+       5200 |          1        0.00       99.33
+       5205 |          1        0.00       99.34
+       5210 |          1        0.00       99.34
+       5212 |          3        0.01       99.35
+       5214 |          1        0.00       99.35
+       5217 |          1        0.00       99.36
+       5221 |          5        0.02       99.37
+       5222 |          1        0.00       99.38
+       5223 |          3        0.01       99.39
+       5225 |          2        0.01       99.39
+       5229 |         12        0.04       99.43
+       5230 |         22        0.07       99.51
+       5236 |          5        0.02       99.52
+       5237 |          1        0.00       99.53
+       5238 |          1        0.00       99.53
+       5250 |          2        0.01       99.54
+       5254 |          4        0.01       99.55
+       5255 |          1        0.00       99.55
+       5282 |          1        0.00       99.56
+       5512 |          1        0.00       99.56
+       5516 |          1        0.00       99.56
+       5519 |          1        0.00       99.56
+       5522 |          1        0.00       99.57
+       5526 |          1        0.00       99.57
+       5546 |          1        0.00       99.57
+       5559 |          1        0.00       99.58
+       6012 |          2        0.01       99.58
+       6020 |          6        0.02       99.60
+       6031 |          2        0.01       99.61
+       6032 |          1        0.00       99.61
+       6033 |          1        0.00       99.62
+       6039 |          1        0.00       99.62
+       6062 |          1        0.00       99.62
+       6093 |          1        0.00       99.63
+       6111 |          1        0.00       99.63
+       6119 |          1        0.00       99.63
+       6122 |          3        0.01       99.64
+       6130 |          1        0.00       99.65
+       6131 |          1        0.00       99.65
+       6310 |          3        0.01       99.66
+       6320 |          1        0.00       99.66
+       6399 |          1        0.00       99.67
+       6421 |          1        0.00       99.67
+       6609 |          1        0.00       99.67
+       7023 |          1        0.00       99.68
+       7030 |          1        0.00       99.68
+       7135 |          2        0.01       99.69
+       7222 |          4        0.01       99.70
+       7231 |          4        0.01       99.71
+       7239 |          1        0.00       99.72
+       7259 |          1        0.00       99.72
+       7303 |          1        0.00       99.72
+       7307 |          1        0.00       99.73
+       7330 |          1        0.00       99.73
+       7343 |          1        0.00       99.73
+       7418 |          1        0.00       99.74
+       7429 |          1        0.00       99.74
+       7449 |          2        0.01       99.75
+       7471 |          1        0.00       99.75
+       7500 |          3        0.01       99.76
+       7515 |          1        0.00       99.76
+       7520 |          2        0.01       99.77
+       7541 |          1        0.00       99.77
+       7550 |          2        0.01       99.78
+       8020 |         19        0.06       99.84
+       8023 |          1        0.00       99.85
+       8025 |          1        0.00       99.85
+       8029 |          1        0.00       99.85
+       8052 |          1        0.00       99.85
+       8551 |          1        0.00       99.86
+       9010 |          1        0.00       99.86
+       9039 |          1        0.00       99.86
+       9113 |          2        0.01       99.87
+       9131 |          1        0.00       99.87
+       9132 |          1        0.00       99.88
+       9133 |          1        0.00       99.88
+       9150 |          1        0.00       99.88
+       9152 |          1        0.00       99.89
+       9209 |          1        0.00       99.89
+       9210 |          1        0.00       99.89
+       9217 |          1        0.00       99.90
+       9221 |          1        0.00       99.90
+       9243 |          1        0.00       99.90
+       9248 |          1        0.00       99.91
+       9291 |          1        0.00       99.91
+       9293 |          1        0.00       99.91
+       9300 |          1        0.00       99.92
+       9304 |          2        0.01       99.92
+       9313 |          2        0.01       99.93
+       9320 |          1        0.00       99.93
+       9332 |          1        0.00       99.94
+       9360 |          1        0.00       99.94
+       9362 |          1        0.00       99.94
+       9390 |          1        0.00       99.95
+       9540 |          1        0.00       99.95
+       9550 |         12        0.04       99.99
+       9555 |          1        0.00       99.99
+       9999 |          2        0.01      100.00
+------------+-----------------------------------
+      Total |     30,342      100.00
+(30,342 missing values generated)
+(60,749 missing values generated)
+(10,701 real changes made)
+(465 real changes made)
+(195 real changes made)
+(3,723 real changes made)
+(129 real changes made)
+(1,470 real changes made)
+(5,605 real changes made)
+(984 real changes made)
+(1,234 real changes made)
+(192 real changes made)
+(739 real changes made)
+(1,000 real changes made)
+(1,279 real changes made)
+(517 real changes made)
+(849 real changes made)
+(1,316 real changes made)
+(9 real changes made)
+(30,342 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2001_isic3
+> 1.dta saved
+********************************2002********************************
+p40_old was int now str4
+(0 real changes made)
+(14,885 real changes made)
+(note: variable p40_old was str4, now str6 to accommodate using data's
+       values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        13,905
+        from master                    13,905  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            10,894  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+       0000 |     13,870       99.75       99.75
+       1550 |          2        0.01       99.76
+       2020 |          2        0.01       99.78
+       2200 |          2        0.01       99.79
+       3100 |          2        0.01       99.81
+       3310 |          1        0.01       99.81
+       3510 |          1        0.01       99.82
+       4500 |          1        0.01       99.83
+       5120 |          2        0.01       99.84
+       5210 |          3        0.02       99.86
+       5230 |          9        0.06       99.93
+       5250 |          1        0.01       99.94
+       6500 |          1        0.01       99.94
+       7410 |          3        0.02       99.96
+       8020 |          2        0.01       99.98
+       9300 |          3        0.02      100.00
+------------+-----------------------------------
+      Total |     13,905      100.00
+(13,905 missing values generated)
+(24,799 missing values generated)
+(887 real changes made)
+(128 real changes made)
+(78 real changes made)
+(1,574 real changes made)
+(50 real changes made)
+(770 real changes made)
+(3,020 real changes made)
+(489 real changes made)
+(657 real changes made)
+(132 real changes made)
+(462 real changes made)
+(471 real changes made)
+(749 real changes made)
+(346 real changes made)
+(363 real changes made)
+(717 real changes made)
+(1 real change made)
+(13,905 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2002_isic3
+> 1.dta saved
+********************************2003********************************
+p40_old was int now str4
+(0 real changes made)
+(15,234 real changes made)
+(note: variable p40_old was str4, now str6 to accommodate using data's
+       values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        44,983
+        from master                    44,983  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            37,334  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     44,932       99.89       99.89
+       0110 |         11        0.02       99.91
+       0120 |          1        0.00       99.91
+       1420 |          3        0.01       99.92
+       2220 |          1        0.00       99.92
+       3310 |          1        0.00       99.92
+       4500 |          3        0.01       99.93
+       5200 |          1        0.00       99.93
+       5210 |          2        0.00       99.94
+       5230 |          8        0.02       99.96
+       5250 |          2        0.00       99.96
+       6020 |          3        0.01       99.97
+       7410 |          1        0.00       99.97
+       7420 |          1        0.00       99.97
+       7490 |          1        0.00       99.97
+       7510 |          1        0.00       99.98
+       7520 |          1        0.00       99.98
+       8020 |          5        0.01       99.99
+       8510 |          1        0.00       99.99
+       9200 |          1        0.00       99.99
+       9210 |          3        0.01      100.00
+------------+-----------------------------------
+      Total |     44,983      100.00
+(44,983 missing values generated)
+(82,317 missing values generated)
+(14,767 real changes made)
+(455 real changes made)
+(230 real changes made)
+(3,795 real changes made)
+(120 real changes made)
+(1,981 real changes made)
+(6,330 real changes made)
+(956 real changes made)
+(1,529 real changes made)
+(216 real changes made)
+(794 real changes made)
+(1,280 real changes made)
+(1,788 real changes made)
+(638 real changes made)
+(1,205 real changes made)
+(1,245 real changes made)
+(5 real changes made)
+(44,983 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2003_isic3
+> 1.dta saved
+********************************2004********************************
+p40_old was int now str4
+(0 real changes made)
+(17,581 real changes made)
+(note: variable p40_old was str4, now str6 to accommodate using data's
+       values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        41,964
+        from master                    41,964  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            41,079  (_merge==3)
+    -----------------------------------------
+
+    rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     41,911       99.87       99.87
+       0110 |          3        0.01       99.88
+       1510 |          1        0.00       99.88
+       1540 |          2        0.00       99.89
+       1550 |          1        0.00       99.89
+       1910 |          1        0.00       99.89
+       2220 |          1        0.00       99.90
+       2420 |          1        0.00       99.90
+       2629 |          1        0.00       99.90
+       3310 |          1        0.00       99.90
+       3510 |          1        0.00       99.90
+       3600 |          1        0.00       99.91
+       4500 |          5        0.01       99.92
+       5120 |          2        0.00       99.92
+       5130 |          1        0.00       99.93
+       5210 |          1        0.00       99.93
+       5230 |         12        0.03       99.96
+       5250 |          4        0.01       99.97
+       5500 |          1        0.00       99.97
+       6020 |          1        0.00       99.97
+       7462 |          1        0.00       99.97
+       7520 |          1        0.00       99.98
+       8020 |          8        0.02      100.00
+       8510 |          1        0.00      100.00
+       9210 |          1        0.00      100.00
+------------+-----------------------------------
+      Total |     41,964      100.00
+(41,964 missing values generated)
+(83,043 missing values generated)
+(17,131 real changes made)
+(447 real changes made)
+(215 real changes made)
+(3,871 real changes made)
+(161 real changes made)
+(2,015 real changes made)
+(6,949 real changes made)
+(1,248 real changes made)
+(1,737 real changes made)
+(231 real changes made)
+(846 real changes made)
+(1,184 real changes made)
+(1,958 real changes made)
+(752 real changes made)
+(1,210 real changes made)
+(1,117 real changes made)
+(7 real changes made)
+(41,964 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2004_isic3
+> 1.dta saved
+********************************2005********************************
+p40_old was int now str4
+(0 real changes made)
+(14,972 real changes made)
+(note: variable p40_old was str4, now str6 to accommodate using data's
+       values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        40,496
+        from master                    40,496  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            36,554  (_merge==3)
+    -----------------------------------------
+
+ pe38. rama |
+         de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     40,423       99.82       99.82
+       0110 |          2        0.00       99.82
+       0120 |          1        0.00       99.83
+       0900 |          4        0.01       99.84
+       1100 |          1        0.00       99.84
+       1224 |          1        0.00       99.84
+       1510 |          1        0.00       99.84
+       1540 |          1        0.00       99.85
+       1910 |          1        0.00       99.85
+       2020 |          4        0.01       99.86
+       2220 |          2        0.00       99.86
+       2420 |          1        0.00       99.87
+       3310 |          1        0.00       99.87
+       3510 |          1        0.00       99.87
+       4500 |          1        0.00       99.87
+       5120 |          3        0.01       99.88
+       5210 |          4        0.01       99.89
+       5230 |         15        0.04       99.93
+       5250 |          5        0.01       99.94
+       5500 |          1        0.00       99.94
+       6020 |          3        0.01       99.95
+       6300 |          2        0.00       99.96
+       6590 |          3        0.01       99.96
+       7520 |          1        0.00       99.97
+       8020 |          9        0.02       99.99
+       9141 |          1        0.00       99.99
+       9190 |          1        0.00       99.99
+       9300 |          3        0.01      100.00
+------------+-----------------------------------
+      Total |     40,496      100.00
+(40,496 missing values generated)
+(77,050 missing values generated)
+(14,498 real changes made)
+(467 real changes made)
+(178 real changes made)
+(3,321 real changes made)
+(127 real changes made)
+(1,872 real changes made)
+(6,341 real changes made)
+(1,206 real changes made)
+(1,690 real changes made)
+(205 real changes made)
+(843 real changes made)
+(1,112 real changes made)
+(1,740 real changes made)
+(690 real changes made)
+(996 real changes made)
+(1,261 real changes made)
+(7 real changes made)
+(40,496 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2005_isic3
+> 1.dta saved
+********************************2006********************************
+p40_old was int now str4
+(0 real changes made)
+(16,451 real changes made)
+(note: variable p40_old was str4, now str6 to accommodate using data's
+       values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        39,022
+        from master                    39,022  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            38,942  (_merge==3)
+    -----------------------------------------
+
+38. rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     38,560       98.82       98.82
+       0501 |        288        0.74       99.55
+       0502 |        147        0.38       99.93
+       5151 |          3        0.01       99.94
+       5152 |          3        0.01       99.95
+       5159 |         12        0.03       99.98
+       7221 |          3        0.01       99.98
+       7229 |          6        0.02      100.00
+------------+-----------------------------------
+      Total |     39,022      100.00
+(39,022 missing values generated)
+(77,964 missing values generated)
+(16,016 real changes made)
+(0 real changes made)
+(220 real changes made)
+(3,526 real changes made)
+(131 real changes made)
+(2,088 real changes made)
+(6,821 real changes made)
+(1,418 real changes made)
+(1,741 real changes made)
+(216 real changes made)
+(905 real changes made)
+(1,144 real changes made)
+(1,872 real changes made)
+(694 real changes made)
+(1,062 real changes made)
+(1,086 real changes made)
+(2 real changes made)
+(39,022 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2006_isic3
+> 1.dta saved
+
+. 
+end of do-file
+
+. 
+. di as text "================ STEP 3: Rev 3.1 -> Rev 4 (1991-2025) ===========
+> ====="
+================ STEP 3: Rev 3.1 -> Rev 4 (1991-2025) ================
+
+. do "ISIC3_1_to_ISIC4.do"
+
+. clear
+
+. 
+. * Definicion de rutas globales para facilitar la portabilidad del codigo
+. 
+. global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.p
+> obreza@flacso.edu.ec/Mi unidad"
+
+. 
+. global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/
+> Trimestrales"
+
+. 
+. 
+. global isic "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. global out "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. 
+. *----------------------------------------------------------------------------
+> -
+. * STEP 1: Preparar correspondencia CIIU Rev. 3.1 -> CIIU Rev. 4
+. *----------------------------------------------------------------------------
+> --
+. 
+. import delimited using "$isic/ISIC31_ISIC4.txt", clear
+(5 vars, 737 obs)
+
+. 
+. tostring isic31code, replace
+isic31code was int now str4
+
+. tostring isic4code,  replace
+isic4code was int now str4
+
+. replace isic31code = strtrim(isic31code)
+(0 real changes made)
+
+. replace isic4code  = strtrim(isic4code)
+(0 real changes made)
+
+. drop if missing(isic31code) | missing(isic4code)
+(0 observations deleted)
+
+. 
+. replace isic31code = substr("0000" + isic31code, -4, .)
+(55 real changes made)
+
+. replace isic4code  = substr("0000" + isic4code,  -4, .)
+(81 real changes made)
+
+. 
+. * En codigos con multiples correspondencias se prioriza:
+. * 1) correspondencia no parcial, 2) destino no parcial, 3) mismo codigo.
+. gen byte exact_match = isic31code == isic4code
+
+. gsort isic31code partialisic31 partialisic4 -exact_match isic4code
+
+. duplicates drop isic31code, force
+
+Duplicates in terms of isic31code
+
+(439 observations deleted)
+
+. 
+. rename isic31code p40
+
+. rename isic4code  p40_rev4_new
+
+. 
+. keep p40 p40_rev4_new
+
+. tempfile crosswalk_clean
+
+. save `crosswalk_clean'
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+
+. 
+. *----------------------------------------------------------------------------
+> -
+. * STEP 2: Actualizar bases 1991-2012 de CIIU Rev. 3.1 a Rev. 4
+. *
+. * Fuentes de entrada:
+. *   - 1991-1999: $out/empleo`anio'_isic31.dta (salida de isic2_31.do)
+. *   - 2000-2006: $out/empleo`anio'_isic31.dta (salida de isic3_31.do)
+. *   - 2007-2012: empleo`anio'.dta original (ya estan en Rev. 3.1)
+. *----------------------------------------------------------------------------
+> --
+. 
+. forval anio = 1991/2012 {
+  2. 
+.         di "********************************`anio'***************************
+> *****"
+  3. 
+.         if (inrange(`anio', 1991, 2006)) {
+  4.                 capture noisily use "$out/empleo`anio'_isic31.dta", clear
+  5.                 if _rc {
+  6.                         di as error "  AVISO: falta empleo`anio'_isic31.dt
+> a. Ejecute isic2_31.do / isic3_31.do primero."
+  7.                         continue
+  8.                 }
+  9.         }
+ 10.         else {
+ 11.                 use "$bases/empleo`anio'.dta", clear
+ 12.         }
+ 13. 
+.         * Asegura que p40 sea string de 4 digitos (ej. "0111").
+.         tostring p40, replace force
+ 14.         replace p40 = strtrim(p40)
+ 15.         replace p40 = substr("0000" + p40, -4, .) if p40 != "" & p40 != ".
+> "
+ 16. 
+.         * Fusiona con el crosswalk Rev. 3.1 -> Rev. 4.
+.         merge m:1 p40 using `crosswalk_clean', keep(master match)
+ 17. 
+.         * Lista codigos no mapeados para revision manual.
+.         tab p40 if missing(p40_rev4_new) & p40 != ""
+ 18.         drop _merge
+ 19. 
+.         rename p40           p40_old_isic31
+ 20.         rename p40_rev4_new  p40
+ 21. 
+.         *--------------------------------------------------------------------
+> ------
+.         * STEP 3: Generar la nueva 'rama1' (Secciones A-U) bajo CIIU Rev. 4
+.         *--------------------------------------------------------------------
+> ------
+. 
+.         gen rama_new = ""
+ 22.         gen isic2 = substr(p40, 1, 2)
+ 23. 
+.         replace rama_new = "A" if isic2 >= "01" & isic2 <= "03"
+ 24.         replace rama_new = "B" if isic2 >= "05" & isic2 <= "09"
+ 25.         replace rama_new = "C" if isic2 >= "10" & isic2 <= "33"
+ 26.         replace rama_new = "D" if isic2 == "35"
+ 27.         replace rama_new = "E" if isic2 >= "36" & isic2 <= "39"
+ 28.         replace rama_new = "F" if isic2 >= "41" & isic2 <= "43"
+ 29.         replace rama_new = "G" if isic2 >= "45" & isic2 <= "47"
+ 30.         replace rama_new = "H" if isic2 >= "49" & isic2 <= "53"
+ 31.         replace rama_new = "I" if isic2 >= "55" & isic2 <= "56"
+ 32.         replace rama_new = "J" if isic2 >= "58" & isic2 <= "63"
+ 33.         replace rama_new = "K" if isic2 >= "64" & isic2 <= "66"
+ 34.         replace rama_new = "L" if isic2 == "68"
+ 35.         replace rama_new = "M" if isic2 >= "69" & isic2 <= "75"
+ 36.         replace rama_new = "N" if isic2 >= "77" & isic2 <= "82"
+ 37.         replace rama_new = "O" if isic2 == "84"
+ 38.         replace rama_new = "P" if isic2 == "85"
+ 39.         replace rama_new = "Q" if isic2 >= "86" & isic2 <= "88"
+ 40.         replace rama_new = "R" if isic2 >= "90" & isic2 <= "93"
+ 41.         replace rama_new = "S" if isic2 >= "94" & isic2 <= "96"
+ 42.         replace rama_new = "T" if isic2 >= "97" & isic2 <= "98"
+ 43.         replace rama_new = "U" if isic2 == "99"
+ 44. 
+.         * Conserva la seccion anterior (Rev. 3.1) como respaldo si existia.
+.         capture confirm variable rama1
+ 45.         if !_rc rename rama1 rama_old_isic31
+ 46. 
+.         * Codificacion deterministica: la letra define directamente el numero
+.         * (A=1, B=2, ..., U=21) independiente de las secciones presentes.
+.         * strpos retorna 1 cuando la aguja es vacia, asi que se filtra explic
+> ito.
+.         gen byte rama1 = strpos("ABCDEFGHIJKLMNOPQRSTU", rama_new) if rama_ne
+> w != ""
+ 47.         replace rama1 = . if rama1 == 0
+ 48.         drop isic2 rama_new
+ 49. 
+.         label define rama_isic4 ///
+>                 1  "A. Agricultura, ganaderia, silvicultura y pesca" ///
+>                 2  "B. Explotacion de minas y canteras" ///
+>                 3  "C. Industrias manufactureras" ///
+>                 4  "D. Suministros de electricidad, gas, vapor y aire acondic
+> ionado" ///
+>                 5  "E. Distribucion de agua; alcantarillado, gestion de desec
+> hos y saneamiento" ///
+>                 6  "F. Construccion" ///
+>                 7  "G. Comercio al por mayor y al por menor; reparacion de ve
+> hiculos automotores y motocicletas" ///
+>                 8  "H. Transporte y almacenamiento" ///
+>                 9  "I. Actividades de alojamiento y de servicio de comidas" /
+> //
+>                 10 "J. Informacion y comunicaciones" ///
+>                 11 "K. Actividades financieras y de seguros" ///
+>                 12 "L. Actividades inmobiliarias" ///
+>                 13 "M. Actividades profesionales, cientificas y tecnicas" ///
+>                 14 "N. Actividades de servicios administrativos y de apoyo" /
+> //
+>                 15 "O. Administracion publica y defensa; seguridad social de 
+> afiliacion obligatoria" ///
+>                 16 "P. Ensenanza" ///
+>                 17 "Q. Actividades de atencion de la salud humana y de asiste
+> ncia social" ///
+>                 18 "R. Actividades artisticas, de entretenimiento y recreativ
+> as" ///
+>                 19 "S. Otras actividades de servicios" ///
+>                 20 "T. Actividades de los hogares como empleadores" ///
+>                 21 "U. Actividades de organizaciones y organos extraterritori
+> ales", replace
+ 50. 
+.         label values rama1 rama_isic4
+ 51. 
+.         save "$out/empleo`anio'_isic4.dta", replace
+ 52. }
+********************************1991********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        25,804
+        from master                    25,804  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            13,267  (_merge==3)
+    -----------------------------------------
+no observations
+(39,071 missing values generated)
+(25,804 missing values generated)
+(1,441 real changes made)
+(1,194 real changes made)
+(2,687 real changes made)
+(86 real changes made)
+(72 real changes made)
+(138 real changes made)
+(1,577 real changes made)
+(570 real changes made)
+(760 real changes made)
+(51 real changes made)
+(307 real changes made)
+(0 real changes made)
+(177 real changes made)
+(229 real changes made)
+(926 real changes made)
+(1,067 real changes made)
+(529 real changes made)
+(81 real changes made)
+(366 real changes made)
+(994 real changes made)
+(15 real changes made)
+(25,804 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1991_isic4
+> .dta saved
+********************************1992********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,535
+        from master                    24,535  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            13,553  (_merge==3)
+    -----------------------------------------
+no observations
+(38,088 missing values generated)
+(24,535 missing values generated)
+(1,407 real changes made)
+(1,217 real changes made)
+(2,653 real changes made)
+(74 real changes made)
+(46 real changes made)
+(150 real changes made)
+(1,551 real changes made)
+(575 real changes made)
+(909 real changes made)
+(57 real changes made)
+(300 real changes made)
+(0 real changes made)
+(276 real changes made)
+(244 real changes made)
+(818 real changes made)
+(1,164 real changes made)
+(551 real changes made)
+(82 real changes made)
+(451 real changes made)
+(1,022 real changes made)
+(6 real changes made)
+(24,535 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1992_isic4
+> .dta saved
+********************************1993********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,433
+        from master                    24,433  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            13,302  (_merge==3)
+    -----------------------------------------
+no observations
+(37,735 missing values generated)
+(24,433 missing values generated)
+(1,358 real changes made)
+(1,148 real changes made)
+(2,807 real changes made)
+(89 real changes made)
+(42 real changes made)
+(137 real changes made)
+(1,649 real changes made)
+(559 real changes made)
+(777 real changes made)
+(68 real changes made)
+(287 real changes made)
+(0 real changes made)
+(223 real changes made)
+(207 real changes made)
+(888 real changes made)
+(1,106 real changes made)
+(498 real changes made)
+(81 real changes made)
+(422 real changes made)
+(951 real changes made)
+(5 real changes made)
+(24,433 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1993_isic4
+> .dta saved
+********************************1994********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,756
+        from master                    24,756  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,653  (_merge==3)
+    -----------------------------------------
+no observations
+(37,409 missing values generated)
+(24,756 missing values generated)
+(1,229 real changes made)
+(1,099 real changes made)
+(2,431 real changes made)
+(71 real changes made)
+(39 real changes made)
+(153 real changes made)
+(1,532 real changes made)
+(563 real changes made)
+(791 real changes made)
+(67 real changes made)
+(256 real changes made)
+(0 real changes made)
+(231 real changes made)
+(129 real changes made)
+(1,022 real changes made)
+(1,191 real changes made)
+(471 real changes made)
+(101 real changes made)
+(336 real changes made)
+(937 real changes made)
+(4 real changes made)
+(24,756 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1994_isic4
+> .dta saved
+********************************1995********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        23,778
+        from master                    23,778  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,790  (_merge==3)
+    -----------------------------------------
+no observations
+(36,568 missing values generated)
+(23,778 missing values generated)
+(1,155 real changes made)
+(1,048 real changes made)
+(2,271 real changes made)
+(75 real changes made)
+(73 real changes made)
+(151 real changes made)
+(2,127 real changes made)
+(499 real changes made)
+(746 real changes made)
+(56 real changes made)
+(264 real changes made)
+(0 real changes made)
+(262 real changes made)
+(166 real changes made)
+(891 real changes made)
+(1,135 real changes made)
+(484 real changes made)
+(106 real changes made)
+(372 real changes made)
+(896 real changes made)
+(13 real changes made)
+(23,778 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1995_isic4
+> .dta saved
+********************************1996********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        24,369
+        from master                    24,369  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,895  (_merge==3)
+    -----------------------------------------
+no observations
+(37,264 missing values generated)
+(24,369 missing values generated)
+(1,229 real changes made)
+(1,067 real changes made)
+(2,360 real changes made)
+(59 real changes made)
+(19 real changes made)
+(146 real changes made)
+(1,760 real changes made)
+(530 real changes made)
+(807 real changes made)
+(73 real changes made)
+(276 real changes made)
+(0 real changes made)
+(246 real changes made)
+(157 real changes made)
+(979 real changes made)
+(1,180 real changes made)
+(510 real changes made)
+(93 real changes made)
+(543 real changes made)
+(855 real changes made)
+(6 real changes made)
+(24,369 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1996_isic4
+> .dta saved
+********************************1997********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        23,823
+        from master                    23,823  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            12,861  (_merge==3)
+    -----------------------------------------
+no observations
+(36,684 missing values generated)
+(23,823 missing values generated)
+(1,225 real changes made)
+(1,025 real changes made)
+(2,463 real changes made)
+(24 real changes made)
+(30 real changes made)
+(165 real changes made)
+(1,640 real changes made)
+(473 real changes made)
+(810 real changes made)
+(71 real changes made)
+(256 real changes made)
+(0 real changes made)
+(233 real changes made)
+(173 real changes made)
+(1,155 real changes made)
+(1,127 real changes made)
+(492 real changes made)
+(133 real changes made)
+(491 real changes made)
+(867 real changes made)
+(8 real changes made)
+(23,823 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1997_isic4
+> .dta saved
+********************************1998********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        26,073
+        from master                    26,073  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            14,436  (_merge==3)
+    -----------------------------------------
+no observations
+(40,509 missing values generated)
+(26,073 missing values generated)
+(1,518 real changes made)
+(1,149 real changes made)
+(2,650 real changes made)
+(75 real changes made)
+(56 real changes made)
+(200 real changes made)
+(1,647 real changes made)
+(708 real changes made)
+(1,013 real changes made)
+(68 real changes made)
+(295 real changes made)
+(0 real changes made)
+(269 real changes made)
+(304 real changes made)
+(775 real changes made)
+(1,309 real changes made)
+(534 real changes made)
+(124 real changes made)
+(435 real changes made)
+(1,298 real changes made)
+(9 real changes made)
+(26,073 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1998_isic4
+> .dta saved
+********************************1999********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        25,207
+        from master                    25,207  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            14,865  (_merge==3)
+    -----------------------------------------
+no observations
+(40,072 missing values generated)
+(25,207 missing values generated)
+(1,384 real changes made)
+(1,255 real changes made)
+(2,635 real changes made)
+(76 real changes made)
+(90 real changes made)
+(172 real changes made)
+(2,026 real changes made)
+(669 real changes made)
+(980 real changes made)
+(62 real changes made)
+(279 real changes made)
+(0 real changes made)
+(288 real changes made)
+(246 real changes made)
+(872 real changes made)
+(1,309 real changes made)
+(549 real changes made)
+(154 real changes made)
+(529 real changes made)
+(1,283 real changes made)
+(7 real changes made)
+(25,207 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo1999_isic4
+> .dta saved
+********************************2000********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        35,244
+        from master                    35,244  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            27,225  (_merge==3)
+    -----------------------------------------
+no observations
+(62,469 missing values generated)
+(35,244 missing values generated)
+(8,684 real changes made)
+(160 real changes made)
+(3,259 real changes made)
+(91 real changes made)
+(67 real changes made)
+(1,520 real changes made)
+(5,191 real changes made)
+(1,158 real changes made)
+(870 real changes made)
+(233 real changes made)
+(208 real changes made)
+(18 real changes made)
+(302 real changes made)
+(330 real changes made)
+(922 real changes made)
+(1,412 real changes made)
+(564 real changes made)
+(120 real changes made)
+(813 real changes made)
+(1,300 real changes made)
+(3 real changes made)
+(35,244 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2000_isic4
+> .dta saved
+********************************2001********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        30,342
+        from master                    30,342  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            30,407  (_merge==3)
+    -----------------------------------------
+no observations
+(60,749 missing values generated)
+(30,342 missing values generated)
+(11,166 real changes made)
+(195 real changes made)
+(3,739 real changes made)
+(96 real changes made)
+(68 real changes made)
+(1,449 real changes made)
+(5,462 real changes made)
+(1,097 real changes made)
+(984 real changes made)
+(243 real changes made)
+(192 real changes made)
+(15 real changes made)
+(291 real changes made)
+(440 real changes made)
+(985 real changes made)
+(1,279 real changes made)
+(510 real changes made)
+(191 real changes made)
+(680 real changes made)
+(1,316 real changes made)
+(9 real changes made)
+(30,342 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2001_isic4
+> .dta saved
+********************************2002********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        13,905
+        from master                    13,905  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            10,894  (_merge==3)
+    -----------------------------------------
+no observations
+(24,799 missing values generated)
+(13,905 missing values generated)
+(1,015 real changes made)
+(78 real changes made)
+(1,599 real changes made)
+(40 real changes made)
+(27 real changes made)
+(740 real changes made)
+(2,946 real changes made)
+(596 real changes made)
+(489 real changes made)
+(113 real changes made)
+(132 real changes made)
+(11 real changes made)
+(212 real changes made)
+(229 real changes made)
+(460 real changes made)
+(749 real changes made)
+(340 real changes made)
+(70 real changes made)
+(330 real changes made)
+(717 real changes made)
+(1 real change made)
+(13,905 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2002_isic4
+> .dta saved
+********************************2003********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        44,983
+        from master                    44,983  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            37,334  (_merge==3)
+    -----------------------------------------
+no observations
+(82,317 missing values generated)
+(44,983 missing values generated)
+(15,222 real changes made)
+(230 real changes made)
+(3,848 real changes made)
+(91 real changes made)
+(72 real changes made)
+(1,896 real changes made)
+(6,231 real changes made)
+(1,399 real changes made)
+(956 real changes made)
+(268 real changes made)
+(216 real changes made)
+(1 real change made)
+(356 real changes made)
+(421 real changes made)
+(1,279 real changes made)
+(1,788 real changes made)
+(624 real changes made)
+(148 real changes made)
+(1,038 real changes made)
+(1,245 real changes made)
+(5 real changes made)
+(44,983 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2003_isic4
+> .dta saved
+********************************2004********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        41,964
+        from master                    41,964  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            41,079  (_merge==3)
+    -----------------------------------------
+no observations
+(83,043 missing values generated)
+(41,964 missing values generated)
+(17,578 real changes made)
+(215 real changes made)
+(3,920 real changes made)
+(111 real changes made)
+(76 real changes made)
+(1,966 real changes made)
+(6,816 real changes made)
+(1,581 real changes made)
+(1,248 real changes made)
+(309 real changes made)
+(231 real changes made)
+(9 real changes made)
+(387 real changes made)
+(405 real changes made)
+(1,175 real changes made)
+(1,958 real changes made)
+(739 real changes made)
+(115 real changes made)
+(1,116 real changes made)
+(1,117 real changes made)
+(7 real changes made)
+(41,964 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2004_isic4
+> .dta saved
+********************************2005********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        40,496
+        from master                    40,496  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            36,554  (_merge==3)
+    -----------------------------------------
+no observations
+(77,050 missing values generated)
+(40,496 missing values generated)
+(14,965 real changes made)
+(178 real changes made)
+(3,388 real changes made)
+(95 real changes made)
+(81 real changes made)
+(1,800 real changes made)
+(6,221 real changes made)
+(1,530 real changes made)
+(1,206 real changes made)
+(278 real changes made)
+(205 real changes made)
+(10 real changes made)
+(387 real changes made)
+(400 real changes made)
+(1,102 real changes made)
+(1,740 real changes made)
+(671 real changes made)
+(132 real changes made)
+(897 real changes made)
+(1,261 real changes made)
+(7 real changes made)
+(40,496 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2005_isic4
+> .dta saved
+********************************2006********************************
+p40 already string; no replace
+(0 real changes made)
+(0 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        39,022
+        from master                    39,022  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            38,942  (_merge==3)
+    -----------------------------------------
+no observations
+(77,964 missing values generated)
+(39,022 missing values generated)
+(16,016 real changes made)
+(220 real changes made)
+(3,585 real changes made)
+(87 real changes made)
+(92 real changes made)
+(2,003 real changes made)
+(6,677 real changes made)
+(1,486 real changes made)
+(1,418 real changes made)
+(369 real changes made)
+(216 real changes made)
+(5 real changes made)
+(438 real changes made)
+(436 real changes made)
+(1,139 real changes made)
+(1,872 real changes made)
+(676 real changes made)
+(165 real changes made)
+(954 real changes made)
+(1,086 real changes made)
+(2 real changes made)
+(39,022 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2006_isic4
+> .dta saved
+********************************2007********************************
+p40 was double now str4
+(0 real changes made)
+(14,174 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        40,327
+        from master                    40,327  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            36,594  (_merge==3)
+    -----------------------------------------
+
+40. Rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     40,326      100.00      100.00
+       9999 |          1        0.00      100.00
+------------+-----------------------------------
+      Total |     40,327      100.00
+(76,921 missing values generated)
+(40,327 missing values generated)
+(14,174 real changes made)
+(232 real changes made)
+(3,603 real changes made)
+(93 real changes made)
+(81 real changes made)
+(2,002 real changes made)
+(6,121 real changes made)
+(1,492 real changes made)
+(1,471 real changes made)
+(472 real changes made)
+(246 real changes made)
+(13 real changes made)
+(370 real changes made)
+(444 real changes made)
+(1,123 real changes made)
+(1,858 real changes made)
+(719 real changes made)
+(144 real changes made)
+(926 real changes made)
+(1,009 real changes made)
+(1 real change made)
+(40,327 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2007_isic4
+> .dta saved
+********************************2008********************************
+p40 was double now str4
+(0 real changes made)
+(13,308 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        42,960
+        from master                    42,960  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            35,782  (_merge==3)
+    -----------------------------------------
+
+40. Rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     42,960      100.00      100.00
+------------+-----------------------------------
+      Total |     42,960      100.00
+(78,742 missing values generated)
+(42,960 missing values generated)
+(13,308 real changes made)
+(194 real changes made)
+(3,652 real changes made)
+(97 real changes made)
+(73 real changes made)
+(2,086 real changes made)
+(5,889 real changes made)
+(1,477 real changes made)
+(1,497 real changes made)
+(505 real changes made)
+(236 real changes made)
+(15 real changes made)
+(395 real changes made)
+(446 real changes made)
+(1,221 real changes made)
+(1,881 real changes made)
+(744 real changes made)
+(146 real changes made)
+(917 real changes made)
+(1,003 real changes made)
+(0 real changes made)
+(42,960 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2008_isic4
+> .dta saved
+********************************2009********************************
+p40 was double now str4
+(0 real changes made)
+(13,372 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        42,779
+        from master                    42,779  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            36,099  (_merge==3)
+    -----------------------------------------
+
+40. Rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     42,775       99.99       99.99
+       9999 |          4        0.01      100.00
+------------+-----------------------------------
+      Total |     42,779      100.00
+(78,878 missing values generated)
+(42,779 missing values generated)
+(13,372 real changes made)
+(223 real changes made)
+(3,652 real changes made)
+(124 real changes made)
+(95 real changes made)
+(2,080 real changes made)
+(6,223 real changes made)
+(1,542 real changes made)
+(1,367 real changes made)
+(484 real changes made)
+(212 real changes made)
+(13 real changes made)
+(423 real changes made)
+(477 real changes made)
+(1,091 real changes made)
+(1,903 real changes made)
+(706 real changes made)
+(140 real changes made)
+(928 real changes made)
+(1,043 real changes made)
+(1 real change made)
+(42,779 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2009_isic4
+> .dta saved
+********************************2010********************************
+p40 was double now str4
+(0 real changes made)
+(13,536 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        45,760
+        from master                    45,760  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            37,014  (_merge==3)
+    -----------------------------------------
+
+40. Rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     45,758      100.00      100.00
+       9999 |          2        0.00      100.00
+------------+-----------------------------------
+      Total |     45,760      100.00
+(82,774 missing values generated)
+(45,760 missing values generated)
+(13,536 real changes made)
+(262 real changes made)
+(3,771 real changes made)
+(109 real changes made)
+(87 real changes made)
+(2,124 real changes made)
+(6,188 real changes made)
+(1,639 real changes made)
+(1,463 real changes made)
+(417 real changes made)
+(227 real changes made)
+(14 real changes made)
+(392 real changes made)
+(593 real changes made)
+(1,257 real changes made)
+(2,090 real changes made)
+(794 real changes made)
+(146 real changes made)
+(959 real changes made)
+(942 real changes made)
+(4 real changes made)
+(45,760 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2010_isic4
+> .dta saved
+********************************2011********************************
+p40 was double now str4
+(0 real changes made)
+(10,629 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        38,603
+        from master                    38,603  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            31,050  (_merge==3)
+    -----------------------------------------
+
+40. Rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     38,603      100.00      100.00
+------------+-----------------------------------
+      Total |     38,603      100.00
+(69,653 missing values generated)
+(38,603 missing values generated)
+(10,629 real changes made)
+(188 real changes made)
+(3,090 real changes made)
+(81 real changes made)
+(93 real changes made)
+(1,720 real changes made)
+(5,644 real changes made)
+(1,516 real changes made)
+(1,320 real changes made)
+(375 real changes made)
+(263 real changes made)
+(24 real changes made)
+(456 real changes made)
+(561 real changes made)
+(1,053 real changes made)
+(1,716 real changes made)
+(768 real changes made)
+(124 real changes made)
+(725 real changes made)
+(700 real changes made)
+(4 real changes made)
+(38,603 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2011_isic4
+> .dta saved
+********************************2012********************************
+p40 was double now str4
+(0 real changes made)
+(11,511 real changes made)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        40,715
+        from master                    40,715  (_merge==1)
+        from using                          0  (_merge==2)
+
+    matched                            32,971  (_merge==3)
+    -----------------------------------------
+
+40. Rama de |
+  actividad |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          . |     40,714      100.00      100.00
+       9999 |          1        0.00      100.00
+------------+-----------------------------------
+      Total |     40,715      100.00
+(73,686 missing values generated)
+(40,715 missing values generated)
+(11,511 real changes made)
+(204 real changes made)
+(3,175 real changes made)
+(72 real changes made)
+(93 real changes made)
+(1,956 real changes made)
+(5,723 real changes made)
+(1,641 real changes made)
+(1,480 real changes made)
+(395 real changes made)
+(249 real changes made)
+(29 real changes made)
+(459 real changes made)
+(593 real changes made)
+(1,202 real changes made)
+(1,797 real changes made)
+(759 real changes made)
+(91 real changes made)
+(788 real changes made)
+(743 real changes made)
+(11 real changes made)
+(40,715 missing values generated)
+(0 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2012_isic4
+> .dta saved
+
+. 
+. *----------------------------------------------------------------------------
+> -
+. * STEP 4: Pass-through 2013-2025 (ya estan en CIIU Rev. 4 nativamente)
+. *
+. * Solo se renormaliza la etiqueta de rama1 al mismo formato Rev. 4 y se guard
+> a
+. * con sufijo _isic4 para mantener la nomenclatura uniforme de salida.
+. *----------------------------------------------------------------------------
+> --
+. 
+. forval anio = 2013/2025 {
+  2. 
+.         di "********************************`anio' (nativo Rev. 4)***********
+> *********************"
+  3. 
+.         capture confirm file "$bases/empleo`anio'.dta"
+  4.         if _rc continue
+  5.         use "$bases/empleo`anio'.dta", clear
+  6. 
+.         * Normaliza p40 a string de 4 digitos.
+.         capture confirm variable p40
+  7.         if !_rc {
+  8.                 tostring p40, replace force
+  9.                 replace p40 = strtrim(p40)
+ 10.                 replace p40 = substr("0000" + p40, -4, .) if p40 != "" & p
+> 40 != "."
+ 11.         }
+ 12. 
+.         * Asegura tipo numerico de rama1 con la misma etiqueta Rev. 4.
+.         capture confirm variable rama1
+ 13.         if !_rc {
+ 14.                 capture confirm numeric variable rama1
+ 15.                 if _rc {
+ 16.                         destring rama1, replace force
+ 17.                 }
+ 18.                 label define rama_isic4 ///
+>                         1  "A. Agricultura, ganaderia, silvicultura y pesca" 
+> ///
+>                         2  "B. Explotacion de minas y canteras" ///
+>                         3  "C. Industrias manufactureras" ///
+>                         4  "D. Suministros de electricidad, gas, vapor y aire
+>  acondicionado" ///
+>                         5  "E. Distribucion de agua; alcantarillado, gestion 
+> de desechos y saneamiento" ///
+>                         6  "F. Construccion" ///
+>                         7  "G. Comercio al por mayor y al por menor; reparaci
+> on de vehiculos automotores y motocicletas" ///
+>                         8  "H. Transporte y almacenamiento" ///
+>                         9  "I. Actividades de alojamiento y de servicio de co
+> midas" ///
+>                         10 "J. Informacion y comunicaciones" ///
+>                         11 "K. Actividades financieras y de seguros" ///
+>                         12 "L. Actividades inmobiliarias" ///
+>                         13 "M. Actividades profesionales, cientificas y tecni
+> cas" ///
+>                         14 "N. Actividades de servicios administrativos y de 
+> apoyo" ///
+>                         15 "O. Administracion publica y defensa; seguridad so
+> cial de afiliacion obligatoria" ///
+>                         16 "P. Ensenanza" ///
+>                         17 "Q. Actividades de atencion de la salud humana y d
+> e asistencia social" ///
+>                         18 "R. Actividades artisticas, de entretenimiento y r
+> ecreativas" ///
+>                         19 "S. Otras actividades de servicios" ///
+>                         20 "T. Actividades de los hogares como empleadores" /
+> //
+>                         21 "U. Actividades de organizaciones y organos extrat
+> erritoriales", replace
+ 19.                 label values rama1 rama_isic4
+ 20.         }
+ 21. 
+.         save "$out/empleo`anio'_isic4.dta", replace
+ 22. }
+********************************2013 (nativo Rev. 4)***************************
+> *****
+p40 was double now str4
+(0 real changes made)
+(12,931 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2013_isic4
+> .dta saved
+********************************2014 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(18,707 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2014_isic4
+> .dta saved
+********************************2015 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(18,283 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2015_isic4
+> .dta saved
+********************************2016 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(20,391 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2016_isic4
+> .dta saved
+********************************2017 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(19,314 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2017_isic4
+> .dta saved
+********************************2018 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(9,491 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2018_isic4
+> .dta saved
+********************************2019 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(10,089 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2019_isic4
+> .dta saved
+********************************2020 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(5,108 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2020_isic4
+> .dta saved
+********************************2021 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(12,451 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2021_isic4
+> .dta saved
+********************************2022 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(10,911 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2022_isic4
+> .dta saved
+********************************2023 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(10,794 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2023_isic4
+> .dta saved
+********************************2024 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(10,795 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2024_isic4
+> .dta saved
+********************************2025 (nativo Rev. 4)***************************
+> *****
+p40 was int now str4
+(0 real changes made)
+(10,079 real changes made)
+file /Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.e
+> du.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas/empleo2025_isic4
+> .dta saved
+
+. 
+end of do-file
+
+. 
+. di as text "================ STEP 4: Tabla descriptiva ================"
+================ STEP 4: Tabla descriptiva ================
+
+. do "descriptiva_ramas.do"
+
+. *----------------------------------------------------------------------------
+> -
+. * descriptiva_ramas.do
+. *
+. * Apila las bases armonizadas (empleo<anio>_isic4.dta) y produce la
+. * distribucion porcentual de empleo por rama (Seccion CIIU Rev. 4) por anio.
+. *----------------------------------------------------------------------------
+> -
+. 
+. clear all
+
+. set more off
+
+. set linesize 220
+
+. 
+. global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+
+. global out       "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+. global wd        "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama"
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 1: Apilar bases armonizadas
+. *-----------------------------------------------------------------------------
+. 
+. tempfile pooled
+
+. local first = 1
+
+. 
+. forval anio = 1991/2025 {
+  2. 
+.         local fp "$out/empleo`anio'_isic4.dta"
+  3.         capture confirm file "`fp'"
+  4.         if _rc {
+  5.                 di as error "  Sin archivo armonizado para `anio'; se omite."
+  6.                 continue
+  7.         }
+  8. 
+.         use rama1 using "`fp'", clear
+  9.         gen int anio = `anio'
+ 10. 
+.         if `first' {
+ 11.                 save `pooled', replace
+ 12.                 local first = 0
+ 13.         }
+ 14.         else {
+ 15.                 append using `pooled'
+ 16.                 save `pooled', replace
+ 17.         }
+ 18. }
+(note: file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 not found)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+(note: variable rama1 was byte, now double to accommodate using data's values)
+(label rama_isic4 already defined)
+file /var/folders/0q/1yz0j50s36s2dbr49xng4lvw0000gn/T//St09872.000001 saved
+
+. 
+. use `pooled', clear
+
+. 
+. * Conservar solo observaciones con rama identificada.
+. drop if missing(rama1)
+(1,316,070 observations deleted)
+
+. decode rama1, gen(rama1_str)
+
+. replace rama1_str = "" if rama1_str == "."
+(0 real changes made)
+
+. 
+. * Etiqueta corta para la tabla (solo la letra de la seccion).
+. gen seccion = substr(rama1_str, 1, 1)
+
+. drop if missing(seccion) | seccion == ""
+(0 observations deleted)
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 2: Identificar las ramas mas grandes en el tiempo
+. *-----------------------------------------------------------------------------
+. 
+. preserve
+
+.         contract seccion
+
+.         egen total = total(_freq)
+
+.         gen share_total = 100 * _freq / total
+
+.         gsort -share_total
+
+.         di as text _newline "Top 8 ramas (Seccion) - share global de empleo 1991-2025"
+
+Top 8 ramas (Seccion) - share global de empleo 1991-2025
+
+.         list seccion _freq share_total in 1/8, sep(0) noobs abbrev(15)
+
+  +--------------------------------+
+  | seccion    _freq   share_total |
+  |--------------------------------|
+  |       A   327075      30.48599 |
+  |       G   183112      17.06749 |
+  |       C   118097      11.00758 |
+  |       P    57370      5.347339 |
+  |       I    55799       5.20091 |
+  |       F    55775      5.198673 |
+  |       H    51204      4.772619 |
+  |       O    44267      4.126036 |
+  +--------------------------------+
+
+. restore
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 3: Distribucion porcentual por anio (tabla larga)
+. *-----------------------------------------------------------------------------
+. 
+. preserve
+
+.         contract anio seccion
+
+.         bysort anio: egen total_anio = total(_freq)
+
+.         gen share = 100 * _freq / total_anio
+
+.         keep anio seccion share
+
+.         reshape wide share, i(anio) j(seccion) string
+(note: j = A B C D E F G H I J K L M N O P Q R S T U)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                      725   ->      35
+Number of variables                   3   ->      22
+j variable (21 values)          seccion   ->   (dropped)
+xij variables:
+                                  share   ->   shareA shareB ... shareU
+-----------------------------------------------------------------------------
+
+.         format share* %5.1f
+
+.         di as text _newline "Distribucion porcentual del empleo por rama (Seccion CIIU Rev. 4) por anio"
+
+Distribucion porcentual del empleo por rama (Seccion CIIU Rev. 4) por anio
+
+.         list, sep(0) noobs abbrev(10)
+
+  +---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+  | anio   shareA   shareB   shareC   shareD   shareE   shareF   shareG   shareH   shareI   shareJ   shareK   shareL   shareM   shareN   shareO   shareP   shareQ   shareR   shareS   shareT   shareU |
+  |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+  | 1991     10.9      9.0     20.3      0.6      0.5      1.0     11.9      4.3      5.7      0.4      2.3        .      1.3      1.7      7.0      8.0      4.0      0.6      2.8      7.5      0.1 |
+  | 1992     10.4      9.0     19.6      0.5      0.3      1.1     11.4      4.2      6.7      0.4      2.2        .      2.0      1.8      6.0      8.6      4.1      0.6      3.3      7.5      0.0 |
+  | 1993     10.2      8.6     21.1      0.7      0.3      1.0     12.4      4.2      5.8      0.5      2.2        .      1.7      1.6      6.7      8.3      3.7      0.6      3.2      7.1      0.0 |
+  | 1994      9.7      8.7     19.2      0.6      0.3      1.2     12.1      4.4      6.3      0.5      2.0        .      1.8      1.0      8.1      9.4      3.7      0.8      2.7      7.4      0.0 |
+  | 1995      9.0      8.2     17.8      0.6      0.6      1.2     16.6      3.9      5.8      0.4      2.1        .      2.0      1.3      7.0      8.9      3.8      0.8      2.9      7.0      0.1 |
+  | 1996      9.5      8.3     18.3      0.5      0.1      1.1     13.6      4.1      6.3      0.6      2.1        .      1.9      1.2      7.6      9.2      4.0      0.7      4.2      6.6      0.0 |
+  | 1997      9.5      8.0     19.2      0.2      0.2      1.3     12.8      3.7      6.3      0.6      2.0        .      1.8      1.3      9.0      8.8      3.8      1.0      3.8      6.7      0.1 |
+  | 1998     10.5      8.0     18.4      0.5      0.4      1.4     11.4      4.9      7.0      0.5      2.0        .      1.9      2.1      5.4      9.1      3.7      0.9      3.0      9.0      0.1 |
+  | 1999      9.3      8.4     17.7      0.5      0.6      1.2     13.6      4.5      6.6      0.4      1.9        .      1.9      1.7      5.9      8.8      3.7      1.0      3.6      8.6      0.0 |
+  | 2000     31.9      0.6     12.0      0.3      0.2      5.6     19.1      4.3      3.2      0.9      0.8      0.1      1.1      1.2      3.4      5.2      2.1      0.4      3.0      4.8      0.0 |
+  | 2001     36.7      0.6     12.3      0.3      0.2      4.8     18.0      3.6      3.2      0.8      0.6      0.0      1.0      1.4      3.2      4.2      1.7      0.6      2.2      4.3      0.0 |
+  | 2002      9.3      0.7     14.7      0.4      0.2      6.8     27.0      5.5      4.5      1.0      1.2      0.1      1.9      2.1      4.2      6.9      3.1      0.6      3.0      6.6      0.0 |
+  | 2003     40.8      0.6     10.3      0.2      0.2      5.1     16.7      3.7      2.6      0.7      0.6      0.0      1.0      1.1      3.4      4.8      1.7      0.4      2.8      3.3      0.0 |
+  | 2004     42.8      0.5      9.5      0.3      0.2      4.8     16.6      3.8      3.0      0.8      0.6      0.0      0.9      1.0      2.9      4.8      1.8      0.3      2.7      2.7      0.0 |
+  | 2005     40.9      0.5      9.3      0.3      0.2      4.9     17.0      4.2      3.3      0.8      0.6      0.0      1.1      1.1      3.0      4.8      1.8      0.4      2.5      3.4      0.0 |
+  | 2006     41.1      0.6      9.2      0.2      0.2      5.1     17.1      3.8      3.6      0.9      0.6      0.0      1.1      1.1      2.9      4.8      1.7      0.4      2.4      2.8      0.0 |
+  | 2007     38.7      0.6      9.8      0.3      0.2      5.5     16.7      4.1      4.0      1.3      0.7      0.0      1.0      1.2      3.1      5.1      2.0      0.4      2.5      2.8      0.0 |
+  | 2008     37.2      0.5     10.2      0.3      0.2      5.8     16.5      4.1      4.2      1.4      0.7      0.0      1.1      1.2      3.4      5.3      2.1      0.4      2.6      2.8        . |
+  | 2009     37.0      0.6     10.1      0.3      0.3      5.8     17.2      4.3      3.8      1.3      0.6      0.0      1.2      1.3      3.0      5.3      2.0      0.4      2.6      2.9      0.0 |
+  | 2010     36.6      0.7     10.2      0.3      0.2      5.7     16.7      4.4      4.0      1.1      0.6      0.0      1.1      1.6      3.4      5.6      2.1      0.4      2.6      2.5      0.0 |
+  | 2011     34.2      0.6     10.0      0.3      0.3      5.5     18.2      4.9      4.3      1.2      0.8      0.1      1.5      1.8      3.4      5.5      2.5      0.4      2.3      2.3      0.0 |
+  | 2012     34.9      0.6      9.6      0.2      0.3      5.9     17.4      5.0      4.5      1.2      0.8      0.1      1.4      1.8      3.6      5.5      2.3      0.3      2.4      2.3      0.0 |
+  | 2013     36.1      0.7      9.6      0.3      0.4      6.8     15.8      4.6      4.7      1.0      0.7      0.2      1.3      1.9      3.8      4.8      2.0      0.5      2.3      2.4      0.0 |
+  | 2014     32.9      1.2      9.5      0.3      0.5      6.8     16.4      5.0      5.1      1.0      0.8      0.2      1.3      2.0      4.9      4.9      2.2      0.6      2.3      2.1      0.0 |
+  | 2015     33.0      1.0      8.9      0.4      0.3      6.7     16.1      5.4      5.6      1.0      0.7      0.1      1.5      2.1      5.1      5.0      2.2      0.6      2.4      2.0      0.0 |
+  | 2016     34.1      1.0      9.1      0.3      0.3      5.9     16.3      5.2      5.8      0.8      0.6      0.2      1.4      2.0      4.7      4.8      2.3      0.7      2.4      2.1      0.0 |
+  | 2017     33.3      0.8      9.3      0.4      0.3      5.7     16.7      5.1      6.0      0.9      0.7      0.2      1.5      2.0      4.7      4.7      2.7      0.7      2.4      2.0      0.0 |
+  | 2018     31.2      0.6     10.4      0.3      0.3      5.8     17.7      5.4      6.0      0.9      0.7      0.2      2.0      2.4      3.3      4.3      2.7      0.7      2.6      2.5      0.0 |
+  | 2019     32.3      0.6      9.9      0.3      0.3      5.3     17.3      5.4      6.1      0.8      0.7      0.2      2.1      2.4      3.3      4.3      2.8      0.7      2.6      2.6      0.0 |
+  | 2020     32.4      0.8      9.4      0.3      0.3      4.7     19.1      5.0      5.7      1.0      0.9      0.3      2.1      2.4      3.3      4.2      2.8      0.5      2.5      2.2      0.0 |
+  | 2021     25.4      0.8     10.5      0.3      0.4      5.5     19.8      5.8      6.9      0.9      1.0      0.3      2.2      2.8      3.9      4.6      3.0      0.7      2.8      2.3      0.0 |
+  | 2022     23.5      0.7     10.4      0.2      0.4      5.8     19.7      5.7      7.1      1.0      1.1      0.3      2.4      3.0      4.1      4.8      3.5      0.8      2.9      2.6      0.0 |
+  | 2023     24.0      0.7     10.0      0.3      0.4      5.5     19.2      5.8      7.2      1.0      1.0      0.3      2.5      3.5      4.0      4.9      3.4      0.8      2.9      2.5      0.0 |
+  | 2024     24.4      0.8     10.1      0.3      0.4      5.7     19.0      5.7      7.3      0.9      1.0      0.3      2.5      3.2      3.9      4.9      3.3      0.9      2.7      2.6      0.0 |
+  | 2025     23.0      0.7     10.3      0.3      0.4      6.1     18.9      5.6      7.3      1.0      0.9      0.3      2.7      3.4      3.9      5.0      3.4      0.8      3.1      2.7      0.0 |
+  +---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+.         export delimited using "$wd/distribucion_ramas_por_anio.csv", replace
+(note: file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/distribucion_ramas_por_anio.csv not found)
+file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/distribucion_ramas_por_anio.csv saved
+
+.         di as text _newline "CSV guardado en: $wd/distribucion_ramas_por_anio.csv"
+
+CSV guardado en: /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/distribucion_ramas_por_anio.csv
+
+. restore
+
+. 
+. *-----------------------------------------------------------------------------
+. * STEP 4: Tabla compacta con las 8 ramas mayores en el tiempo
+. *-----------------------------------------------------------------------------
+. 
+. * Las 8 ramas mas grandes globalmente 1991-2025 (segun share total):
+. *   A Agricultura, G Comercio, C Manufactura, P Ensenanza,
+. *   I Alojamiento/comidas, F Construccion, H Transporte, O Adm. publica.
+. preserve
+
+.         contract anio seccion
+
+.         bysort anio: egen total_anio = total(_freq)
+
+.         gen share = 100 * _freq / total_anio
+
+.         keep if inlist(seccion, "A","C","F","G","H","I","O","P")
+(445 observations deleted)
+
+.         keep anio seccion share
+
+.         reshape wide share, i(anio) j(seccion) string
+(note: j = A C F G H I O P)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                      280   ->      35
+Number of variables                   3   ->       9
+j variable (8 values)           seccion   ->   (dropped)
+xij variables:
+                                  share   ->   shareA shareC ... shareP
+-----------------------------------------------------------------------------
+
+.         order anio shareA shareG shareC shareP shareI shareF shareH shareO
+
+.         label var shareA "A.Agric"
+
+.         label var shareG "G.Comer"
+
+.         label var shareC "C.Manuf"
+
+.         label var shareP "P.Educ"
+
+.         label var shareI "I.Aloj/Com"
+
+.         label var shareF "F.Const"
+
+.         label var shareH "H.Tport"
+
+.         label var shareO "O.AdmPub"
+
+.         format share* %5.1f
+
+.         di as text _newline "Tabla compacta: % de empleo en las 8 ramas mas grandes (CIIU Rev. 4)"
+
+Tabla compacta: % de empleo en las 8 ramas mas grandes (CIIU Rev. 4)
+
+.         list anio share*, sep(5) noobs abbrev(10)
+
+  +------------------------------------------------------------------------------+
+  | anio   shareA   shareG   shareC   shareP   shareI   shareF   shareH   shareO |
+  |------------------------------------------------------------------------------|
+  | 1991     10.9     11.9     20.3      8.0      5.7      1.0      4.3      7.0 |
+  | 1992     10.4     11.4     19.6      8.6      6.7      1.1      4.2      6.0 |
+  | 1993     10.2     12.4     21.1      8.3      5.8      1.0      4.2      6.7 |
+  | 1994      9.7     12.1     19.2      9.4      6.3      1.2      4.4      8.1 |
+  | 1995      9.0     16.6     17.8      8.9      5.8      1.2      3.9      7.0 |
+  |------------------------------------------------------------------------------|
+  | 1996      9.5     13.6     18.3      9.2      6.3      1.1      4.1      7.6 |
+  | 1997      9.5     12.8     19.2      8.8      6.3      1.3      3.7      9.0 |
+  | 1998     10.5     11.4     18.4      9.1      7.0      1.4      4.9      5.4 |
+  | 1999      9.3     13.6     17.7      8.8      6.6      1.2      4.5      5.9 |
+  | 2000     31.9     19.1     12.0      5.2      3.2      5.6      4.3      3.4 |
+  |------------------------------------------------------------------------------|
+  | 2001     36.7     18.0     12.3      4.2      3.2      4.8      3.6      3.2 |
+  | 2002      9.3     27.0     14.7      6.9      4.5      6.8      5.5      4.2 |
+  | 2003     40.8     16.7     10.3      4.8      2.6      5.1      3.7      3.4 |
+  | 2004     42.8     16.6      9.5      4.8      3.0      4.8      3.8      2.9 |
+  | 2005     40.9     17.0      9.3      4.8      3.3      4.9      4.2      3.0 |
+  |------------------------------------------------------------------------------|
+  | 2006     41.1     17.1      9.2      4.8      3.6      5.1      3.8      2.9 |
+  | 2007     38.7     16.7      9.8      5.1      4.0      5.5      4.1      3.1 |
+  | 2008     37.2     16.5     10.2      5.3      4.2      5.8      4.1      3.4 |
+  | 2009     37.0     17.2     10.1      5.3      3.8      5.8      4.3      3.0 |
+  | 2010     36.6     16.7     10.2      5.6      4.0      5.7      4.4      3.4 |
+  |------------------------------------------------------------------------------|
+  | 2011     34.2     18.2     10.0      5.5      4.3      5.5      4.9      3.4 |
+  | 2012     34.9     17.4      9.6      5.5      4.5      5.9      5.0      3.6 |
+  | 2013     36.1     15.8      9.6      4.8      4.7      6.8      4.6      3.8 |
+  | 2014     32.9     16.4      9.5      4.9      5.1      6.8      5.0      4.9 |
+  | 2015     33.0     16.1      8.9      5.0      5.6      6.7      5.4      5.1 |
+  |------------------------------------------------------------------------------|
+  | 2016     34.1     16.3      9.1      4.8      5.8      5.9      5.2      4.7 |
+  | 2017     33.3     16.7      9.3      4.7      6.0      5.7      5.1      4.7 |
+  | 2018     31.2     17.7     10.4      4.3      6.0      5.8      5.4      3.3 |
+  | 2019     32.3     17.3      9.9      4.3      6.1      5.3      5.4      3.3 |
+  | 2020     32.4     19.1      9.4      4.2      5.7      4.7      5.0      3.3 |
+  |------------------------------------------------------------------------------|
+  | 2021     25.4     19.8     10.5      4.6      6.9      5.5      5.8      3.9 |
+  | 2022     23.5     19.7     10.4      4.8      7.1      5.8      5.7      4.1 |
+  | 2023     24.0     19.2     10.0      4.9      7.2      5.5      5.8      4.0 |
+  | 2024     24.4     19.0     10.1      4.9      7.3      5.7      5.7      3.9 |
+  | 2025     23.0     18.9     10.3      5.0      7.3      6.1      5.6      3.9 |
+  +------------------------------------------------------------------------------+
+
+.         export delimited using "$wd/ramas_top_por_anio.csv", replace
+(note: file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/ramas_top_por_anio.csv not found)
+file /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/ramas_top_por_anio.csv saved
+
+.         di as text _newline "CSV guardado en: $wd/ramas_top_por_anio.csv"
+
+CSV guardado en: /Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama/ramas_top_por_anio.csv
+
+. restore
+
+. 
+end of do-file
+
+. 
+. di as result "Cadena de armonizacion completada."
+Cadena de armonizacion completada.
+
+. 
+end of do-file

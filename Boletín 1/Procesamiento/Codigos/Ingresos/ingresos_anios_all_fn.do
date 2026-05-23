@@ -18,14 +18,19 @@
 * SECCIÓN 1: CONFIGURACIÓN DE RUTAS Y DIRECTORIOS
 *-------------------------------------------------------------
 * Definición de rutas globales para facilitar la portabilidad del código
-global bases "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Procesamiento/Bases"
-global raw "$bases/enemdu_diciembres"
-global procesado "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Procesamiento/Bases/Procesadas"
-global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Outcomes/Curvas de crecimiento"
+global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
+global enemdu_diciembres "$user_root/Bases/ENEMDU/Originales/Diciembres/"
+global bases "$user_root/Bases"
+global bases_90s "$enemdu_diciembres/1990-1999"
+global bases_2000_2006 "$enemdu_diciembres/2000-2006"
+global bases_2007_2017 "$enemdu_diciembres/2007-2017"
+global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
+
+global procesado "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc"
 
 
 * Creación de directorios de salida (capture ignora errores si ya existen)
-capture mkdir "$procesado/ingresos_pc"          // Almacena bases procesadas de ingreso per cápita
+capture mkdir "$procesado"          // Almacena bases procesadas de ingreso per cápita
 capture mkdir "$out/GIC_exports"          // Almacena gráficos y resultados de las GIC
 
 *-------------------------------------------------------------
@@ -36,7 +41,7 @@ scalar base_year = 2000
 
 * Importar serie histórica del IPC desde archivo Excel
 * La hoja "1. ÍNDICE" contiene los índices mensuales; usamos diciembre de cada año
-import excel "$bases/IPC/SERIE HISTORICA IPC_10_2025.xls", ///
+import excel "$bases/IPC/SERIE HISTORICA IPC_03_2026.xls", ///
     sheet("1. ÍNDICE") cellrange(A4) clear firstrow
 
 * Estandarizar nombres de variables a minúsculas
@@ -49,7 +54,7 @@ keep anio ipc                         // Conservar solo año e IPC de diciembre
 keep if anio != .                     // Eliminar observaciones con año faltante
 
 * Guardar base del IPC para merge posterior con datos de encuestas
-save "$bases\IPC\ipc_adjusted.xls", replace
+save "$bases/IPC/ipc_adjusted.xls", replace
 
 * Extraer el IPC del año base para calcular el deflactor
 keep if anio == base_year
@@ -87,8 +92,13 @@ quietly {
     *---------------------------------------------------------
     * PASO 1: Cargar datos de la encuesta ENEMDU del año especificado
     *---------------------------------------------------------
-    use "$raw\empleo`year'.dta", clear
+	if (inrange(`year', 1990, 1999)) local dir_bases $bases_90s
+	if (inrange(`year', 2000, 2006)) local dir_bases $bases_2000_2006
+	if (inrange(`year', 2007, 2017)) local dir_bases $bases_2007_2017
+	if (inrange(`year', 2018, 2025)) local dir_bases $bases_2018_presente
 
+	use "`dir_bases'/empleo`year'.dta", clear 
+	
     * Convertir variables de identificación geográfica a numéricas
     * (necesario para crear identificadores únicos de hogar)
     foreach v in ciudad zona sector vivienda hogar {
@@ -99,8 +109,8 @@ quietly {
     *---------------------------------------------------------
     * PASO 2: Merge con IPC para obtener deflactor
     *---------------------------------------------------------
-    gen anio = `year'
-    qui: merge m:1 anio using "$bases\IPC\ipc_adjusted.xls", keep(match) nogen
+    capture gen anio = `year'
+    qui: merge m:1 anio using "$bases/IPC/ipc_adjusted.xls", keep(match) nogen
 	
     * Obtener IPC del diciembre del año de la encuesta
 	preserve
@@ -562,7 +572,7 @@ quietly {
     }
 
     *=========================================================
-    **# AÑO 2007: Nomenclatura actualizada (p##)
+    **# AÑO 2007 y 2008: Nomenclatura actualizada (p##)
     *=========================================================
 	
     else if inlist(`year', 2007, 2008) {
@@ -836,12 +846,12 @@ quietly {
 
 	capture confirm variable area
 	if !_rc {
-		save "$procesado/ingresos_pc/ing_perca_`year'_nac_precios2000.dta", replace
+		save "$procesado/Nacional/ing_perca_`year'_nac_precios2000.dta", replace
 		destring area, replace 
 		keep if area == 1 // area=1 corresponde a urbano
-		save "$procesado/ingresos_pc/ing_perca_`year'_urb_precios2000.dta", replace
+		save "$procesado/Urbano/ing_perca_`year'_urb_precios2000.dta", replace
 		}                        
-	if _rc save "$procesado/ingresos_pc/ing_perca_`year'_urb_precios2000.dta", replace
+	if _rc save "$procesado/Urbano/ing_perca_`year'_urb_precios2000.dta", replace
 	
     lookfor "se considera"
 	local etnia_var = r(varlist)
@@ -853,7 +863,7 @@ quietly {
 		decode `etnia_var', generate(`etnia_var'_str)
 		keep if ustrregexm(`etnia_var'_str, "Ind") | ustrregexm(`etnia_var'_str, "ind")
 		drop `etnia_var'_str 		
-		save "$procesado/ingresos_pc/ing_perca_`year'_ind_precios2000.dta", replace
+		save "$procesado/Indigena/ing_perca_`year'_ind_precios2000.dta", replace
 		}  
 		
 	restore
@@ -868,20 +878,23 @@ quietly {
 	sum ingpc ingtot_per
 	}
 	
-	sum ingtot_per_deflated [w = fexp]
+    sum ingtot_per_deflated [w = fexp]
     tabstat ingtot_per_deflated [w = fexp], by(decile) stat(max)	
+
+	sum ing_lab [w = fexp]
+
 	
 end
 
 **# Usage
-
-foreach y of numlist 2011(2)2023 2024 {
+s
+foreach y of numlist 2006 {
     mk_ingtot, year(`y')
 }
 
-s
 
-foreach y of numlist 1991(2)2023 {
+
+foreach y of numlist 2010(1)2025 {
     mk_ingtot, year(`y')
 }
 
@@ -890,7 +903,7 @@ foreach y of numlist 1991(2)2023 {
 
 foreach y of numlist 1991(2)2023 {
     di "**********`y'***********"
-    capture describe id_upm using "$procesado/ingresos_pc/ing_perca_`y'_urb_precios2000.dta"
+    capture describe id_upm using "$procesado/ing_perca_`y'_urb_precios2000.dta"
 	if !_rc di "existe"
 	else di "no existe"
 }
@@ -899,8 +912,16 @@ egen ingtot_per2 = ing
 
 
 
+use "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Originales/Diciembres/2000-2006/empleo2006.dta", clear
+
+gen lningrl = ln(ingrl)
+hist lningrl if !inlist(ingrl, 99999), name(hist_2006, replace)
 
 
+use "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Originales/Diciembres/2007-2017/empleo2007.dta", clear
+
+gen lningrl = ln(ingrl)
+hist lningrl if !inlist(ingrl, -1, 999999), name(hist2007, replace)
 
 
 
