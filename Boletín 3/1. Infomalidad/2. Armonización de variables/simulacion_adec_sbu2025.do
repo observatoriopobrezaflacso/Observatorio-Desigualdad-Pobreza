@@ -22,7 +22,7 @@ capture log close
 *------------------------------------------------------------------------------*
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global bases     "$user_root/Bases"
-global raw       "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global raw       "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios  "$bases/Salarios"
 global ipc       "$bases/IPC"
 global out       "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
@@ -93,7 +93,7 @@ import delimited "$salarios/Salario unificado y componentes salariales.csv", cle
 encode componentesalarial, gen(componente)
 drop componentesalarial
 keep if componente == 6 & mes == "Diciembre"
-rename (año valor) (anio salario_min)
+rename (año valorsalariocomponenteendolares) (anio salario_min)
 replace salario_min = subinstr(salario_min, ",", ".", .)
 destring salario_min, replace
 keep anio salario_min
@@ -324,6 +324,14 @@ foreach y of numlist 1991(1)2025 {
 
     }
 
+	cap confirm variable condactn 
+	if   !_rc local condact_var condactn
+	else      local condact_var condact
+	decode `condact_var', gen(condact_str)
+
+	replace adec = 0 if condact_str == "Otro empleo no pleno"
+
+	
     capture confirm variable area
     if !_rc {
         local area_var area
@@ -332,7 +340,7 @@ foreach y of numlist 1991(1)2025 {
     else local area_var
 
     * Conservamos ambas series (oficial y simulada) y ambos umbrales salariales
-    keep id_persona anio `area_var' ila salario_min salario_min_sim adec adec_sim
+    keep id_persona anio `area_var' ila salario_min salario_min_sim adec adec_sim fexp
 
     append using `adec_acumulado'
     save `adec_acumulado', replace

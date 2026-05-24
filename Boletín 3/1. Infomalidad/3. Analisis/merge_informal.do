@@ -67,8 +67,31 @@ drop m_*
 		
 
 forval y = 1990/2025 {
+	
+	di "**************`y'*******************"
+	
+	local svyvars
+	
+	
+	
+	if (`y' <= 2017) local svyvars ciudad zona sector
+	else             local svyvars 
+
+	
+	if (inrange(`y', 2015, 2017)) local svyvars `svyvars' plan_muestreo
+	else                          local svyvars `svyvars' 
+	
+	if (`y' >= 2018) {
+		local svyvars `svyvars' estrato upm
+		tostring estrato, replace 
+		}
+	else                          local svyvars `svyvars'
+	
+
+	
     merge 1:1 id_persona anio using "$raw/empleo`y'.dta", ///
-        keepusing(fexp sexo edad provincia ingrl condact*) update replace nogen
+        keepusing(fexp sexo edad provincia ingrl condact* `svyvars') ///
+		update replace nogen
 	
 }
 
@@ -94,7 +117,9 @@ recode tamano_armonizado (2 = 1) (1 = 0)
 
 local vars affiliated adec adec_sim no_remunerado tamano_armonizado mi_pea tiene_ruc cuenta_propia cuenta_base condact*
 
-keep `vars' fexp sexo edad provincia educ_univ etnia_arm anio area ingrl rama1
+keep `vars' fexp sexo edad provincia educ_univ etnia_arm anio area ingrl rama1 ///
+	  ciudad zona sector plan_muestreo estrato upm
+	  
 replace area = 1 if area == .
 
 save "$bases_armonizadas/base_trabajo.dta", replace

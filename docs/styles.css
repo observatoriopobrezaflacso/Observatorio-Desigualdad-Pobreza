@@ -513,15 +513,6 @@ body {
   font-size: 0.8rem;
 }
 
-.sig-maybe {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 6px;
-  background: rgba(251, 191, 36, 0.15);
-  color: #d97706;
-  font-weight: 600;
-  font-size: 0.8rem;
-}
 
 /* ===== Hero Section (Inicio) ===== */
 .hero {

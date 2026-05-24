@@ -101,7 +101,7 @@
 
     /* ---------- Sub-tab Toggles ---------- */
     document.querySelectorAll('.sub-tabs').forEach(tabBar => {
-        if (tabBar.id === 'concentracion-inner-tabs' || tabBar.id === 'ingpc-inner-tabs' || tabBar.id === 'inglab-inner-tabs') return;
+        if (tabBar.id === 'concentracion-inner-tabs' || tabBar.id === 'ingpc-inner-tabs' || tabBar.id === 'inglab-inner-tabs' || tabBar.id === 'empleo-inner-tabs') return;
         tabBar.querySelectorAll('.sub-tab').forEach(btn => {
             btn.addEventListener('click', () => {
                 const subtab = btn.dataset.subtab;
@@ -165,7 +165,7 @@
             { icon: '<img src="icons/poverty.png" alt="" style="width:1.5em;height:1.5em;vertical-align:middle;">', label: 'Pobreza', value: pobrezaVal ? pobrezaVal.valor.toFixed(1) + '%' : '—', year: pobrezaVal ? pobrezaVal.anio : '' },
             { icon: '<img src="icons/extreme poverty.png" alt="" style="width:1.5em;height:1.5em;vertical-align:middle;">', label: 'Pobreza Extrema', value: extremaVal ? extremaVal.valor.toFixed(1) + '%' : '—', year: extremaVal ? extremaVal.anio : '' },
             { icon: '💼', label: 'Empleo no adecuado', value: empNoAdecuado ? empNoAdecuado.valor.toFixed(1) + '%' : '—', year: empNoAdecuado ? empNoAdecuado.anio : '' },
-            { icon: '📊', label: 'Desempleo', value: desempleo ? desempleo.valor.toFixed(1) + '%' : '—', year: desempleo ? desempleo.anio : '' },
+            { icon: '<img src="icons/unemployed.png" alt="" style="width:1.5em;height:1.5em;vertical-align:middle;">', label: 'Desempleo', value: desempleo ? desempleo.valor.toFixed(1) + '%' : '—', year: desempleo ? desempleo.anio : '' },
             { icon: '<img src="icons/informality.png" alt="" style="width:1.5em;height:1.5em;vertical-align:middle;">', label: 'Informalidad', value: latestInf ? latestInf.informal2.toFixed(1) + '%' : '—', year: latestInf ? latestInf.anio : '' },
             { icon: '<img src="icons/pobreza-laboral.png" alt="" style="width:1.5em;height:1.5em;vertical-align:middle;">', label: 'Pobreza Laboral', value: latestPL ? latestPL.tasaPobrezaPct.toFixed(1) + '%' : '—', year: latestPL ? latestPL.anio : '' },
             { icon: '<span style="display:inline-block;transform:rotate(-20deg)">⚖️</span>', label: 'Gini (Ecuador)', value: latestGini ? (+latestGini.valor).toFixed(3) : '—', year: latestGini ? latestGini.ano : '' },
@@ -538,8 +538,7 @@
 
         const tbody = document.querySelector('#sig-table tbody');
         tbody.innerHTML = rows.map(r => {
-            const sigClass = r.significativo && r.significativo.startsWith('Sí') ? 'sig-yes' :
-                r.significativo === 'No' ? 'sig-no' : 'sig-maybe';
+            const sigClass = r.significativo && r.significativo.startsWith('Sí') ? 'sig-yes' : 'sig-no';
             return `
             <tr>
                 <td>${r.anio}</td>
@@ -1446,19 +1445,50 @@
     /* ============================================================
        PAGE: EMPLEO
        ============================================================ */
+    let empleoInnerInit = false;
     function renderEmpleo() {
         const activeTab = document.querySelector('#empleo-tabs .sub-tab.active');
         const tabId = activeTab ? activeTab.dataset.subtab : 'empleo-main';
 
         if (tabId === 'empleo-main') {
-            renderEmpleoSeries();
-            renderEmpleoBarCharts();
-            renderEmpleoSigTable();
-            renderCrecEmpleo();
+            if (!empleoInnerInit) setupEmpleoInnerTabs();
+            renderEmpleoInner();
         } else if (tabId === 'empleo-informalidad') {
             renderInformalidad();
         } else if (tabId === 'empleo-pobreza-laboral') {
             renderPobrezaLaboralPage();
+        }
+    }
+
+    function setupEmpleoInnerTabs() {
+        const bar = document.getElementById('empleo-inner-tabs');
+        if (!bar) return;
+        bar.querySelectorAll('.sub-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                bar.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.empleo-panel').forEach(p => {
+                    p.style.display = 'none';
+                    p.classList.remove('active');
+                });
+                const panel = document.getElementById('empleo-panel-' + btn.dataset.inner);
+                if (panel) { panel.style.display = ''; panel.classList.add('active'); }
+                renderEmpleoInner();
+            });
+        });
+        empleoInnerInit = true;
+    }
+
+    function renderEmpleoInner() {
+        const activeBtn = document.querySelector('#empleo-inner-tabs .sub-tab.active');
+        const innerId = activeBtn ? activeBtn.dataset.inner : 'ultimo-ano';
+        if (innerId === 'ultimo-ano') {
+            renderEmpleoBarCharts();
+        } else if (innerId === 'serie-historica') {
+            renderEmpleoSeries();
+            renderCrecEmpleo();
+        } else if (innerId === 'variaciones') {
+            renderEmpleoSigTable();
         }
     }
 
@@ -1671,8 +1701,7 @@
 
         const tbody = document.querySelector('#empleo-sig-table tbody');
         tbody.innerHTML = data.map(r => {
-            const sigClass = r.significativo && r.significativo.startsWith('Sí') ? 'sig-yes' :
-                r.significativo === 'No' ? 'sig-no' : 'sig-maybe';
+            const sigClass = r.significativo && r.significativo.startsWith('Sí') ? 'sig-yes' : 'sig-no';
             return `
                 <tr>
                     <td>${r.anio}</td>

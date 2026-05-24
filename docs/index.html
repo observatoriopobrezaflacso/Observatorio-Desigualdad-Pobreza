@@ -504,73 +504,88 @@
 
       <div class="sub-tab-content active" id="empleo-empleo-main">
 
-      <div class="grid-full">
-        <div class="card">
-          <div class="card-title">Serie Histórica por Tipo de Empleo</div>
-          <div class="chart-container tall"><canvas id="chart-empleo-series"></canvas></div>
+        <div class="sub-tabs" id="empleo-inner-tabs" style="margin-bottom:20px;">
+          <button class="sub-tab active" data-inner="ultimo-ano">Último Año</button>
+          <button class="sub-tab" data-inner="serie-historica">Serie Histórica</button>
+          <button class="sub-tab" data-inner="variaciones">Variaciones</button>
         </div>
-      </div>
 
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Empleo Adecuado por Área</div>
-          <div class="chart-container"><canvas id="chart-empleo-bar-area"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Empleo Adecuado por Etnia</div>
-          <div class="chart-container"><canvas id="chart-empleo-bar-etnia"></canvas></div>
-        </div>
-      </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Empleo Adecuado por Sexo</div>
-          <div class="chart-container"><canvas id="chart-empleo-bar-sexo"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Empleo Adecuado por Nivel Educativo</div>
-          <div class="chart-container"><canvas id="chart-empleo-bar-educacion"></canvas></div>
-        </div>
-      </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Empleo Adecuado por Grupo Etario</div>
-          <div class="chart-container"><canvas id="chart-empleo-bar-edad"></canvas></div>
-        </div>
-      </div>
-
-      <div class="grid-full">
-        <div class="card">
-          <div class="card-title">Variaciones con Significancia Estadística</div>
-          <div class="prov-table-wrapper">
-            <table class="prov-table" id="empleo-sig-table">
-              <thead>
-                <tr>
-                  <th>Año</th>
-                  <th>Indicador</th>
-                  <th>Valor (%)</th>
-                  <th>Anterior (%)</th>
-                  <th>Var. (pp)</th>
-                  <th>Significativo</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid-full">
-        <div class="card">
-          <div class="card-title">Crecimiento del Empleo Adecuado por Sector</div>
-          <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
-            <div class="filter-group">
-              <label>Período</label>
-              <select id="crec-empleo-sector-period"></select>
+        <!-- Inner: Último Año -->
+        <div class="empleo-panel" id="empleo-panel-ultimo-ano">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Área</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-area"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Etnia</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-etnia"></canvas></div>
             </div>
           </div>
-          <div class="chart-container tall"><canvas id="chart-crec-empleo"></canvas></div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Sexo</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-sexo"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Nivel Educativo</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-educacion"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Grupo Etario</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-edad"></canvas></div>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- Inner: Serie Histórica -->
+        <div class="empleo-panel" id="empleo-panel-serie-historica" style="display:none;">
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Serie Histórica por Tipo de Empleo</div>
+              <div class="chart-container tall"><canvas id="chart-empleo-series"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Crecimiento del Empleo Adecuado por Sector</div>
+              <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+                <div class="filter-group">
+                  <label>Período</label>
+                  <select id="crec-empleo-sector-period"></select>
+                </div>
+              </div>
+              <div class="chart-container tall"><canvas id="chart-crec-empleo"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inner: Variaciones -->
+        <div class="empleo-panel" id="empleo-panel-variaciones" style="display:none;">
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Variaciones Año a Año — Nivel Nacional</div>
+              <div class="prov-table-wrapper">
+                <table class="prov-table" id="empleo-sig-table">
+                  <thead>
+                    <tr>
+                      <th>Año</th>
+                      <th>Indicador</th>
+                      <th>Valor Actual (%)</th>
+                      <th>Valor Anterior (%)</th>
+                      <th>Variación (pp)</th>
+                      <th>Significativo</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- TAB: Informalidad -->

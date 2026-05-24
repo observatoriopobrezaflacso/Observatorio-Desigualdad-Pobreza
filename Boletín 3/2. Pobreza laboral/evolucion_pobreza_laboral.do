@@ -249,7 +249,18 @@ foreach y of numlist 2001(2)2007 2008(1)2025  {
 *--- Append processed datasets into one historical file ---*
 clear
 local first_file 1
-local append_vars anio cobertura_pobreza fexp sexo area educacion educacion_superior ing_lab ingtot_per ingreso_pobreza ingreso_pobreza_var pobreza linea_pobreza p24 edad ingtot_per_deflated inglab_per_deflated
+local append_vars  anio cobertura_pobreza fexp sexo area educacion ///
+				   educacion_superior ing_lab ingtot_per ingreso_pobreza ///
+				   ingreso_pobreza_var pobreza linea_pobreza p24 edad ///
+				   ingtot_per_deflated inglab_per_deflated 
+				   
+local 	svyvars		   ciudad zona sector plan_muestreo estrato upm
+
+
+foreach v of local svyvars {
+	describe `v' using "$ingresos_pc/Nacional/ing_perca_2017_nac_precios2000.dta", varlist
+	
+}
 
 foreach y of numlist 2001(2)2007 2008(1)2025  {
 
@@ -273,7 +284,7 @@ foreach y of numlist 2001(2)2007 2008(1)2025  {
 
 
 save "$ingresos_pc/pobreza/historico.dta", replace
-
+s
 drop if p24 == 999
 
 *--- Poverty evolution plot ---*

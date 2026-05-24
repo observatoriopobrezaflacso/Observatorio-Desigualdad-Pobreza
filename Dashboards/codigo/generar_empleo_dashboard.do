@@ -206,60 +206,75 @@ restore
 
 /*==============================================================================
   4. variacion_empleo_significancia.xlsx
-  Year-over-year significance tests for empleo adecuado
+  Year-over-year significance tests using svy: proportion + lincom
 ==============================================================================*/
 
-preserve
+tostring ciudad zona sector, replace
+egen id_upm = concat(ciudad zona sector) if anio <= 2017
+destring ciudad zona sector, replace
 
-gen adec100 = adec * 100
+gen psu_str = id_upm if anio <= 2017
+replace psu_str = upm if anio >= 2018
+destring psu_str, gen(psu_num) force
 
-* Compute weighted mean and SE by year using a loop
+gen strata_str = "1"
+replace strata_str = plan_muestreo if inlist(anio, 2016, 2017)
+replace strata_str = estrato       if anio >= 2018
+encode strata_str, gen(strata_num)
+
+gen adec01 = (condactn == 1)
+
 levelsof anio, local(years)
-local i = 0
-foreach y of local years {
-    local i = `i' + 1
-    quietly summarize adec100 [aw=fexp] if anio == `y'
-    local mean_`i' = r(mean)
-    local se_`i' = r(sd) / sqrt(r(N))
-    local year_`i' = `y'
+local years_list `years'
+local n_years : word count `years_list'
+
+tempfile empleo_sig
+postfile sig_handle int(anio anioAnterior) str20(indicador) ///
+    double(valor se valorAnterior seAnterior variacionPp variacionPct tStat pValue) ///
+    str20(significativo) using `empleo_sig'
+
+forvalues i = 2/`n_years' {
+    local y1 : word `i' of `years_list'
+    local j = `i' - 1
+    local y0 : word `j' of `years_list'
+
+    preserve
+    keep if inlist(anio, `y0', `y1')
+
+    svyset psu_num [iw=fexp], strata(strata_num) vce(linearized) singleunit(certainty)
+
+    qui svy: proportion adec01, over(anio)
+
+    local val1 = _b[1.adec01@`y1'.anio] * 100
+    local val0 = _b[1.adec01@`y0'.anio] * 100
+    local se1  = _se[1.adec01@`y1'.anio] * 100
+    local se0  = _se[1.adec01@`y0'.anio] * 100
+
+    qui test _b[1.adec01@`y0'.anio] = _b[1.adec01@`y1'.anio]
+    qui lincom _b[1.adec01@`y1'.anio] - _b[1.adec01@`y0'.anio]
+    local diff = r(estimate) * 100
+    local t_stat = r(estimate) / r(se)
+    local p_value = r(p)
+
+    restore
+
+    local sig "No"
+    if `p_value' < 0.05 local sig "Sí (p<0.05)"
+    if `p_value' < 0.01 local sig "Sí (p<0.01)"
+
+    local var_pct = 0
+    if `val0' != 0 local var_pct = `diff' / `val0' * 100
+
+    post sig_handle (`y1') (`y0') ("Empleo adecuado") ///
+        (round(`val1', 0.0001)) (round(`se1', 0.0001)) ///
+        (round(`val0', 0.0001)) (round(`se0', 0.0001)) ///
+        (round(`diff', 0.0001)) (round(`var_pct', 0.0001)) ///
+        (round(`t_stat', 0.0001)) (round(`p_value', 0.0001)) ///
+        ("`sig'")
 }
 
-* Build dataset with results
-clear
-local n = `i'
-set obs `n'
-gen anio = .
-gen valor = .
-gen se = .
-forvalues j = 1/`n' {
-    replace anio = `year_`j'' in `j'
-    replace valor = `mean_`j'' in `j'
-    replace se = `se_`j'' in `j'
-}
-sort anio
-
-* Generate lagged values
-gen anio_anterior = anio[_n-1]
-gen valor_anterior = valor[_n-1]
-gen se_anterior = se[_n-1]
-
-* Compute variation and test statistics
-gen variacion_pp = valor - valor_anterior
-gen t_stat = variacion_pp / sqrt(se^2 + se_anterior^2)
-gen p_value = 2 * (1 - normal(abs(t_stat)))
-
-* Significance label
-gen significativo = "No"
-replace significativo = "Sí (p<0.05)" if p_value < 0.05
-replace significativo = "Sí (p<0.01)" if p_value < 0.01
-
-* Keep only rows where we have a previous year
-drop if anio_anterior == .
-
-* Add indicator column
-gen indicador = "Empleo adecuado"
-
-order anio anio_anterior indicador valor se valor_anterior se_anterior variacion_pp t_stat p_value significativo
+postclose sig_handle
+use `empleo_sig', clear
 export excel using "$out/variacion_empleo_significancia.xlsx", firstrow(variables) replace
 
 di "=========================================="
