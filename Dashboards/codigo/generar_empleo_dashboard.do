@@ -224,15 +224,17 @@ encode strata_str, gen(strata_num)
 
 gen adec01 = (condactn == 1)
 
-levelsof anio, local(years)
-local years_list `years'
-local n_years : word count `years_list'
-
 tempfile empleo_sig
 postfile sig_handle int(anio anioAnterior) str20(indicador) ///
     double(valor se valorAnterior seAnterior variacionPp variacionPct tStat pValue) ///
     str20(significativo) using `empleo_sig'
 
+	
+
+levelsof anio, local(years)
+local years_list `years'
+local n_years : word count `years_list'
+	
 forvalues i = 2/`n_years' {
     local y1 : word `i' of `years_list'
     local j = `i' - 1
@@ -250,12 +252,14 @@ forvalues i = 2/`n_years' {
     local se1  = _se[1.adec01@`y1'.anio] * 100
     local se0  = _se[1.adec01@`y0'.anio] * 100
 
-    qui test _b[1.adec01@`y0'.anio] = _b[1.adec01@`y1'.anio]
-    qui lincom _b[1.adec01@`y1'.anio] - _b[1.adec01@`y0'.anio]
+    test _b[1.adec01@`y0'.anio] = _b[1.adec01@`y1'.anio]
+    lincom _b[1.adec01@`y1'.anio] - _b[1.adec01@`y0'.anio]
     local diff = r(estimate) * 100
     local t_stat = r(estimate) / r(se)
     local p_value = r(p)
+	di "`p_value'"
 
+	
     restore
 
     local sig "No"
@@ -272,6 +276,9 @@ forvalues i = 2/`n_years' {
         (round(`t_stat', 0.0001)) (round(`p_value', 0.0001)) ///
         ("`sig'")
 }
+
+
+svy: reg adec01 i.anio if inlist(anio, 2023, 2024)
 
 postclose sig_handle
 use `empleo_sig', clear
