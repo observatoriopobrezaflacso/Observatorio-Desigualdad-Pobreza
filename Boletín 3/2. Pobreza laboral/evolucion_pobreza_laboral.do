@@ -257,12 +257,10 @@ local append_vars  anio cobertura_pobreza fexp sexo area educacion ///
 local 	svyvars		   ciudad zona sector plan_muestreo estrato upm
 
 
-foreach v of local svyvars {
-	describe `v' using "$ingresos_pc/Nacional/ing_perca_2017_nac_precios2000.dta", varlist
-	
-}
-
 foreach y of numlist 2001(2)2007 2008(1)2025  {
+	
+	
+	di "************`y'**************"
 
 	if `first_file' {
 		use `dta_`y'_`scope'', clear
@@ -271,10 +269,17 @@ foreach y of numlist 2001(2)2007 2008(1)2025  {
 		
 	}
 	else {
+			
+		local svyvars_actual
+		foreach v of local svyvars {
+			cap describe `v' using "$ingresos_pc/Nacional/ing_perca_`y'_nac_precios2000.dta"
+			if !_rc local svyvars_actual `svyvars_actual' `v'
+		}
+			
 		tempfile nextfile
 		preserve
 		use `dta_`y'_`scope'', clear
-		keep `append_vars'
+		keep `append_vars' `svyvars_actual'
 		save `nextfile', replace
 		restore
 
