@@ -31,7 +31,6 @@
       <li><a href="#" data-page="ingresos"><span class="nav-icon">💰</span> Ingresos</a></li>
       <li><a href="#" data-page="empleo"><span class="nav-icon">💼</span> Empleo</a></li>
       <li><a href="#" data-page="desigualdad"><span class="nav-icon" style="display:inline-block;transform:rotate(-20deg)">⚖️</span> Desigualdad</a></li>
-      <li><a href="#" data-page="violencia"><span class="nav-icon">🪦</span> Violencia y Mortalidad</a></li>
     </ul>
     <div class="sidebar-footer">
       Datos: INEC, WID, SRI · 2024
@@ -714,6 +713,7 @@
         <button class="sub-tab" data-subtab="palma">Índice de Palma</button>
         <button class="sub-tab" data-subtab="concentracion">Concentración</button>
         <button class="sub-tab" data-subtab="oportunidades">Oportunidades</button>
+        <button class="sub-tab" data-subtab="violencia">Violencia y Mortalidad</button>
       </div>
 
       <!-- TAB: Gini -->
@@ -840,6 +840,7 @@
                   <tbody></tbody>
                 </table>
               </div>
+              <p style="margin:10px 0 0;font-size:0.82rem;color:var(--text-muted);line-height:1.5;padding:0 4px;"><strong>Nota:</strong> Estas estimaciones pueden estar sujetas a sesgo de supervivencia: los contribuyentes de los deciles más bajos que pasan a la informalidad dejan de ser observados en los registros del SRI, lo que podría inflar la movilidad ascendente aparente de ese grupo.</p>
             </div>
           </div>
         </div>
@@ -919,70 +920,66 @@
         </div>
       </div>
 
-    </section>
+      <!-- TAB: Violencia y Mortalidad -->
+      <div class="sub-tab-content" id="desigualdad-violencia">
 
-    <!-- ==================== VIOLENCIA Y MORTALIDAD ==================== -->
-    <section class="page" id="page-violencia">
-      <div class="page-header">
-        <h2>Violencia y Mortalidad</h2>
-        <p>Tasas de mortalidad, homicidios y suicidios por nivel educativo, etnia y grupo etario</p>
-      </div>
+        <div class="sub-tabs" id="violencia-inner-tabs" style="margin-bottom:20px;">
+          <button class="sub-tab active" data-inner="jovenes-adultos">Jóvenes y Adultos</button>
+          <button class="sub-tab" data-inner="nna">Niños y Adolescentes</button>
+        </div>
 
-      <div class="sub-tabs" id="violencia-tabs">
-        <button class="sub-tab active" data-subtab="violencia-educacion">Jóvenes y Adultos</button>
-        <button class="sub-tab" data-subtab="violencia-nna">Niños y Adolescentes</button>
-      </div>
+        <!-- Inner: Jóvenes y Adultos -->
+        <div class="violencia-panel" id="violencia-panel-jovenes-adultos">
+          <div class="page-header" style="margin-top:0;">
+            <h3>Mortalidad y Violencia por Nivel Educativo</h3>
+            <p>Tasas por cada 1.000 hab. (mortalidad) y por cada 100.000 hab. (homicidios y suicidios)</p>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Tasa de Mortalidad — Jóvenes (20–29 años)</div>
+              <div class="chart-container"><canvas id="chart-mortalidad-jovenes"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Tasa de Mortalidad — Adultos (30+ años)</div>
+              <div class="chart-container"><canvas id="chart-mortalidad-adultos"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Tasa de Homicidios — Jóvenes (20–29 años)</div>
+              <div class="chart-container"><canvas id="chart-homicidios-jovenes"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Tasa de Homicidios — Adultos (30+ años)</div>
+              <div class="chart-container"><canvas id="chart-homicidios-adultos"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Tasa de Suicidios — Jóvenes (20–29 años)</div>
+              <div class="chart-container"><canvas id="chart-suicidios-jovenes"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Tasa de Suicidios — Adultos (30+ años)</div>
+              <div class="chart-container"><canvas id="chart-suicidios-adultos"></canvas></div>
+            </div>
+          </div>
+        </div>
 
-      <!-- Sub-tab: Mortalidad por Educación -->
-      <div class="sub-tab-content active" id="violencia-violencia-educacion">
-        <div class="page-header" style="margin-top:0;">
-          <h3>Mortalidad y Violencia por Nivel Educativo</h3>
-          <p>Tasas por cada 1.000 hab. (mortalidad) y por cada 100.000 hab. (homicidios y suicidios)</p>
-        </div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title">Tasa de Mortalidad — Jóvenes (20–29 años)</div>
-            <div class="chart-container"><canvas id="chart-mortalidad-jovenes"></canvas></div>
+        <!-- Inner: Niños y Adolescentes -->
+        <div class="violencia-panel" id="violencia-panel-nna" style="display:none;">
+          <div class="page-header" style="margin-top:0;">
+            <h3>Homicidios en Niños, Niñas y Adolescentes por Etnia</h3>
+            <p>Tasas por cada 100.000 hab. — Población afrodescendiente vs. otras etnias</p>
           </div>
-          <div class="card">
-            <div class="card-title">Tasa de Mortalidad — Adultos (30+ años)</div>
-            <div class="chart-container"><canvas id="chart-mortalidad-adultos"></canvas></div>
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Tasa de Homicidios — Niños, Niñas y Adolescentes (NNA)</div>
+              <div class="chart-container"><canvas id="chart-homicidios-nna"></canvas></div>
+            </div>
           </div>
         </div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title">Tasa de Homicidios — Jóvenes (20–29 años)</div>
-            <div class="chart-container"><canvas id="chart-homicidios-jovenes"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Tasa de Homicidios — Adultos (30+ años)</div>
-            <div class="chart-container"><canvas id="chart-homicidios-adultos"></canvas></div>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title">Tasa de Suicidios — Jóvenes (20–29 años)</div>
-            <div class="chart-container"><canvas id="chart-suicidios-jovenes"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-title">Tasa de Suicidios — Adultos (30+ años)</div>
-            <div class="chart-container"><canvas id="chart-suicidios-adultos"></canvas></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Sub-tab: Homicidios NNA por Etnia -->
-      <div class="sub-tab-content" id="violencia-violencia-nna">
-        <div class="page-header" style="margin-top:0;">
-          <h3>Homicidios en Niños, Niñas y Adolescentes por Etnia</h3>
-          <p>Tasas por cada 100.000 hab. — Población afrodescendiente vs. otras etnias</p>
-        </div>
-        <div class="grid-full">
-          <div class="card">
-            <div class="card-title">Tasa de Homicidios — Niños, Niñas y Adolescentes (NNA)</div>
-            <div class="chart-container"><canvas id="chart-homicidios-nna"></canvas></div>
-          </div>
-        </div>
       </div>
 
     </section>

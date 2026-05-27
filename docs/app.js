@@ -93,7 +93,6 @@
             if (pageId === 'empleo') renderEmpleo();
 
             if (pageId === 'desigualdad') renderDesigualdad();
-            if (pageId === 'violencia') renderViolenciaPage();
         });
     });
 
@@ -101,7 +100,7 @@
 
     /* ---------- Sub-tab Toggles ---------- */
     document.querySelectorAll('.sub-tabs').forEach(tabBar => {
-        if (tabBar.id === 'concentracion-inner-tabs' || tabBar.id === 'ingpc-inner-tabs' || tabBar.id === 'inglab-inner-tabs' || tabBar.id === 'empleo-inner-tabs') return;
+        if (tabBar.id === 'concentracion-inner-tabs' || tabBar.id === 'ingpc-inner-tabs' || tabBar.id === 'inglab-inner-tabs' || tabBar.id === 'empleo-inner-tabs' || tabBar.id === 'violencia-inner-tabs') return;
         tabBar.querySelectorAll('.sub-tab').forEach(btn => {
             btn.addEventListener('click', () => {
                 const subtab = btn.dataset.subtab;
@@ -117,7 +116,6 @@
                 if (parent.id === 'page-ingresos') renderIngresos();
                 if (parent.id === 'page-empleo') renderEmpleo();
                 if (parent.id === 'page-desigualdad') renderDesigualdad();
-                if (parent.id === 'page-violencia') renderViolenciaPage();
             });
         });
     });
@@ -2258,6 +2256,9 @@
             renderConcentracionInner();
         } else if (tabId === 'oportunidades') {
             // static table — nothing to render dynamically
+        } else if (tabId === 'violencia') {
+            if (!violenciaInnerInit) setupViolenciaInnerTabs();
+            renderViolenciaInner();
         }
         desigualdadRendered = true;
     }
@@ -2718,15 +2719,32 @@
         });
     }
 
-    /* ============================================================
-       PAGE: VIOLENCIA Y MORTALIDAD (standalone section)
-       ============================================================ */
-    function renderViolenciaPage() {
-        const activeTab = document.querySelector('#violencia-tabs .sub-tab.active');
-        const tabId = activeTab ? activeTab.dataset.subtab : 'violencia-educacion';
-        if (tabId === 'violencia-educacion') {
+    let violenciaInnerInit = false;
+    function setupViolenciaInnerTabs() {
+        const bar = document.getElementById('violencia-inner-tabs');
+        if (!bar) return;
+        bar.querySelectorAll('.sub-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                bar.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.violencia-panel').forEach(p => {
+                    p.style.display = 'none';
+                    p.classList.remove('active');
+                });
+                const panel = document.getElementById('violencia-panel-' + btn.dataset.inner);
+                if (panel) { panel.style.display = ''; panel.classList.add('active'); }
+                renderViolenciaInner();
+            });
+        });
+        violenciaInnerInit = true;
+    }
+
+    function renderViolenciaInner() {
+        const activeBtn = document.querySelector('#violencia-inner-tabs .sub-tab.active');
+        const innerId = activeBtn ? activeBtn.dataset.inner : 'jovenes-adultos';
+        if (innerId === 'jovenes-adultos') {
             renderViolencia();
-        } else if (tabId === 'violencia-nna') {
+        } else if (innerId === 'nna') {
             renderHomicidiosNNA();
         }
     }
