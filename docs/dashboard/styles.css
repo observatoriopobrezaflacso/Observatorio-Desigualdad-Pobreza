@@ -147,6 +147,28 @@ body {
   flex-shrink: 0;
 }
 
+.back-home {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 12px 12px;
+  padding: 11px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all var(--transition);
+}
+
+.back-home:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
 .sidebar-footer {
   padding: 16px 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
