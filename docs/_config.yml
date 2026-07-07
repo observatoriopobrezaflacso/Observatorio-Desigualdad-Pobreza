@@ -1,0 +1,22 @@
+# ===== Jekyll configuration (GitHub Pages) =====
+title: Observatorio de Desigualdad, Pobreza y Empleo
+description: FLACSO Ecuador — Blog e indicadores de pobreza, desigualdad y empleo en Ecuador
+lang: es
+
+# Project site is served under the repository name
+url: "https://observatoriopobrezaflacso.github.io"
+baseurl: "/Observatorio-Desigualdad-Pobreza"
+
+# Pretty URLs for blog posts
+permalink: /blog/:year/:month/:day/:title/
+
+# Build settings
+markdown: kramdown
+timezone: America/Guayaquil
+
+# Don't process the dashboard app or data files through Jekyll
+keep_files:
+  - dashboard
+exclude:
+  - dashboard/convert_data.py
+  - README.md
