@@ -55,7 +55,72 @@
         const ctx = document.getElementById(id);
         if (!ctx) return null;
         charts[id] = new Chart(ctx, config);
+        setupDownloadButton(id);
         return charts[id];
+    }
+
+    /* ---------- Per-chart data download ---------- */
+    // Charts whose source file depends on a UI selector resolve their path at
+    // click time. Static charts use window.CHART_SOURCES (chart-sources.js).
+    const CHART_SOURCE_RESOLVERS = {
+        'chart-gic': function () {
+            const area = (document.getElementById('gic-area') || {}).value || 'nac';
+            const s = (document.getElementById('gic-year-start') || {}).value;
+            const e = (document.getElementById('gic-year-end') || {}).value;
+            if (!s || !e) return null;
+            return 'downloads/gic/gic_' + area + '_' + s + '_' + e + '.xlsx';
+        },
+        'chart-crec-empleo': function () {
+            const p = (document.getElementById('crec-empleo-sector-period') || {}).value;
+            if (!p) return null;
+            return 'downloads/crec_empleo/datos_graficos_' + p + '.xlsx';
+        },
+        'chart-latam': function () {
+            const v = (document.getElementById('latam-var') || {}).value;
+            return v === 'wealth'
+                ? 'downloads/WID_riqueza_percentiles_ALC_tableau.xlsx'
+                : 'downloads/WID_ingreso_percentiles_ALC_tableau.xlsx';
+        },
+    };
+
+    function getChartSource(id) {
+        const resolver = CHART_SOURCE_RESOLVERS[id];
+        if (resolver) {
+            try { return resolver(); } catch (e) { return null; }
+        }
+        return (window.CHART_SOURCES && window.CHART_SOURCES[id]) || null;
+    }
+
+    const DOWNLOAD_ICON =
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" ' +
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+        'stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+        '<polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+    function setupDownloadButton(id) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const container = canvas.closest('.chart-container');
+        if (!container) return;
+        // Only add a button when this chart actually has a source file.
+        const hasStatic = window.CHART_SOURCES && window.CHART_SOURCES[id];
+        if (!CHART_SOURCE_RESOLVERS[id] && !hasStatic) return;
+        if (container.querySelector('.chart-download-btn')) return;
+
+        const btn = document.createElement('a');
+        btn.className = 'chart-download-btn';
+        btn.title = 'Descargar datos de este gráfico';
+        btn.setAttribute('aria-label', 'Descargar datos de este gráfico');
+        btn.setAttribute('download', '');
+        btn.innerHTML = DOWNLOAD_ICON;
+        const initial = getChartSource(id);
+        if (initial) btn.setAttribute('href', initial);
+        btn.addEventListener('click', function (ev) {
+            const src = getChartSource(id);
+            if (!src) { ev.preventDefault(); return; }
+            btn.setAttribute('href', src);
+        });
+        container.appendChild(btn);
     }
 
     function uniqueSorted(arr) {

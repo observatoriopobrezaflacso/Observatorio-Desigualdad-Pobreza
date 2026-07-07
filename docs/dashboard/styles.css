@@ -383,6 +383,48 @@ body {
   height: 100% !important;
 }
 
+/* ===== Per-chart data download button ===== */
+.chart-download-btn {
+  position: absolute;
+  top: -32px;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  opacity: 0.65;
+  transition: color var(--transition), background var(--transition),
+    border-color var(--transition), opacity var(--transition);
+  z-index: 5;
+}
+
+.card:hover .chart-download-btn {
+  opacity: 1;
+}
+
+.chart-download-btn:hover {
+  color: var(--flacso-navy);
+  background: rgba(22, 57, 112, 0.08);
+  border-color: rgba(22, 57, 112, 0.2);
+}
+
+.chart-download-btn svg {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .chart-download-btn {
+    top: -28px;
+  }
+}
+
 /* ===== Filters ===== */
 .filters-bar {
   display: flex;
