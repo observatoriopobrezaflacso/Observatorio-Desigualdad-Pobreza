@@ -39,12 +39,9 @@ foreach y of numlist 1990(1)2025 {
         capture confirm variable cates
         local has_cates = !_rc
         
-        if `has_catetrab' {
-            replace no_remunerado = 1 if catetrab == 5
-        }
-        if `has_cates' {
-            replace no_remunerado = 1 if cates == 5
-        }
+		replace no_remunerado = 1 if catetrab == 5		
+		replace no_remunerado = 0 if !missing(catetrab) & catetrab != 5
+		
         if `has_catetrab' & `has_cates' {
             replace no_remunerado = . if missing(catetrab) & missing(cates)
         }
@@ -67,12 +64,12 @@ foreach y of numlist 1990(1)2025 {
         capture confirm variable cates
         local has_cates = !_rc
         
-        if `has_catetrab' {
-            replace no_remunerado = 1 if inlist(catetrab, 6, 11)
-        }
-        if `has_cates' {
-            replace no_remunerado = 1 if inlist(cates, 6, 11)
-        }
+		replace no_remunerado = 1 if inlist(catetrab, 6, 11)
+		replace no_remunerado = 1 if inlist(cates, 6, 11)
+		
+		replace no_remunerado = 0 if !missing(catetrab) & !inlist(catetrab, 6, 11)
+		replace no_remunerado = 0 if !missing(cates)    & !inlist(cates, 6, 11)
+			
         if `has_catetrab' & `has_cates' {
             replace no_remunerado = . if missing(catetrab) & missing(cates)
         }
@@ -95,12 +92,12 @@ foreach y of numlist 1990(1)2025 {
         capture confirm variable cates
         local has_cates = !_rc
         
-        if `has_catetrab' {
-            replace no_remunerado = 1 if inlist(catetrab, 6, 11)
-        }
-        if `has_cates' {
-            replace no_remunerado = 1 if inlist(cates, 6, 11)
-        }
+		replace no_remunerado = 1 if inlist(catetrab, 6, 11)
+		replace no_remunerado = 1 if inlist(cates, 6, 11)
+		
+		replace no_remunerado = 0 if !missing(catetrab) & !inlist(catetrab, 6, 11)
+		replace no_remunerado = 0 if !missing(cates) & !inlist(cates, 6, 11)
+		
         if `has_catetrab' & `has_cates' {
             replace no_remunerado = . if missing(catetrab) & missing(cates)
         }
@@ -122,12 +119,12 @@ foreach y of numlist 1990(1)2025 {
         capture confirm variable cates
         local has_cates = !_rc
         
-        if `has_catetrab' {
-            replace no_remunerado = 1 if catetrab == 8
-        }
-        if `has_cates' {
-            replace no_remunerado = 1 if cates == 8
-        }
+		replace no_remunerado = 1 if catetrab == 8
+		replace no_remunerado = 1 if cates == 8
+		
+		replace no_remunerado = 0 if !missing(catetrab) & catetrab != 8
+		replace no_remunerado = 0 if !missing(cates)    & cates    != 8
+		
         if `has_catetrab' & `has_cates' {
             replace no_remunerado = . if missing(catetrab) & missing(cates)
         }
@@ -151,12 +148,11 @@ foreach y of numlist 1990(1)2025 {
         capture confirm variable p54
         local has_p54 = !_rc
         
-        if `has_p42' {
-            replace no_remunerado = 1 if inlist(p42, 7, 8, 9)
-        }
-        if `has_p54' {
-            replace no_remunerado = 1 if inlist(p54, 7, 8, 9)
-        }
+		replace no_remunerado = 1 if inlist(p42, 7, 8, 9) 
+		replace no_remunerado = 1 if inlist(p54, 7, 8, 9) 
+		replace no_remunerado = 0 if !missing(p54) & !inlist(p54, 7, 8, 9) 
+		replace no_remunerado = 0 if !missing(p42) & !inlist(p42, 7, 8, 9) 
+			
         if `has_p42' & `has_p54' {
             replace no_remunerado = . if missing(p42) & missing(p54)
         }
@@ -168,10 +164,11 @@ foreach y of numlist 1990(1)2025 {
         }
     }
     
-    label define lbl_norem 0 "Remunerado / Otra categoría" 1 "Trabajador familiar no remunerado", replace
+    label define lbl_norem 0 "Remunerado / Otra categoría" 1 "Trabajador no remunerado", replace
     label values no_remunerado lbl_norem
-    label variable no_remunerado "Trabajador familiar no remunerado (armonizado)"
+    label variable no_remunerado "Trabajador no remunerado (armonizado)"
     
+	
     *do "$gh/Generales/id_persona_loop.do"
     
 	capture confirm variable area 
@@ -182,11 +179,11 @@ foreach y of numlist 1990(1)2025 {
 	}
 	else      local area_var 
 	
-    keep id_persona $important_variable anio `area_var'
+    keep id_persona $important_variable anio `area_var' fexp edad condact*
 	
     append using `no_rem_acumulado'
 	
-	keep id_persona $important_variable anio `area_var'
+	keep id_persona $important_variable anio `area_var' fexp edad condact*
 
     save `no_rem_acumulado', replace
     
@@ -195,13 +192,19 @@ foreach y of numlist 1990(1)2025 {
     count if id_persona == ""
     local n = r(N)
     
-    if (`n' != 0) asd
+    *if (`n' != 0) asd
 }
 save "$out/historico_no_remunerado.dta", replace
 use "$out/historico_no_remunerado.dta", clear
 
 * Verificación
-tab anio no_remunerado, row missing
+tab anio no_remunerado [iw = fexp], row missing
+tab anio no_remunerado [iw = fexp], nofreq row
+
+
+/*
+
+s
 
 
 preserve
@@ -227,3 +230,4 @@ restore
 
 
 graph export "$out_plot/historico_empleado_domestico.pdf", replace
+*/

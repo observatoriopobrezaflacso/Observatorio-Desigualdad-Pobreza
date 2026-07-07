@@ -3,58 +3,59 @@ clear
 * Definicion de rutas globales para facilitar la portabilidad del codigo
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 
-global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 
 global isic "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 global out "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 *-----------------------------------------------------------------------------
-* STEP 1: Preparar correspondencia CIIU Rev. 2 -> CIIU Rev. 3.1
+* STEP 1: Preparar correspondencia CIIU Rev. 3 -> CIIU Rev. 3.1
 *------------------------------------------------------------------------------
 
-import delimited using "$isic/ISIC2_ISIC31.txt", clear stringcols(_all)
+* El archivo .rtf contiene una tabla tipo CSV desde la fila 10.
+* bindquote(nobind) evita que comillas internas en la descripcion corten la importacion.
+import delimited using "$isic/ISIC3_ISIC31.rtf", clear ///
+	varnames(10) colrange(1:4) stringcols(_all) bindquote(nobind)
 
-rename (rev2 rev31) (isic2code isic31code)
-destring partial2 partial31, replace ignore("\")
+rename *, lower
 
-replace isic2code  = strtrim(isic2code)
+rename (rev3 rev31) (isic3code isic31code)
+destring parcial3 parcial31, replace ignore("\")
+
+replace isic3code = strtrim(isic3code)
 replace isic31code = strtrim(isic31code)
-drop if missing(isic2code) | missing(isic31code)
+replace isic3code = subinstr(isic3code, `"""', "", .)
+replace isic31code = subinstr(isic31code, `"""', "", .)
+drop if missing(isic3code) | missing(isic31code) | isic3code == "n/a"
 
-replace isic2code  = substr("0000" + isic2code,  -4, .)
+replace isic3code = substr("0000" + isic3code, -4, .)
 replace isic31code = substr("0000" + isic31code, -4, .)
 
 * En codigos con multiples correspondencias se prioriza:
 * 1) correspondencia no parcial, 2) destino no parcial, 3) mismo codigo.
-gen byte exact_match = isic2code == isic31code
-gsort isic2code partial2 partial31 -exact_match isic31code
-duplicates drop isic2code, force
+gen byte exact_match = isic3code == isic31code
+gsort isic3code parcial3 parcial31 -exact_match isic31code
+duplicates drop isic3code, force
 
-rename isic2code  p40_old
+rename isic3code p40_old
 rename isic31code p40
 
 keep p40_old p40
-tempfile crosswalk_clean_2_31
-save `crosswalk_clean_2_31'
+tempfile crosswalk_clean_3_31
+save `crosswalk_clean_3_31'
 
 *-----------------------------------------------------------------------------
-* STEP 2: Actualizar bases 1990-1999 de CIIU Rev. 2 a Rev. 3.1
+* STEP 2: Actualizar bases 2000-2006 de CIIU Rev. 3 a Rev. 3.1
 *------------------------------------------------------------------------------
 
-forval anio = 1990/1999 {
+forval anio = 2000/2006 {
 
 	di "********************************`anio'********************************"
 
-	* 1990 fue grabado en latin1; los demas anos abren sin problema.
-	capture noisily use "$bases/empleo`anio'.dta", clear
-	if _rc {
-		di as error "  AVISO: empleo`anio'.dta no se pudo abrir directamente."
-		di as error "  Intente: unicode encoding set Latin1 ; unicode translate ""$bases/empleo`anio'.dta"""
-		continue
-	}
+ 	capture noisily use "$bases/empleo`anio'.dta", clear
 
-	* Algunos anos (p.ej. 1999) ya traen una variable rama1 con el codigo de 4
-	* digitos; se preserva como respaldo para evitar conflictos de nombres.
+	* Preserva cualquier rama1 preexistente para evitar conflictos al
+	* generar la nueva seccion Rev. 3.1.
 	capture confirm variable rama1
 	if !_rc rename rama1 rama1_codigo_orig
 
@@ -63,12 +64,12 @@ forval anio = 1990/1999 {
 	replace p40_old = strtrim(p40_old)
 	replace p40_old = substr("0000" + p40_old, -4, .) if p40_old != "" & p40_old != "."
 
-	merge m:1 p40_old using `crosswalk_clean_2_31', keep(master match)
+	merge m:1 p40_old using `crosswalk_clean_3_31', keep(master match)
 
 	* Lista codigos no mapeados para revision manual.
 	tab p40_old if missing(p40) & p40_old != ""
 
-	rename p40_old rama_old_isic2
+	rename p40_old rama_old_isic3
 	drop _merge
 
 	* Extrae los primeros 2 digitos del nuevo codigo CIIU Rev. 3.1.
@@ -125,5 +126,5 @@ forval anio = 1990/1999 {
 	drop isic2 rama_new
 
 	save "$out/empleo`anio'_isic31.dta", replace
-
+	
 }

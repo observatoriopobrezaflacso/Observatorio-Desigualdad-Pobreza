@@ -12,12 +12,12 @@ set more off
 * Definición de rutas globales para acceder a las bases de datos
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 global bases "$user_root/Bases"
-global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
-global variables_base "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global variables_base "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global bases_armonizadas "$user_root/Bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global out_results/Graficos "$user_root/Boletín 3/2. Armonización de variables/Gráficos de control"
-global out_results "$user_root/Boletín 3/4. Resultados"
+global out_results "$user_root/Boletín 3/4. Resultados/informalidad"
 
 * Definición de variables importantes para análisis
 global important_variable informal1
@@ -36,7 +36,7 @@ replace area = 1 if area == .
 
 
 * Definir lista de variables relevantes para análisis de informalidad
-local vars affiliated adec cuenta_propia tiene_ruc tamano_armonizado no_remunerado
+local vars affiliated adec tiene_ruc no_remunerado
 
 * Generar tabulaciones de cada variable por año para control
 foreach var of local vars {
@@ -50,8 +50,13 @@ foreach var of local vars {
 keep if edad >= 15
 
 foreach var of varlist affiliated adec* no_remunerado tiene_ruc {
-	replace `var' = . if inrange(condact, 5, 8) & anio < 2001
-	replace `var' = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2001
+*	cap gen `var'_a = `var'
+*	replace `var'_a = . if inrange(condact, 5, 8) & anio <= 2006
+*	replace `var'_a = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2007
+	
+	replace `var' = . if inrange(condact, 5, 8) & anio <= 2006
+	replace `var' = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2007
+	
 }
 
 
@@ -79,7 +84,7 @@ gen informal2 =  affiliated    == 0 | ///
 				 adec               == 0 | ///
 				 no_remunerado      == 1 | ///
 				 (tiene_ruc == 0) 
-replace informal2 = . if inlist(., affiliated, adec,  tiene_ruc, tamano_armonizado)
+replace informal2 = . if inlist(., affiliated, adec,  tiene_ruc, no_remunerado)
 
 * ============================================================
 **#  INFORMALIDAD 2 SIM
@@ -89,8 +94,7 @@ gen informal2_sim =  ///
 				 adec_sim               == 0 | ///
 				 no_remunerado          == 1 | ///
 				 (tiene_ruc == 0) 
-replace informal2_sim = . if inlist(., affiliated, adec_sim,  tiene_ruc, tamano_armonizado)
-
+replace informal2_sim = . if inlist(., affiliated, adec_sim,  tiene_ruc, no_remunerado)
 
 * ===============================================================
 **# INFORMALIDAD CON Y SIN RUC 
@@ -128,8 +132,6 @@ restore
 
 
 
-
-
 *------------------------------------------------------------------*
 * Gráfico de serie de tiempo: Componentes de informal2
 *------------------------------------------------------------------*
@@ -161,7 +163,7 @@ label var comp_no_ruc   "No tiene RUC"
 * ===============================================================
 
 preserve
-    collapse (mean) comp_no_iess comp_no_adec comp_no_remun comp_no_ruc ///
+    collapse (mean) comp_no_adec comp_no_remun comp_no_iess comp_no_ruc ///
              informal1 informal2 [iw=fexp] if anio != 2002, by(anio)
     replace informal1 = informal1 * 100
     replace informal2 = informal2 * 100
@@ -192,9 +194,9 @@ preserve
     graph save "$out_results/Graficos/panel_informal.gph", replace
 
     twoway ///
-        (connected comp_no_iess  anio, msymbol(O) lwidth(medium) lcolor(navy)      mcolor(navy)      msize(small)) ///
         (connected comp_no_adec  anio, msymbol(O) lwidth(medium) lcolor(cranberry)  mcolor(cranberry)  msize(small)) ///
         (connected comp_no_remun anio, msymbol(O) lwidth(medium) lcolor(teal)       mcolor(teal)       msize(small)) ///
+        (connected comp_no_iess  anio, msymbol(O) lwidth(medium) lcolor(navy)      mcolor(navy)      msize(small)) ///
         (connected comp_no_ruc   anio, msymbol(O) lwidth(medium) lcolor(orange)     mcolor(orange)     msize(small)) ///
         (scatteri 0 1999 100 1999, recast(line) lpattern(dash) lcolor(gs8) lwidth(thin)) ///
         (scatter lbl_no_iess  anio, msymbol(none) mlabel(lbl_no_iess)  mlabposition(12) mlabcolor(navy)      mlabsize(vsmall)) ///
@@ -205,7 +207,7 @@ preserve
         ylabel(0(20)100, angle(0) grid labsize(small)) ///
         xlabel(1991(2)2025, angle(90) labsize(small)) ///
         xscale(range(1990 2025)) ///
-        legend(order(1 "No IESS" 2 "No adecuado" 3 "No remunerado" 4 "No RUC") ///
+		legend(order(2 "No adecuado" 3 "No remunerado" 1 "No IESS" 4 "No RUC") ///
                rows(1) size(small) position(6)) ///
         graphregion(color(white)) plotregion(color(white)) scheme(s2color)
     graph save "$out_results/Graficos/panel_componentes.gph", replace
@@ -279,9 +281,9 @@ preserve
 
     * --- Panel C: Componentes – Hombres ---
     twoway ///
-        (connected comp_no_iess  anio if sexo == 1, msymbol(O) lwidth(medium) lcolor(navy)      mcolor(navy)      msize(small)) ///
         (connected comp_no_adec  anio if sexo == 1, msymbol(O) lwidth(medium) lcolor(cranberry)  mcolor(cranberry)  msize(small)) ///
         (connected comp_no_remun anio if sexo == 1, msymbol(O) lwidth(medium) lcolor(teal)       mcolor(teal)       msize(small)) ///
+        (connected comp_no_iess  anio if sexo == 1, msymbol(O) lwidth(medium) lcolor(navy)      mcolor(navy)      msize(small)) ///
         (connected comp_no_ruc   anio if sexo == 1, msymbol(O) lwidth(medium) lcolor(orange)     mcolor(orange)     msize(small)) ///
         (scatteri 0 1999 100 1999, recast(line) lpattern(dash) lcolor(gs8) lwidth(thin)) ///
         (scatter lbl_no_iess  anio if sexo == 1, msymbol(none) mlabel(lbl_no_iess)  mlabposition(12) mlabcolor(navy)      mlabsize(vsmall)) ///
@@ -358,10 +360,10 @@ keep if inrange(anio, 2001, 2025)
     collapse (mean) cond_1 cond_2 cond_3 cond_4 [iw=fexp] if anio != 2002, by(anio)
     export excel using "$out_results/Tablas/n_condiciones_informalidad.xlsx", firstrow(var) replace
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_cond_1 = cond_1 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_cond_2 = cond_2 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_cond_3 = cond_3 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_cond_4 = cond_4 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_cond_1 = cond_1 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_cond_2 = cond_2 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_cond_3 = cond_3 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_cond_4 = cond_4 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_cond_1 lbl_cond_2 lbl_cond_3 lbl_cond_4 %9.1f
     twoway ///
         (connected cond_1 anio, msymbol(O) lwidth(medium) lcolor(navy)      mcolor(navy)      msize(small)) ///
@@ -1097,7 +1099,7 @@ preserve
         (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(12) mlabcolor(green)  mlabsize(vsmall)) ///
         (scatter lbl_2 anio, msymbol(none) mlabel(lbl_2) mlabposition(12) mlabcolor(blue)   mlabsize(vsmall)) ///
         (scatter lbl_3 anio, msymbol(none) mlabel(lbl_3) mlabposition(6)  mlabcolor(orange) mlabsize(vsmall)), ///
-        legend(order(2 "Indígena" 4 "Negro/Afroecuatoriano" 6 "Blanco/Mestizo") ///
+        legend(order(2 "Indígena" 4 "Afroecuatoriano" 6 "Blanco/Mestizo") ///
 		position(6) rows(1)) ///
         xlabel(2003(2)2024, angle(45)) ///
 		xtitle("") ///
@@ -1109,7 +1111,7 @@ preserve
         name(informal2_etnia, replace)
     *graph export "$out_results/informal2_etnia_nac_IC.png", replace 
 restore 
-
+s
 /*
 
 * Urbano — desde 2003
@@ -1342,3 +1344,35 @@ preserve
         name(informal2_decil, replace)
 *    graph export "$out_results/informal2_decil_nac.png", replace
 restore
+
+
+
+
+foreach y of numlist 2009(1)2016{
+
+foreach v of varlist affiliated adec no_remunerado tiene_ruc {
+	cap gen `v'_mis = missing(`v')
+	*tab anio `v'_mis if anio == `y'
+} 
+
+}
+
+
+
+
+
+
+
+
+keep if edad >= 15
+
+
+
+foreach var of varlist affiliated adec* no_remunerado tiene_ruc {
+	gen `var'_a = `var'
+	replace `var'_a = . if inrange(condact, 5, 8) & anio < 2001
+	replace `var'_a = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2001
+}
+
+
+

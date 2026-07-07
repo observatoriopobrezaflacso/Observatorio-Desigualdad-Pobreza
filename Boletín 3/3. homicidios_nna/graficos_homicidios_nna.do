@@ -6,7 +6,7 @@ set more off
 * Fuente: Ministerio del Interior (datos abiertos), INEC (proyecciones)
 * =============================================================================
 
-global root "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/homicidios_nna"
+global root "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/3. homicidios_nna"
 global out  "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/homicidios infantiles"
 
 * --- Cargar datos ---
@@ -30,8 +30,8 @@ label variable tasa_otras "Otras etnias"
 label variable tasa_total "Total"
 
 * --- Etiquetas de valor (mismos años que gráficos de informalidad) ---
-gen lbl_afro  = tasa_afro  if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-gen lbl_total = tasa_total if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+gen lbl_afro  = tasa_afro  if inlist(anio, 2001, 2006, 2014, 2019, 2025)
+gen lbl_total = tasa_total if inlist(anio, 2001, 2006, 2014, 2019, 2025)
 format lbl_afro lbl_total %9.1f
 
 twoway ///

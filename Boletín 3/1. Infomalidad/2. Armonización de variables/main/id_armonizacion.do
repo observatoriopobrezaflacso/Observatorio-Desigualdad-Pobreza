@@ -22,7 +22,7 @@ save `id_persona_cumulative'
 
 * ── Loop: extract id_persona + anio + area from each yearly file ──────────────
 *foreach y in 2017 {
-forval y = 2025/2025 {
+forval y = 1990/2006 {
 
     di "************** `y' ********************"
 

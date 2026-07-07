@@ -324,7 +324,11 @@ foreach scope in nac {
 			
 			cap confirm variable CONDACT
 			if !_rc rename CONDACTN*, lower
-            keep `append_vars' condact*
+			
+			if `y' == 2025 local horas_var p24
+			else           local horas_var 
+			
+            keep `append_vars' condact* `horas_var'
             save `nextfile', replace
             restore
 
@@ -335,6 +339,9 @@ foreach scope in nac {
 
 keep if anio >= `analysis_start'
 save "`historico'", replace
+replace condactn = condact if inrange(anio, 2019, 2025)
+
+
 
 *--- Poverty evolution plot ---*
 preserve
@@ -379,13 +386,14 @@ restore
 
 *--- Poverty evolution among people with observed labor income ---*
 
-gen ocupado = !inlist(condactn, 0, 7, 8, 9)
+gen ocupado = !inlist(condactn, 0, 7, 8, 9) if anio >= 2007
+replace ocupado = !inrange(condact, 5, 8) if anio < 2007
 
 
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < ., ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ocupado == 1, ///
     by(anio cobertura_pobreza)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza
@@ -421,12 +429,20 @@ if _rc {
 }
 
 restore
+s
+
+
+gen mas_40h = p24 >= 40 & p24 != . if anio == 2025
+
+tab pobreza mas_40h [iw = fexp] if ocupado == 1, nofreq row
+
+
 
 *--- Disaggregation by sex among people with observed labor income ---*
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & sexo < ., ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ocupado == 1 & sexo < ., ///
     by(anio sexo)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza
@@ -470,7 +486,7 @@ restore
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & area < ., ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ocupado == 1 & area < ., ///
     by(anio area)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza
@@ -514,7 +530,7 @@ restore
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if anio >= `analysis_start' & pobreza < . & fexp < . & ing_lab < . & educacion_superior < ., ///
+    if anio >= `analysis_start' & pobreza < . & fexp < . & ocupado == 1 & educacion_superior < ., ///
     by(anio educacion_superior)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza

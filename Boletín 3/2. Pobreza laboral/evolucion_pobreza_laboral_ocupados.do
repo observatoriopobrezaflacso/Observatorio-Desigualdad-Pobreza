@@ -340,7 +340,7 @@ replace ocupado = !inrange(condact, 5, 8) if anio < 2007
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if  pobreza < . & fexp < . & ing_lab < ., ///
+    if  pobreza < . & fexp < . & ocupado == 1, ///
     by(anio cobertura_pobreza)
 list 
 
@@ -394,7 +394,7 @@ label define age_cat_lbl 1 "18-29" 2 "30-64" 3 "65+"
 label values age_cat age_cat_lbl
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if  pobreza < . & fexp < . & ing_lab < . & age_cat < ., ///
+    if  pobreza < . & fexp < . & ocupado == 1 & age_cat < ., ///
     by(anio age_cat)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza
@@ -448,7 +448,7 @@ restore
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if  pobreza < . & fexp < . & ing_lab < . & sexo < ., ///
+    if  pobreza < . & fexp < . & ocupado == 1 & sexo < ., ///
     by(anio sexo)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza
@@ -496,7 +496,7 @@ restore
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if  pobreza < . & fexp < . & ing_lab < . & area < ., ///
+    if  pobreza < . & fexp < . & ocupado == 1 & area < ., ///
     by(anio area)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza
@@ -545,7 +545,7 @@ restore
 preserve
 
 collapse (mean) tasa_pobreza = pobreza [iw = fexp] ///
-    if  pobreza < . & fexp < . & ing_lab < . & educacion_superior < ., ///
+    if  pobreza < . & fexp < . & ocupado == 1 & educacion_superior < ., ///
     by(anio educacion_superior)
 
 generate tasa_pobreza_pct = 100 * tasa_pobreza

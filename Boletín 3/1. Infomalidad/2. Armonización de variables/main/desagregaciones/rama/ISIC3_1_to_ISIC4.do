@@ -4,7 +4,7 @@ clear
 
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 
-global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 
 
 global isic "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
