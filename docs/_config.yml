@@ -19,4 +19,5 @@ keep_files:
   - dashboard
 exclude:
   - dashboard/convert_data.py
+  - dashboard/build_downloads.py
   - README.md
