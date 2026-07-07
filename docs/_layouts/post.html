@@ -1,0 +1,15 @@
+---
+layout: default
+---
+<div class="container">
+  <article class="post-article">
+    <h1>{{ page.title }}</h1>
+    <div class="post-meta">
+      {{ page.date | date: "%d/%m/%Y" }}{% if page.author %} · {{ page.author }}{% endif %}
+    </div>
+    <div class="post-content">
+      {{ content }}
+    </div>
+  </article>
+  <a class="back-link" href="{{ '/blog/' | relative_url }}">← Volver al blog</a>
+</div>

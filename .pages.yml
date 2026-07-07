@@ -1,0 +1,44 @@
+# ===== Pages CMS configuration =====
+# Lets the Observatorio team write, edit and publish blog posts from a
+# web editor (https://app.pagescms.org) — no Terminal or git needed.
+# Docs: https://pagescms.org/docs
+
+# Where images uploaded from the editor are stored / linked from.
+media:
+  input: docs/assets/img
+  # Includes the GitHub Pages base path so images work on the live site.
+  output: /Observatorio-Desigualdad-Pobreza/assets/img
+
+content:
+  - name: posts
+    label: Artículos del blog
+    type: collection
+    path: docs/_posts
+    # Produces Jekyll-style filenames: 2026-07-10-mi-titulo.md
+    filename: "{year}-{month}-{day}-{title}.md"
+    view:
+      fields: [title, date, author]
+    fields:
+      - name: title
+        label: Título
+        type: string
+        required: true
+      - name: date
+        label: Fecha de publicación
+        type: date
+        required: true
+      - name: author
+        label: Autor
+        type: string
+        default: Equipo del Observatorio
+      - name: description
+        label: Descripción breve
+        type: text
+      - name: layout
+        label: (interno) plantilla
+        type: string
+        default: post
+        hidden: true
+      - name: body
+        label: Contenido
+        type: rich-text

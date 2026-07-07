@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observatorio de Desigualdad, Pobreza y Empleo— FLACSO Ecuador</title>
+  <meta name="description"
+    content="Dashboard interactivo de indicadores de pobreza y desigualdad en Ecuador — FLACSO Ecuador">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="icons/flacso_logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- Mobile menu toggle -->
+  <button class="menu-toggle" id="menuToggle" aria-label="Menú">☰</button>
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <img src="icons/flacso_logo.png" alt="FLACSO Ecuador" class="sidebar-logo">
+      <h1>Observatorio de Desigualdad, Pobreza y Empleo</h1>
+    </div>
+    <ul class="nav-items">
+      <li><a href="#" class="active" data-page="inicio"><span class="nav-icon">🏠</span> Inicio</a></li>
+      <li><a href="#" data-page="pobreza"><span class="nav-icon"><img src="icons/poverty.png" alt="" style="width:1.2em;height:1.2em;vertical-align:middle;border-radius:3px;"></span> Pobreza</a></li>
+      <li><a href="#" data-page="ingresos"><span class="nav-icon">💰</span> Ingresos</a></li>
+      <li><a href="#" data-page="empleo"><span class="nav-icon">💼</span> Empleo</a></li>
+      <li><a href="#" data-page="desigualdad"><span class="nav-icon" style="display:inline-block;transform:rotate(-20deg)">⚖️</span> Desigualdad</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      Datos: INEC, WID, SRI · 2024
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ==================== INICIO ==================== -->
+    <section class="page active" id="page-inicio">
+      <div class="hero">
+        <img src="icons/flacso_logo.png" alt="FLACSO Ecuador" class="hero-logo">
+        <h2>Observatorio de Desigualdad, Pobreza y Empleo</h2>
+        <p class="hero-affiliation">FLACSO Ecuador</p>
+        <p>Un tablero interactivo para monitorear indicadores de pobreza y desigualdad en Ecuador, con datos históricos
+          y comparaciones regionales.</p>
+      </div>
+      <div class="scorecards-grid" id="scorecards"></div>
+    </section>
+
+    <!-- ==================== POBREZA ==================== -->
+    <section class="page" id="page-pobreza">
+      <div class="page-header">
+        <h2>Pobreza</h2>
+        <p>Indicadores de pobreza por ingreso, NBI y pobreza multidimensional en Ecuador</p>
+      </div>
+
+      <div class="filters-bar">
+        <div class="filter-group">
+          <label>Indicador</label>
+          <select id="pov-indicator">
+            <option value="Pobreza">Pobreza</option>
+            <option value="Pobreza Extrema">Pobreza Extrema</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Sub-tab toggle -->
+      <div class="sub-tabs" id="pobreza-tabs">
+        <button class="sub-tab active" data-subtab="ultimo-ano">Último Año</button>
+        <button class="sub-tab" data-subtab="serie-historica">Serie Histórica</button>
+        <button class="sub-tab" data-subtab="variaciones">Variaciones</button>
+      </div>
+
+      <!-- TAB: Último Año -->
+      <div class="sub-tab-content active" id="pobreza-ultimo-ano">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title" id="pov-bar-nivel-title">Pobreza por Nivel</div>
+            <div class="chart-container"><canvas id="chart-pov-bar-nivel"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title" id="pov-bar-etnia-title">Pobreza por Etnia</div>
+            <div class="chart-container"><canvas id="chart-pov-etnia"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title" id="pov-bar-sexo-title">Pobreza por Sexo</div>
+            <div class="chart-container"><canvas id="chart-pov-bar-sexo"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title" id="pov-bar-educ-title">Pobreza por Nivel Educativo</div>
+            <div class="chart-container"><canvas id="chart-pov-bar-educacion"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title" id="pov-bar-edad-title">Pobreza por Grupo Etario</div>
+            <div class="chart-container"><canvas id="chart-pov-bar-edad"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title" id="pov-bar-region-title">Pobreza por Región</div>
+            <div class="chart-container"><canvas id="chart-pov-bar-region"></canvas></div>
+          </div>
+        </div>
+
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title" id="prov-table-title">Pobreza Provincial — 2024</div>
+            <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+              <div class="filter-group">
+                <label>Año</label>
+                <select id="prov-year"></select>
+              </div>
+            </div>
+            <div class="prov-table-wrapper">
+              <table class="prov-table" id="prov-table">
+                <thead>
+                  <tr>
+                    <th>Provincia</th>
+                    <th>Pobreza (%)</th>
+                    <th>Pobreza Extrema (%)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Serie Histórica -->
+      <div class="sub-tab-content" id="pobreza-serie-historica">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Evolución de Pobreza y Pobreza Extrema</div>
+            <div class="chart-container"><canvas id="chart-pov-hist-combined"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Evolución de Pobreza por Sexo (Serie Histórica)</div>
+            <div class="chart-container"><canvas id="chart-pov-hist-sexo"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Serie Histórica por Nivel</div>
+            <div class="chart-container"><canvas id="chart-pov-nivel"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Pobreza por Etnia (Serie Histórica)</div>
+            <div class="chart-container"><canvas id="chart-pov-sexo"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Pobreza por Nivel Educativo (Serie Histórica)</div>
+            <div class="chart-container"><canvas id="chart-pov-educacion"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Pobreza por Grupo Etario (Serie Histórica)</div>
+            <div class="chart-container"><canvas id="chart-pov-edad"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Pobreza por Región (Serie Histórica)</div>
+            <div class="chart-container"><canvas id="chart-pov-region"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Variaciones -->
+      <div class="sub-tab-content" id="pobreza-variaciones">
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Variaciones Año a Año — Nivel Nacional</div>
+            <div class="prov-table-wrapper">
+              <table class="prov-table" id="sig-table">
+                <thead>
+                  <tr>
+                    <th>Año</th>
+                    <th>Indicador</th>
+                    <th>Valor Actual (%)</th>
+                    <th>Valor Anterior (%)</th>
+                    <th>Variación (pp)</th>
+                    <th>Significativo</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== INGRESOS ==================== -->
+    <section class="page" id="page-ingresos">
+      <div class="page-header">
+        <h2>Ingresos</h2>
+        <p>Evolución del ingreso per cápita, ingreso laboral y sus desagregaciones demográficas</p>
+      </div>
+
+      <!-- Sub-tab toggle -->
+      <div class="sub-tabs" id="ingresos-tabs">
+        <button class="sub-tab active" data-subtab="percapita">Ingreso per Cápita</button>
+        <button class="sub-tab" data-subtab="laboral">Ingreso Laboral</button>
+        <button class="sub-tab" data-subtab="descomposicion">Composición</button>
+        <button class="sub-tab" data-subtab="dist-crecimiento">Distribución Crecimiento</button>
+      </div>
+
+      <!-- TAB: Ingreso per cápita -->
+      <div class="sub-tab-content active" id="ingresos-percapita">
+
+        <!-- Inner toggle: Último Año / Serie Histórica -->
+        <div class="sub-tabs" id="ingpc-inner-tabs" style="margin-bottom:20px;">
+          <button class="sub-tab active" data-inner="ultimo-ano">Último Año</button>
+          <button class="sub-tab" data-inner="serie-historica">Serie Histórica</button>
+        </div>
+
+        <div class="ingpc-panel active" id="ingpc-panel-ultimo-ano">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" id="ing-bar-area-title">Ingreso per Cápita por Nivel</div>
+              <div class="chart-container"><canvas id="chart-ing-bar-area"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title" id="ing-bar-etnia-title">Ingreso per Cápita por Etnia</div>
+              <div class="chart-container"><canvas id="chart-ing-bar-etnia"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" id="ing-bar-sexo-title">Ingreso per Cápita por Sexo</div>
+              <div class="chart-container"><canvas id="chart-ing-bar-sexo"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title" id="ing-bar-educ-title">Ingreso per Cápita por Educación</div>
+              <div class="chart-container"><canvas id="chart-ing-bar-educacion"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" id="ing-bar-edad-title">Ingreso per Cápita por Grupo Etario</div>
+              <div class="chart-container"><canvas id="chart-ing-bar-edad"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title" id="ing-bar-region-title">Ingreso per Cápita por Región</div>
+              <div class="chart-container"><canvas id="chart-ing-bar-region"></canvas></div>
+            </div>
+          </div>
+
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title" id="ing-prov-table-title">Ingreso per Cápita Provincial — 2025</div>
+              <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+                <div class="filter-group">
+                  <label>Año</label>
+                  <select id="ing-prov-year"></select>
+                </div>
+              </div>
+              <div class="prov-table-wrapper">
+                <table class="prov-table" id="ing-prov-table">
+                  <thead>
+                    <tr>
+                      <th>Provincia</th>
+                      <th>Ingreso per Cápita (USD)</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ingpc-panel" id="ingpc-panel-serie-historica" style="display:none;">
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Evolución del Ingreso per Cápita (Nominal y Real)</div>
+              <div class="chart-container tall"><canvas id="chart-ing-series"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Ingreso per Cápita por Nivel (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-ing-area"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Ingreso per Cápita por Sexo (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-ing-sexo"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Ingreso per Cápita por Etnia (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-ing-etnia"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Ingreso per Cápita por Educación (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-ing-educacion"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Ingreso per Cápita por Grupo Etario (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-ing-edad"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Ingreso per Cápita por Región (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-ing-region"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB: Ingreso Laboral -->
+      <div class="sub-tab-content" id="ingresos-laboral">
+
+        <!-- Inner toggle: Último Año / Serie Histórica -->
+        <div class="sub-tabs" id="inglab-inner-tabs" style="margin-bottom:20px;">
+          <button class="sub-tab active" data-inner="ultimo-ano">Último Año</button>
+          <button class="sub-tab" data-inner="serie-historica">Serie Histórica</button>
+        </div>
+
+        <div class="inglab-panel active" id="inglab-panel-ultimo-ano">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" id="inglab-bar-area-title">Ingreso Laboral por Nivel</div>
+              <div class="chart-container"><canvas id="chart-inglab-bar-area"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title" id="inglab-bar-etnia-title">Ingreso Laboral por Etnia</div>
+              <div class="chart-container"><canvas id="chart-inglab-bar-etnia"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" id="inglab-bar-sexo-title">Ingreso Laboral por Sexo</div>
+              <div class="chart-container"><canvas id="chart-inglab-bar-sexo"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title" id="inglab-bar-educ-title">Ingreso Laboral por Educación</div>
+              <div class="chart-container"><canvas id="chart-inglab-bar-educacion"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" id="inglab-bar-edad-title">Ingreso Laboral por Grupo Etario</div>
+              <div class="chart-container"><canvas id="chart-inglab-bar-edad"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title" id="inglab-bar-region-title">Ingreso Laboral por Región</div>
+              <div class="chart-container"><canvas id="chart-inglab-bar-region"></canvas></div>
+            </div>
+          </div>
+
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title" id="inglab-prov-table-title">Ingreso Laboral Provincial — 2025</div>
+              <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+                <div class="filter-group">
+                  <label>Año</label>
+                  <select id="inglab-prov-year"></select>
+                </div>
+              </div>
+              <div class="prov-table-wrapper">
+                <table class="prov-table" id="inglab-prov-table">
+                  <thead>
+                    <tr>
+                      <th>Provincia</th>
+                      <th>Ingreso Laboral (USD)</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="inglab-panel" id="inglab-panel-serie-historica" style="display:none;">
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Evolución del Ingreso Laboral (Nominal, Real y Salario Básico)</div>
+              <div class="chart-container tall"><canvas id="chart-inglab-series"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Ingreso Laboral por Nivel (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-inglab-area"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Ingreso Laboral por Sexo (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-inglab-sexo"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Ingreso Laboral por Etnia (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-inglab-etnia"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Ingreso Laboral por Educación (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-inglab-educacion"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Ingreso Laboral por Grupo Etario (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-inglab-edad"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Ingreso Laboral por Región (Serie Histórica)</div>
+              <div class="chart-container"><canvas id="chart-inglab-region"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB: Descomposición -->
+      <div class="sub-tab-content" id="ingresos-descomposicion">
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Composición del Ingreso — Nacional</div>
+            <p style="margin:0 0 8px 4px;font-size:0.88rem;color:var(--text-secondary);">Participación porcentual de cada fuente de ingreso en el ingreso total de los hogares.</p>
+            <div class="chart-container tall"><canvas id="chart-decomp-nacional"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Composición del Ingreso — Cuartil 1 (más pobre)</div>
+            <div class="chart-container"><canvas id="chart-decomp-q1"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Composición del Ingreso — Cuartil 2</div>
+            <div class="chart-container"><canvas id="chart-decomp-q2"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Composición del Ingreso — Cuartil 3</div>
+            <div class="chart-container"><canvas id="chart-decomp-q3"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Composición del Ingreso — Cuartil 4 (más rico)</div>
+            <div class="chart-container"><canvas id="chart-decomp-q4"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Distribución Crecimiento -->
+      <div class="sub-tab-content" id="ingresos-dist-crecimiento">
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Curvas de Incidencia del Crecimiento por Decil</div>
+            <p style="margin:0 0 10px 0;font-size:0.88rem;color:var(--text-secondary);line-height:1.6;padding:0 4px;">La curva muestra la tasa de crecimiento anualizado del ingreso per cápita para cada decil de la distribución entre dos años seleccionados. Si la curva es decreciente (mayor crecimiento en los deciles más bajos), la distribución se volvió más igualitaria en el período; si es creciente, la desigualdad aumentó.</p>
+            <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+              <div class="filter-group">
+                <label>Cobertura</label>
+                <select id="gic-area">
+                  <option value="nac">Nacional</option>
+                  <option value="urb">Urbano</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Año inicial</label>
+                <select id="gic-year-start"></select>
+              </div>
+              <div class="filter-group">
+                <label>Año final</label>
+                <select id="gic-year-end"></select>
+              </div>
+            </div>
+            <div class="chart-container tall"><canvas id="chart-gic"></canvas></div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ==================== EMPLEO ==================== -->
+    <section class="page" id="page-empleo">
+      <div class="page-header">
+        <h2>Empleo</h2>
+        <p>Indicadores de empleo adecuado, subempleo y desempleo en Ecuador</p>
+      </div>
+
+      <div class="sub-tabs" id="empleo-tabs">
+        <button class="sub-tab active" data-subtab="empleo-main">Empleo adecuado</button>
+        <button class="sub-tab" data-subtab="empleo-informalidad">Informalidad</button>
+        <button class="sub-tab" data-subtab="empleo-pobreza-laboral">Pobreza Laboral</button>
+      </div>
+
+      <div class="sub-tab-content active" id="empleo-empleo-main">
+
+        <div class="sub-tabs" id="empleo-inner-tabs" style="margin-bottom:20px;">
+          <button class="sub-tab active" data-inner="ultimo-ano">Último Año</button>
+          <button class="sub-tab" data-inner="serie-historica">Serie Histórica</button>
+          <button class="sub-tab" data-inner="variaciones">Variaciones</button>
+        </div>
+
+        <!-- Inner: Último Año -->
+        <div class="empleo-panel" id="empleo-panel-ultimo-ano">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Área</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-area"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Etnia</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-etnia"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Sexo</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-sexo"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Nivel Educativo</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-educacion"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Empleo Adecuado por Grupo Etario</div>
+              <div class="chart-container"><canvas id="chart-empleo-bar-edad"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inner: Serie Histórica -->
+        <div class="empleo-panel" id="empleo-panel-serie-historica" style="display:none;">
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Serie Histórica por Tipo de Empleo</div>
+              <div class="chart-container tall"><canvas id="chart-empleo-series"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Crecimiento del Empleo Adecuado por Sector</div>
+              <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+                <div class="filter-group">
+                  <label>Período</label>
+                  <select id="crec-empleo-sector-period"></select>
+                </div>
+              </div>
+              <div class="chart-container tall"><canvas id="chart-crec-empleo"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inner: Variaciones -->
+        <div class="empleo-panel" id="empleo-panel-variaciones" style="display:none;">
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Variaciones Año a Año — Nivel Nacional</div>
+              <div class="prov-table-wrapper">
+                <table class="prov-table" id="empleo-sig-table">
+                  <thead>
+                    <tr>
+                      <th>Año</th>
+                      <th>Indicador</th>
+                      <th>Valor Actual (%)</th>
+                      <th>Valor Anterior (%)</th>
+                      <th>Variación (pp)</th>
+                      <th>Significativo</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB: Informalidad -->
+      <div class="sub-tab-content" id="empleo-empleo-informalidad">
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title">Definición de Informalidad</div>
+          <div style="padding:0 18px 18px;line-height:1.7;color:var(--text-secondary);font-size:0.95rem;">
+            <p>En Ecuador la formalidad requiere que las empresas estén sujetas al control tributario y que los trabajadores ganen el salario mínimo y tengan seguridad social. Se considera que un trabajador es <strong>informal</strong> si cumple alguna de las siguientes condiciones:</p>
+            <ol style="margin:8px 0 8px 20px;">
+              <li>No está afiliado a la seguridad social.</li>
+              <li>Trabaja en una empresa que no tiene RUC.</li>
+              <li>Es un trabajador no remunerado.</li>
+              <li>No tiene empleo adecuado (gana menos del salario mínimo legal o trabaja menos de cuarenta horas a la semana cuando desearía trabajar más).</li>
+            </ol>
+            <p>La <strong>tasa de informalidad</strong> se calcula como el porcentaje del empleo informal respecto al empleo total. El universo de análisis son los ocupados en edad de trabajar (se excluye a inactivos, desempleados y menores de 15 años).</p>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">Fuente: Mideros, A., Valdivieso, S. y Cevallos, M. Á. (2026). <em>Boletín 3: Informalidad, pobreza laboral y homicidios de infantes</em>. Observatorio de Desigualdad, Pobreza y Empleo, FLACSO Ecuador.</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Evolución de la Informalidad y sus Componentes</div>
+          <div class="chart-container tall"><canvas id="chart-informalidad-componentes"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Número de Condiciones de Informalidad Cumplidas</div>
+          <div class="chart-container tall"><canvas id="chart-informalidad-condiciones"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Informalidad por Área</div>
+          <div class="chart-container"><canvas id="chart-informalidad-area"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Informalidad por Sexo</div>
+          <div class="chart-container"><canvas id="chart-informalidad-sexo"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Informalidad por Grupo Etario</div>
+          <div class="chart-container"><canvas id="chart-informalidad-edad"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Informalidad por Etnia</div>
+          <div class="chart-container"><canvas id="chart-informalidad-etnia"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title">Informalidad por Nivel Educativo</div>
+          <div class="chart-container"><canvas id="chart-informalidad-educacion"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title">Informalidad por Rama de Actividad (%)</div>
+          <div class="prov-table-wrapper">
+            <table class="prov-table" id="informalidad-rama-table">
+              <thead><tr><th>Rama de actividad</th><th>2001</th><th>2005</th><th>2010</th><th>2015</th><th>2020</th><th>2025</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title">Informalidad por Provincia (%)</div>
+          <div class="prov-table-wrapper">
+            <table class="prov-table" id="informalidad-provincia-table">
+              <thead><tr><th>Provincia</th><th>2001</th><th>2005</th><th>2010</th><th>2015</th><th>2020</th><th>2025</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- TAB: Pobreza Laboral -->
+      <div class="sub-tab-content" id="empleo-empleo-pobreza-laboral">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Evolución de la Pobreza Laboral</div>
+          <div class="chart-container"><canvas id="chart-pobreza-laboral"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Pobreza Laboral por Sexo</div>
+          <div class="chart-container"><canvas id="chart-pobreza-laboral-sexo"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Pobreza Laboral por Área</div>
+          <div class="chart-container"><canvas id="chart-pobreza-laboral-area"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Pobreza Laboral por Nivel Educativo</div>
+          <div class="chart-container"><canvas id="chart-pobreza-laboral-educ"></canvas></div>
+        </div>
+      </div>
+      <div class="grid-full">
+        <div class="card">
+          <div class="card-title">Pobreza Laboral por Grupo Etario</div>
+          <div class="chart-container"><canvas id="chart-pobreza-laboral-edad"></canvas></div>
+        </div>
+      </div>
+      </div>
+
+    </section>
+    <!-- ==================== DESIGUALDAD ==================== -->
+    <section class="page" id="page-desigualdad">
+      <div class="page-header">
+        <h2>Desigualdad</h2>
+        <p>Indicadores de desigualdad, concentración del ingreso y la riqueza en Ecuador y América Latina</p>
+      </div>
+
+      <!-- Sub-tab toggle -->
+      <div class="sub-tabs" id="desigualdad-tabs">
+        <button class="sub-tab active" data-subtab="indicadores">Gini</button>
+        <button class="sub-tab" data-subtab="palma">Índice de Palma</button>
+        <button class="sub-tab" data-subtab="concentracion">Concentración</button>
+        <button class="sub-tab" data-subtab="oportunidades">Oportunidades</button>
+        <button class="sub-tab" data-subtab="violencia">Violencia y Mortalidad</button>
+      </div>
+
+      <!-- TAB: Gini -->
+      <div class="sub-tab-content active" id="desigualdad-indicadores">
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Evolución del Coeficiente de Gini (Ecuador)</div>
+            <div class="chart-container tall"><canvas id="chart-gini-full"></canvas></div>
+          </div>
+        </div>
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Gini: Ecuador vs América Latina</div>
+            <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+              <div class="filter-group">
+                <label>Países</label>
+                <div class="country-selector" id="gini-country-selector"></div>
+              </div>
+            </div>
+            <div class="chart-container tall"><canvas id="chart-gini-lac"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Índice de Palma -->
+      <div class="sub-tab-content" id="desigualdad-palma">
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Índice de Palma: Ecuador vs América Latina</div>
+            <div class="filters-bar" style="margin-bottom:12px;padding:10px 14px;">
+              <div class="filter-group">
+                <label>Países</label>
+                <div class="country-selector" id="palma-country-selector"></div>
+              </div>
+            </div>
+            <div class="chart-container tall"><canvas id="chart-palma-alc"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Concentración -->
+      <div class="sub-tab-content" id="desigualdad-concentracion">
+
+        <!-- Inner toggle: WID / SRI -->
+        <div class="sub-tabs" id="concentracion-inner-tabs" style="margin-bottom:20px;">
+          <button class="sub-tab active" data-inner="wid">WID</button>
+          <button class="sub-tab" data-inner="sri">SRI</button>
+        </div>
+
+        <!-- Sub-section: WID -->
+        <div class="concentracion-panel active" id="conc-panel-wid">
+          <div class="grid-full">
+            <div class="card" style="padding:14px 18px;background:var(--bg-card);border-left:4px solid var(--accent);">
+              <p style="margin:0;font-size:0.9rem;color:var(--text-secondary);line-height:1.6;"><strong>Fuente:</strong> World Inequality Database (WID). Los datos provienen de estimaciones que combinan encuestas de hogares, cuentas nacionales y registros fiscales para construir series de distribución del ingreso y la riqueza comparables internacionalmente. Más información en <em>wid.world</em>.</p>
+            </div>
+          </div>
+          <div class="scorecards-grid" id="population-percentiles"></div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Participación en el Ingreso Nacional (WID Ecuador)</div>
+              <div class="chart-container tall"><canvas id="chart-wid-income-ec"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Participación en la Riqueza Nacional (WID Ecuador)</div>
+              <div class="chart-container tall"><canvas id="chart-wid-wealth-ec"></canvas></div>
+            </div>
+          </div>
+          <div class="page-header" style="margin-top:24px;">
+            <h3>Comparación Regional — América Latina</h3>
+          </div>
+          <div class="filters-bar" id="latam-filters">
+            <div class="filter-group">
+              <label>Variable</label>
+              <select id="latam-var">
+                <option value="income">Ingreso</option>
+                <option value="wealth">Riqueza</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Percentil</label>
+              <select id="latam-percentile">
+                <option value="Top 1%">Top 1%</option>
+                <option value="Top 10%">Top 10%</option>
+                <option value="Top 0.1%">Top 0.1%</option>
+                <option value="Bottom 50%">Bottom 50%</option>
+              </select>
+            </div>
+          </div>
+          <div class="filters-bar">
+            <label>Países</label>
+            <div class="country-selector" id="country-selector"></div>
+          </div>
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title" id="latam-chart-title">Participación del Top 1% en el Ingreso Nacional</div>
+              <div class="chart-container tall"><canvas id="chart-latam"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-section: SRI -->
+        <div class="concentracion-panel" id="conc-panel-sri" style="display:none;">
+          <div class="grid-full">
+            <div class="card" style="padding:14px 18px;background:var(--bg-card);border-left:4px solid var(--accent);">
+              <p style="margin:0;font-size:0.9rem;color:var(--text-secondary);line-height:1.6;"><strong>Fuente:</strong> Servicio de Rentas Internas (SRI). Los datos provienen directamente de los registros administrativos tributarios del SRI, que contienen información del universo de declarantes de impuestos en Ecuador.</p>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Participación de Percentiles en el Ingreso Total (SRI)</div>
+              <div class="chart-container tall"><canvas id="chart-sri-concentracion"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Participación en los Ingresos del Capital (SRI)</div>
+              <div class="chart-container tall"><canvas id="chart-sri-capital"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Matriz de Transición de Deciles (2010–2024)</div>
+              <div class="prov-table-wrapper">
+                <table class="prov-table" id="transition-matrix-table">
+                  <thead><tr><th>Decil 2010 → 2024</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <p style="margin:10px 0 0;font-size:0.82rem;color:var(--text-muted);line-height:1.5;padding:0 4px;"><strong>Nota:</strong> Estas estimaciones pueden estar sujetas a sesgo de supervivencia: los contribuyentes de los deciles más bajos que pasan a la informalidad dejan de ser observados en los registros del SRI, lo que podría inflar la movilidad ascendente aparente de ese grupo.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Oportunidades -->
+      <div class="sub-tab-content" id="desigualdad-oportunidades">
+        <div class="grid-full">
+          <div class="card" style="padding:18px 22px;background:var(--bg-card);border-left:4px solid var(--accent);">
+            <p style="margin:0 0 10px 0;font-size:0.95rem;color:var(--text-primary);line-height:1.7;">
+              La desigualdad no es solo una desigualdad de ingresos: es una desigualdad de capacidades que se construye desde la primera infancia.
+              Los datos de la ENDI 2024 (Encuesta Nacional sobre Desnutrición Infantil) muestran que entre los 12 y 30 meses de edad no se encuentran diferencias significativas en el desarrollo cognitivo entre los diferentes grupos sociales. Sin embargo, a partir de los 31 meses, las brechas empiezan a marcarse y se amplían a los 5 años de edad. Al finalizar el proceso escolar, las diferencias aumentan aún más: el porcentaje de personas de 25 años y más con título universitario es del 4% entre los indígenas frente al 11% entre los no indígenas, y del 2% en el quintil más pobre frente al 28% en el más rico.
+            </p>
+            <p style="margin:0;font-size:0.85rem;color:var(--text-secondary);"><strong>Fuente:</strong> ENDI 2024, INEC. Citado en Observatorio de Pobreza, Desigualdad y Empleo, FLACSO Ecuador, Boletín Nº 1, enero 2026.</p>
+          </div>
+        </div>
+        <div class="grid-full">
+          <div class="card">
+            <div class="card-title">Cuadro 1. Desarrollo de Capacidades — Diferentes grupos de edad (Nacional)</div>
+            <div class="prov-table-wrapper">
+              <table class="prov-table" id="oportunidades-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2">Grupo de Población</th>
+                    <th colspan="3">McArthur Bates</th>
+                    <th rowspan="2">TVIP (43 a 59 meses)</th>
+                    <th rowspan="2">Desnutrición crónica</th>
+                    <th rowspan="2">Educación superior (&gt;25 años)</th>
+                  </tr>
+                  <tr>
+                    <th>Dice (12 a 18 meses)</th>
+                    <th>Dice (19 a 30 meses)</th>
+                    <th>Dice (31 a 42 meses)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="7" style="font-weight:600;background:var(--bg-body);text-align:center;">Área</td></tr>
+                  <tr><td>Urbano</td><td>5,52</td><td>18,21</td><td>18,87</td><td>30,46</td><td>14,15%</td><td>12,78%</td></tr>
+                  <tr><td>Rural</td><td>5,51</td><td>17,70</td><td>18,97</td><td>28,83</td><td>19,08%</td><td>5,24%</td></tr>
+
+                  <tr><td colspan="7" style="font-weight:600;background:var(--bg-body);text-align:center;">Etnia</td></tr>
+                  <tr><td>Indígena</td><td>5,38</td><td>17,99</td><td>16,45</td><td>25,41</td><td>34,22%</td><td>3,83%</td></tr>
+                  <tr><td>No indígena</td><td>5,53</td><td>18,02</td><td>19,10</td><td>30,28</td><td>14,34%</td><td>10,70%</td></tr>
+
+                  <tr><td colspan="7" style="font-weight:600;background:var(--bg-body);text-align:center;">Quintil de Ingreso</td></tr>
+                  <tr><td>Q1</td><td>5,64</td><td>16,92</td><td>17,90</td><td>25,19</td><td>18,93%</td><td>2,41%</td></tr>
+                  <tr><td>Q2</td><td>5,32</td><td>19,58</td><td>19,77</td><td>28,92</td><td>17,82%</td><td>3,77%</td></tr>
+                  <tr><td>Q3</td><td>5,27</td><td>17,59</td><td>18,52</td><td>28,18</td><td>17,74%</td><td>5,22%</td></tr>
+                  <tr><td>Q4</td><td>5,99</td><td>17,23</td><td>16,98</td><td>29,80</td><td>15,09%</td><td>10,77%</td></tr>
+                  <tr><td>Q5</td><td>5,45</td><td>18,75</td><td>21,46</td><td>35,85</td><td>11,11%</td><td>27,72%</td></tr>
+
+                  <tr><td colspan="7" style="font-weight:600;background:var(--bg-body);text-align:center;">Sexo</td></tr>
+                  <tr><td>Hombre</td><td>4,70</td><td>15,90</td><td>17,56</td><td>29,22</td><td>17,70%</td><td>8,66%</td></tr>
+                  <tr><td>Mujer</td><td>6,36</td><td>20,06</td><td>20,20</td><td>30,60</td><td>14,19%</td><td>11,34%</td></tr>
+
+                  <tr><td colspan="7" style="font-weight:600;background:var(--bg-body);text-align:center;">Región</td></tr>
+                  <tr><td>Costa</td><td>5,30</td><td>18,08</td><td>17,83</td><td>27,94</td><td>11,40%</td><td>8,49%</td></tr>
+                  <tr><td>Sierra</td><td>5,95</td><td>18,18</td><td>20,86</td><td>32,98</td><td>21,93%</td><td>13,07%</td></tr>
+                  <tr><td>Amazonía</td><td>4,89</td><td>16,48</td><td>16,38</td><td>27,00</td><td>16,63%</td><td>6,33%</td></tr>
+                  <tr style="font-weight:600;"><td>Nacional</td><td>5,52</td><td>18,01</td><td>18,91</td><td>29,88</td><td>15,97%</td><td>10,07%</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="grid-full">
+          <div class="card" style="padding:14px 18px;background:var(--bg-card);border-left:4px solid var(--accent);">
+            <p style="margin:0 0 8px 0;font-size:0.88rem;color:var(--text-secondary);line-height:1.7;">
+              <strong>Indicadores del cuadro:</strong><br>
+              <strong>McArthur Bates — Dice (12–18, 19–30 y 31–42 meses):</strong> número promedio de palabras que el niño/a dice, según el Inventario del Desarrollo de Habilidades Comunicativas (CDI). Se aplica mediante entrevista a la madre o cuidador principal y mide el desarrollo del lenguaje expresivo en la primera infancia.<br>
+              <strong>TVIP (43–59 meses):</strong> puntaje promedio en el Test de Vocabulario en Imágenes Peabody, que evalúa el vocabulario receptivo —la capacidad de comprender palabras y mensajes escuchados— en niños/as de 43 a 59 meses.<br>
+              <strong>Desnutrición crónica:</strong> porcentaje de niños/as menores de 5 años con baja talla para la edad, un indicador de privación nutricional acumulada.<br>
+              <strong>Educación superior (&gt;25 años):</strong> porcentaje de personas de 25 años y más con título universitario, como medida del resultado acumulado de las desigualdades de oportunidades a lo largo del ciclo de vida.
+            </p>
+            <p style="margin:0;font-size:0.85rem;color:var(--text-secondary);"><strong>Fuente:</strong> ENDI 2024, INEC. Citado en Observatorio de Pobreza, Desigualdad y Empleo, FLACSO Ecuador, Boletín Nº 1, enero 2026.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Violencia y Mortalidad -->
+      <div class="sub-tab-content" id="desigualdad-violencia">
+
+        <div class="sub-tabs" id="violencia-inner-tabs" style="margin-bottom:20px;">
+          <button class="sub-tab active" data-inner="jovenes-adultos">Jóvenes y Adultos</button>
+          <button class="sub-tab" data-inner="nna">Niños y Adolescentes</button>
+        </div>
+
+        <!-- Inner: Jóvenes y Adultos -->
+        <div class="violencia-panel" id="violencia-panel-jovenes-adultos">
+          <div class="page-header" style="margin-top:0;">
+            <h3>Mortalidad y Violencia por Nivel Educativo</h3>
+            <p>Tasas por cada 1.000 hab. (mortalidad) y por cada 100.000 hab. (homicidios y suicidios)</p>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Tasa de Mortalidad — Jóvenes (20–29 años)</div>
+              <div class="chart-container"><canvas id="chart-mortalidad-jovenes"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Tasa de Mortalidad — Adultos (30+ años)</div>
+              <div class="chart-container"><canvas id="chart-mortalidad-adultos"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Tasa de Homicidios — Jóvenes (20–29 años)</div>
+              <div class="chart-container"><canvas id="chart-homicidios-jovenes"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Tasa de Homicidios — Adultos (30+ años)</div>
+              <div class="chart-container"><canvas id="chart-homicidios-adultos"></canvas></div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Tasa de Suicidios — Jóvenes (20–29 años)</div>
+              <div class="chart-container"><canvas id="chart-suicidios-jovenes"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-title">Tasa de Suicidios — Adultos (30+ años)</div>
+              <div class="chart-container"><canvas id="chart-suicidios-adultos"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inner: Niños y Adolescentes -->
+        <div class="violencia-panel" id="violencia-panel-nna" style="display:none;">
+          <div class="page-header" style="margin-top:0;">
+            <h3>Homicidios en Niños, Niñas y Adolescentes por Etnia</h3>
+            <p>Tasas por cada 100.000 hab. — Población afrodescendiente vs. otras etnias</p>
+          </div>
+          <div class="grid-full">
+            <div class="card">
+              <div class="card-title">Tasa de Homicidios — Niños, Niñas y Adolescentes (NNA)</div>
+              <div class="chart-container"><canvas id="chart-homicidios-nna"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

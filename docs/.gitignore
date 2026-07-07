@@ -1,0 +1,13 @@
+# Jekyll build output (generated automatically — never committed)
+_site/
+.jekyll-cache/
+.jekyll-metadata
+.sass-cache/
+
+# Local Ruby/Jekyll dependencies (if you add a Gemfile later)
+Gemfile.lock
+vendor/
+
+# macOS + stray files
+.DS_Store
+image.png
