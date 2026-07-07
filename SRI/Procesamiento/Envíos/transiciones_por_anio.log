@@ -1,0 +1,34 @@
+--------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Resultados/Movilidad_Regre
+> sion/transiciones_por_anio.log
+  log type:  text
+ opened on:  29 Jun 2026, 16:16:33
+
+.                                    
+. di as text _n "  Transiciones en la muestra balanceada:"
+
+  Transiciones en la muestra balanceada:
+
+. tab anio_t0 anio_t1
+
+           |                              anio_t1
+   anio_t0 |      2017       2018       2019       2020       2021       2022 |     Total
+-----------+------------------------------------------------------------------+----------
+      2016 | 1,762,029          0          0          0          0          0 | 1,762,029 
+      2017 |         0  1,762,029          0          0          0          0 | 1,762,029 
+      2018 |         0          0  1,762,029          0          0          0 | 1,762,029 
+      2019 |         0          0          0  1,762,029          0          0 | 1,762,029 
+      2020 |         0          0          0          0  1,762,029          0 | 1,762,029 
+      2021 |         0          0          0          0          0  1,762,029 | 1,762,029 
+-----------+------------------------------------------------------------------+----------
+     Total | 1,762,029  1,762,029  1,762,029  1,762,029  1,762,029  1,762,029 |10,572,174 
+
+. 
+. log close
+      name:  <unnamed>
+       log:  D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Resultados/Movilidad_Regre
+> sion/transiciones_por_anio.log
+  log type:  text
+ closed on:  29 Jun 2026, 16:16:33
+--------------------------------------------------------------------------------------------------------------------

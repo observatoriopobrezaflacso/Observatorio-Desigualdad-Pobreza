@@ -10,7 +10,7 @@
 * Definición de rutas globales para facilitar la portabilidad del código
 global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global bases "$user_root/Bases"
-global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global out "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global out_plot "$user_root/Boletín 3/2. Armonización de variables/Gráficos de control"
@@ -99,6 +99,7 @@ use "$out/historico_no_rem_2007_2024.dta", clear
 
 * Verificación
 tab anio no_rem, row missing
+tab anio no_rem [iw = fexp], nofreq row
 
 
 preserve

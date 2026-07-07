@@ -30,7 +30,7 @@ forval anio = 1991/2025 {
 		continue
 	}
 
-	use rama1 fexp ausing "`fp'", clear
+	use id_persona rama1 fexp using "`fp'", clear
 	gen int anio = `anio'
 
 	if `first' {
@@ -46,6 +46,8 @@ forval anio = 1991/2025 {
 use `pooled', clear
 
 save "$historicos/historico_rama.dta", replace
+
+/*
 
 
 * Conservar solo observaciones con rama identificada.
@@ -83,7 +85,7 @@ preserve
 	format share* %5.1f
 	di as text _newline "Distribucion porcentual del empleo por rama (Seccion CIIU Rev. 4) por anio"
 	list, sep(0) noobs abbrev(10)
-	export delimited using "$wd/distribucion_ramas_por_anio.csv", replace
+	*export delimited using "$wd/distribucion_ramas_por_anio.csv", replace
 	di as text _newline "CSV guardado en: $wd/distribucion_ramas_por_anio.csv"
 restore
 
@@ -116,3 +118,5 @@ preserve
 	export delimited using "$wd/ramas_top_por_anio.csv", replace
 	di as text _newline "CSV guardado en: $wd/ramas_top_por_anio.csv"
 restore
+
+*/

@@ -462,7 +462,7 @@ replace area = 1 if area == .
 
 tab anio adec [iw = fexp], nofreq row missing
 tab anio adec [iw = fexp], nofreq row
-
+s
 
 preserve
     collapse (mean) $important_variable, by(anio area)

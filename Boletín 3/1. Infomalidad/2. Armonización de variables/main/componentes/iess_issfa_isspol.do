@@ -103,11 +103,12 @@ foreach y of numlist 1990(1)2025 {
 save "$out/historico_iess_issfa_isspol.dta", replace
 
 use "$out/historico_iess_issfa_isspol.dta", clear
-s
+
 * Verificación
 tab anio affiliated [iw = fexp], nofreq row missing
 tab anio affiliated [iw = fexp], nofreq row
 
+/*
 
 
 preserve
@@ -133,3 +134,6 @@ twoway (line ${important_variable}_nac anio)  ///
 restore
 
 graph export "$out_plot/historico_{$important_variable}_issfa_isspol.pdf", replace
+
+
+*/

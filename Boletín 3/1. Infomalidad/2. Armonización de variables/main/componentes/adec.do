@@ -20,8 +20,8 @@ capture log close
 *------------------------------------------------------------------------------*
 * 0. RUTAS
 *------------------------------------------------------------------------------*
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
-global bases     "$user_root/Bases"
+global user_root_drive "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
+global bases     "$user_root_drive/Bases"
 global raw       "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios  "$bases/Salarios"
 global ipc       "$bases/IPC"
@@ -351,6 +351,12 @@ foreach y of numlist 1991(1)2025 {
 save "$out/historico_adec_sim.dta", replace
 
 
+use "$out/historico_adec_sim.dta", clear
+
+tab anio adec [iw = fexp], nofreq row
+
+/*
+s
 *==============================================================================*
 * 3. COMPARACIÓN: SERIE OFICIAL vs SIMULADA                                     
 *==============================================================================*
@@ -387,3 +393,6 @@ twoway (line adec_nac     anio if anio >= 2000, lcolor(navy)   lpattern(dash)) /
     note("Umbral simulado = SBU 2025 (USD `=sbu_2025') deflactado por IPC promedio Oct-Dic, nacional (base 2014=100).")
 
 graph export "$out_plot/historico_adec_sim_vs_oficial.pdf", replace
+
+
+*/

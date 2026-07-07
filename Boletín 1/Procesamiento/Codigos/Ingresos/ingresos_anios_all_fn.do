@@ -881,6 +881,13 @@ quietly {
     sum ingtot_per_deflated [w = fexp]
     tabstat ingtot_per_deflated [w = fexp], by(decile) stat(max)	
 
+	capture confirm variable ing_lab
+	if !_rc {
+	recode ingpc (0=.)
+	sum ingrl if ingrl > 0 & ingrl != .
+	sum ing_lab 
+	}
+	
 	sum ing_lab [w = fexp]
 
 	
@@ -888,11 +895,11 @@ end
 
 **# Usage
 
-foreach y of numlist 2017(1)2025 {
+foreach y of numlist 2025(1)2025 {
     mk_ingtot, year(`y')
 }
 
-
+s
 
 foreach y of numlist 2010(1)2025 {
     mk_ingtot, year(`y')

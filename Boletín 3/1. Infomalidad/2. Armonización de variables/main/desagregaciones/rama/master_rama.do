@@ -12,20 +12,19 @@ clear all
 set more off
 version 16
 
-global wd "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/2. Armonización de variables/rama"
 
-cd "$wd"
+global rama "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/1. Infomalidad/2. Armonización de variables/main/desagregaciones/rama"
 
 di as text "================ STEP 1: Rev 2 -> Rev 3.1 (1990-1999) ================"
-do "isic2_31.do"
+do "$rama/isic2_31.do"
 
 di as text "================ STEP 2: Rev 3 -> Rev 3.1 (2000-2006) ================"
-do "isic3_31.do"
+do "$rama/isic3_31.do"
 
 di as text "================ STEP 3: Rev 3.1 -> Rev 4 (1991-2025) ================"
-do "ISIC3_1_to_ISIC4.do"
+do "$rama/ISIC3_1_to_ISIC4.do"
 
-di as text "================ STEP 4: Tabla descriptiva ================"
-do "descriptiva_ramas.do"
+di as text "================ STEP 4: Base agregada ================"
+do "$rama/rama.do"
 
 di as result "Cadena de armonizacion completada."

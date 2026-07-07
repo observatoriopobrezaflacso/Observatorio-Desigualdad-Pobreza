@@ -8,10 +8,10 @@ global bases_2007_2017 "$enemdu_diciembres/2007-2017"
 global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
 
 
-local texto_buscar "region"
+local texto_buscar "niv"
 local texto_buscar2 ""
 
-forval y = 2001/2025 {
+forval y = 2012/2022 {
 *foreach y in 2024 {
 
     di "************** `y' ********************"
@@ -22,7 +22,7 @@ forval y = 2001/2025 {
 	if (inrange(`y', 2018, 2025)) local dir_bases $bases_2018_presente
 
 	use "`dir_bases'/empleo`y'.dta", clear 
-	
+
     local vars_buscadas ""        // reset explicitly each iteration
 
     lookfor "`texto_buscar'"

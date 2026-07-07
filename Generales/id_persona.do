@@ -8,7 +8,8 @@ global enemdu_diciembres "$user_root/Bases/ENEMDU/Originales/Diciembres/"
 global bases_90s         "$enemdu_diciembres/1990-1999"
 global bases_2000_2006   "$enemdu_diciembres/2000-2006"
 global bases_2007_2017   "$enemdu_diciembres/2007-2017"
-global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
+global bases_2018_presente "$enemdu_diciembres/2018-presente/Mensuales"
+global procesadas "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 
 
 gen id_persona = .
@@ -20,7 +21,7 @@ save `id_persona_cumulative'
 
 * ── Loop: extract id_persona + anio + area from each yearly file ──────────────
 *foreach y in 2017 {
-forval y = 1990/2025 {
+forval y = 1990/2006 {
 
     di "************** `y' ********************"
 
@@ -62,7 +63,7 @@ forval y = 1990/2025 {
 	capture confirm variable id_persona	
 	if !_rc local id_var id_persona
 									  
-	keep `vars'	cero* anio 	`id_var'					  
+	*keep `vars'	cero* anio 	`id_var'					  
 									  
 	foreach x of local vars  {
 
@@ -206,11 +207,18 @@ forval y = 1990/2025 {
 	if !_rc local id_var2 id_persona2 
 	
 	isid id_persona
-	keep id_persona anio `id_var2'
+*	keep id_persona anio `id_var2'
 	tostring id_persona, replace
 	
+	gen provincia = substr(id_persona, 1, 2)
+
+	
+	save "$procesadas/empleo`y'", replace
+	keep id_persona anio `id_var2'
+
 	append using `id_persona_cumulative'
 	save `id_persona_cumulative', replace
+	
 		
 }
 

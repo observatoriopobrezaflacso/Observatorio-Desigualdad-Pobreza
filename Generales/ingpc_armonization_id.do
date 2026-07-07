@@ -24,7 +24,7 @@ save `id_persona_cumulative'
 
 * ── Loop: extract id_persona + anio + area from each yearly file ──────────────
 *foreach y in 2017 {
-forval y =2017/2025 {
+forval y = 2007/2025 {
 
     di "************** `y' ********************"
 
@@ -103,6 +103,15 @@ forval y =2017/2025 {
 		egen sector_a = concat(cero2 sector) if strlen(sector) == 1
 		replace sector = sector_a if strlen(sector) == 1
 		drop sector_a
+		
+			if (inrange(`y', 2007, 2020)) {
+			
+			egen sector_a = concat(cero1 sector) if strlen(sector) == 2
+			replace sector = sector_a if strlen(sector) == 2
+			drop sector_a
+			
+			}
+		
 		}
 
 		if "`x'" == "panelm"  {
@@ -215,6 +224,9 @@ forval y =2017/2025 {
 	
 	gen provincia = substr(id_persona, 1, 2)
 	
+	cap confirm variable ingrl
+	if _rc rename ing_lab ingrl
+	
 	save "$out/empleo`y'", replace
 	
 	capture confirm variable id_persona2
@@ -234,6 +246,24 @@ forval y =2017/2025 {
 
 
 save "$out/serie_1990_2025.dta", replace
+s
+
+use "$out/empleo2009", replace
+
+foreach v of varlist id_persona ciudad zona sector panelm vivienda hogar p01 {
+	gen `v'_len = strlen(`v')
+	tab `v'_len
+}
 
 
+foreach y of numlist 2009(1)2025{
+	use "$out/empleo`y'", clear
+	gen id_len = strlen(id_persona)
+	tab id_len
+}
+
+foreach v of varlist id_persona {
+	gen `v'_len = strlen(`v')
+	tab `v'_len
+}
 

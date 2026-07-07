@@ -9,7 +9,7 @@ global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobr
 global bases "$user_root/Bases"
 global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
-global variables_base "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Trimestrales"
+global variables_base "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global bases_armonizadas "$user_root/Bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global out_plot "$user_root/Boletín 3/2. Armonización de variables/Gráficos de control"
 global ingpc "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
@@ -34,7 +34,7 @@ merge 1:1 id_persona anio using "$bases_armonizadas/historico_ruc.dta", ///
     generate(m_ruc)
 
 * Tamaño establecimiento	
-merge 1:1 id_persona anio using "$bases_armonizadas/tamano_establecimiento.dta", ///
+*merge 1:1 id_persona anio using "$bases_armonizadas/tamano_establecimiento.dta", ///
     generate(m_tamano)
 	
 * PEA
@@ -44,10 +44,6 @@ merge 1:1 id_persona anio using "$bases_armonizadas/pea.dta", ///
 *--- Merge No remunerado ---*
 merge 1:1 id_persona anio using "$bases_armonizadas/historico_no_remunerado.dta", ///
     generate(m_no_remunerado)
-
-*--- Merge Cuenta propista ---*
-merge 1:1 id_persona anio using "$bases_armonizadas/cuenta_propia.dta", ///
-    generate(m_cuentapropia) keepusing(id_persona cuenta_propia cuenta_base)
 
 *--- Merge  etnia ---*
 merge 1:1 id_persona anio using "$bases_armonizadas/historico_etnia.dta", ///
@@ -64,15 +60,16 @@ merge 1:1 id_persona anio using "$bases_armonizadas/historico_rama.dta", ///
 	
 drop m_*
 
-		
+	
 
-forval y = 1990/2025 {
+	
+forval y = 2001/2025 {
 	
 	di "**************`y'*******************"
 	
 	local svyvars
 	
-	
+
 	
 	if (`y' <= 2017) local svyvars ciudad zona sector
 	else             local svyvars 
@@ -82,20 +79,29 @@ forval y = 1990/2025 {
 	else                          local svyvars `svyvars' 
 	
 	if (`y' >= 2018) {
-		local svyvars `svyvars' estrato upm
-		tostring estrato, replace 
+		*local svyvars `svyvars' estrato upm
+		*tostring estrato, replace 
 		}
 	else                          local svyvars `svyvars'
 	
+	if `y' == 2009 local ingrl_var ing_lab
+	else           local ingrl_var ingrl
 
 	
     merge 1:1 id_persona anio using "$raw/empleo`y'.dta", ///
-        keepusing(fexp sexo edad provincia ingrl condact* `svyvars') ///
+        keepusing(fexp sexo edad provincia `ingrl_var' condact* `svyvars') ///
 		update replace nogen
 	
 }
 
 replace condactn = condact if inrange(anio, 2018, 2025)
+*replace ingrl = ing_lab if anio == 2009
+*drop ing_lab
+
+merge 1:1 id_persona anio using "$raw/empleo2022.dta", ///
+	keepusing(fexp sexo edad provincia `ingrl_var' condact* `svyvars') ///
+	update replace nogen
+
 
 
 /*
@@ -112,18 +118,25 @@ forval y = 2001(2)2025 {
 *rename ingtot_per ingpc
 
 
-recode tamano_armonizado (2 = 1) (1 = 0)
+*recode tamano_armonizado (2 = 1) (1 = 0)
 
 
-local vars affiliated adec adec_sim no_remunerado tamano_armonizado mi_pea tiene_ruc cuenta_propia cuenta_base condact*
+*local vars affiliated adec adec_sim no_remunerado tamano_armonizado mi_pea tiene_ruc cuenta_propia cuenta_base condact*
+
+local vars affiliated adec adec_sim no_remunerado  tiene_ruc mi_pea   condact* id_persona
+
 
 keep `vars' fexp sexo edad provincia educ_univ etnia_arm anio area ingrl rama1 ///
-	  ciudad zona sector plan_muestreo estrato upm
+	  ciudad zona sector plan_muestreo 
+	  
+	  *estrato upm
 	  
 replace area = 1 if area == .
 
 save "$bases_armonizadas/base_trabajo.dta", replace
 
+
+/*
 s
 
 
@@ -166,6 +179,6 @@ graph export "$out_plot/historico_{`var'}.pdf", replace
 
 }
 
-
+*/
 
 
