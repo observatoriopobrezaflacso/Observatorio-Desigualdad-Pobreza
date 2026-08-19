@@ -456,3 +456,12 @@ di "  pobreza_sexo_etnia.xlsx: `=_N' rows"
 
 
 di _newline "Done."
+
+
+
+
+net from http://dasp.ecn.ulaval.ca/modules/DASP_V2.3/dasp
+net install dasp_p1, force
+net install dasp_p2, force
+net install dasp_p3, force
+net install dasp_p4, force

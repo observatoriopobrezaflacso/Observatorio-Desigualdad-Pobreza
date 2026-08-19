@@ -213,7 +213,7 @@ egen n2010_nopleno  = rowtotal(n2010_uni_nopleno n2010_nouni_nopleno)
 gen rowper_2001_pleno = n2001_pleno / rowtot_2001
 gen rowper_2010_pleno = n2010_pleno / rowtot_2010
 
-
+s
 * ============================================================
 * 10. GRÁFICOS CON RECTAS DE REGRESIÓN Y ETIQUETA DE PENDIENTE
 * ============================================================
