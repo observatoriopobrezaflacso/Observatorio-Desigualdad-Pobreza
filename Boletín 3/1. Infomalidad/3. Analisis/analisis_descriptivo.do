@@ -337,6 +337,120 @@ preserve
     graph export "$out_results/Graficos/Informalidad_y_componentes_sexo.pdf", replace
 restore
 
+
+* ===============================================================
+**# INFORMALIDAD  Y SUS COMPONENTES POR AREA
+* ===============================================================
+* Nota: antes de 2000 la ENEMDU es solo urbana (area == 1), por lo que
+*       las series rurales inician en 2000.
+
+preserve
+    collapse (mean) comp_no_iess comp_no_adec comp_no_remun comp_no_ruc ///
+             informal1 informal2 [iw=fexp] if anio != 2002, by(anio area)
+
+    replace informal1 = informal1 * 100
+    replace informal2 = informal2 * 100
+    export excel using "$out_results/Tablas/Informalidad_y_componentes_area.xlsx", firstrow(var) replace
+
+    gen informal_combined = informal1 if anio <= 1999
+    replace informal_combined = informal2 if anio >= 2000
+
+    * --- Etiquetas de valor solo en años seleccionados ---
+    gen lbl_inf_comb = informal_combined if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_no_iess  = comp_no_iess      if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_no_adec  = comp_no_adec      if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_no_remun = comp_no_remun     if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_no_ruc   = comp_no_ruc       if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    format lbl_inf_comb lbl_no_iess lbl_no_adec lbl_no_remun lbl_no_ruc %9.1f
+
+    * --- Panel A: Informalidad – Urbano ---
+    twoway ///
+        (connected informal_combined anio if area == 1, msymbol(O) lwidth(medium) lcolor(navy) mcolor(navy) msize(small)) ///
+        (scatteri 0 1999 100 1999, recast(line) lpattern(dash) lcolor(gs8) lwidth(thin)) ///
+        (scatter lbl_inf_comb anio if area == 1, msymbol(none) mlabel(lbl_inf_comb) ///
+             mlabposition(12) mlabcolor(navy) mlabsize(small)), ///
+        ytitle("") xtitle("") ///
+        title("Panel A. Informalidad – Urbano", size(medium)) ///
+        ylabel(0(20)100, angle(0) grid labsize(small)) ///
+        xlabel(1991(2)2025, angle(90) labsize(small)) ///
+        xscale(range(1990 2025)) ///
+        legend(off) graphregion(color(white)) plotregion(color(white)) scheme(s2color)
+    graph save "$out_results/Graficos/panel_informal_urbano.gph", replace
+
+    * --- Panel B: Informalidad – Rural ---
+    twoway ///
+        (connected informal_combined anio if area == 2, msymbol(O) lwidth(medium) lcolor(forest_green) mcolor(forest_green) msize(small)) ///
+        (scatteri 0 1999 100 1999, recast(line) lpattern(dash) lcolor(gs8) lwidth(thin)) ///
+        (scatter lbl_inf_comb anio if area == 2, msymbol(none) mlabel(lbl_inf_comb) ///
+             mlabposition(12) mlabcolor(forest_green) mlabsize(small)), ///
+        ytitle("") xtitle("") ///
+        title("Panel B. Informalidad – Rural", size(medium)) ///
+        ylabel(0(20)100, angle(0) grid labsize(small)) ///
+        xlabel(1991(2)2025, angle(90) labsize(small)) ///
+        xscale(range(1990 2025)) ///
+        legend(off) graphregion(color(white)) plotregion(color(white)) scheme(s2color)
+    graph save "$out_results/Graficos/panel_informal_rural.gph", replace
+
+    * --- Panel C: Componentes – Urbano ---
+    twoway ///
+        (connected comp_no_iess  anio if area == 1, msymbol(O) lwidth(medium) lcolor(navy)      mcolor(navy)      msize(small)) ///
+        (connected comp_no_adec  anio if area == 1, msymbol(O) lwidth(medium) lcolor(cranberry) mcolor(cranberry) msize(small)) ///
+        (connected comp_no_remun anio if area == 1, msymbol(O) lwidth(medium) lcolor(teal)      mcolor(teal)      msize(small)) ///
+        (connected comp_no_ruc   anio if area == 1, msymbol(O) lwidth(medium) lcolor(orange)    mcolor(orange)    msize(small)) ///
+        (scatteri 0 1999 100 1999, recast(line) lpattern(dash) lcolor(gs8) lwidth(thin)) ///
+        (scatter lbl_no_iess  anio if area == 1, msymbol(none) mlabel(lbl_no_iess)  mlabposition(12) mlabcolor(navy)      mlabsize(vsmall)) ///
+        (scatter lbl_no_adec  anio if area == 1, msymbol(none) mlabel(lbl_no_adec)  mlabposition(12) mlabcolor(cranberry) mlabsize(vsmall)) ///
+        (scatter lbl_no_remun anio if area == 1, msymbol(none) mlabel(lbl_no_remun) mlabposition(6)  mlabcolor(teal)      mlabsize(vsmall)) ///
+        (scatter lbl_no_ruc   anio if area == 1, msymbol(none) mlabel(lbl_no_ruc)   mlabposition(6)  mlabcolor(orange)    mlabsize(vsmall)), ///
+        ytitle("") xtitle("") ///
+        title("Panel C. Componentes – Urbano", size(medium)) ///
+        ylabel(0(20)100, angle(0) grid labsize(small)) ///
+        xlabel(1991(2)2025, angle(90) labsize(small)) ///
+        xscale(range(1990 2025)) ///
+        legend(order(1 "No IESS" 2 "No adecuado" 3 "No remunerado" 4 "No RUC") ///
+               rows(1) size(small) position(6)) ///
+        graphregion(color(white)) plotregion(color(white)) scheme(s2color)
+    graph save "$out_results/Graficos/panel_componentes_urbano.gph", replace
+
+    * --- Panel D: Componentes – Rural ---
+    twoway ///
+        (connected comp_no_iess  anio if area == 2, msymbol(O) lwidth(medium) lcolor(navy)      mcolor(navy)      msize(small)) ///
+        (connected comp_no_adec  anio if area == 2, msymbol(O) lwidth(medium) lcolor(cranberry) mcolor(cranberry) msize(small)) ///
+        (connected comp_no_remun anio if area == 2, msymbol(O) lwidth(medium) lcolor(teal)      mcolor(teal)      msize(small)) ///
+        (connected comp_no_ruc   anio if area == 2, msymbol(O) lwidth(medium) lcolor(orange)    mcolor(orange)    msize(small)) ///
+        (scatteri 0 1999 100 1999, recast(line) lpattern(dash) lcolor(gs8) lwidth(thin)) ///
+        (scatter lbl_no_iess  anio if area == 2, msymbol(none) mlabel(lbl_no_iess)  mlabposition(12) mlabcolor(navy)      mlabsize(vsmall)) ///
+        (scatter lbl_no_adec  anio if area == 2, msymbol(none) mlabel(lbl_no_adec)  mlabposition(12) mlabcolor(cranberry) mlabsize(vsmall)) ///
+        (scatter lbl_no_remun anio if area == 2, msymbol(none) mlabel(lbl_no_remun) mlabposition(6)  mlabcolor(teal)      mlabsize(vsmall)) ///
+        (scatter lbl_no_ruc   anio if area == 2, msymbol(none) mlabel(lbl_no_ruc)   mlabposition(6)  mlabcolor(orange)    mlabsize(vsmall)), ///
+        ytitle("") xtitle("") ///
+        title("Panel D. Componentes – Rural", size(medium)) ///
+        ylabel(0(20)100, angle(0) grid labsize(small)) ///
+        xlabel(1991(2)2025, angle(90) labsize(small)) ///
+        xscale(range(1990 2025)) ///
+        legend(order(1 "No IESS" 2 "No adecuado" 3 "No remunerado" 4 "No RUC") ///
+               rows(1) size(small) position(6)) ///
+        graphregion(color(white)) plotregion(color(white)) scheme(s2color) ///
+        name(inf_y_comps_area, replace)
+
+    graph save "$out_results/Graficos/panel_componentes_rural.gph", replace
+
+    * --- Combine: 2x2 grid (urbano izquierda, rural derecha) ---
+    graph combine ///
+        "$out_results/Graficos/panel_informal_urbano.gph"     ///
+        "$out_results/Graficos/panel_informal_rural.gph"      ///
+        "$out_results/Graficos/panel_componentes_urbano.gph"  ///
+        "$out_results/Graficos/panel_componentes_rural.gph",  ///
+        cols(2) ycommon ///
+        note("Fuente: ENEMDU. Elaboración propia. Nota: la cobertura rural inicia en 2000.") ///
+        graphregion(color(white))
+    graph export "$out_results/Graficos/Informalidad_y_componentes_area.png", replace height(1900)
+    graph export "$out_results/Graficos/Informalidad_y_componentes_area.pdf", replace
+restore
+
+
+s
+
 *------------------------------------------------------------------*
 * Gráfico: Número de condiciones de informalidad cumplidas over time
 *------------------------------------------------------------------*

@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¿Cuánto costaría un bono uniforme para eliminar la pobreza? · ENEMDU diciembre 2025</title>
+<style>
+:root{
+  color-scheme: light;
+  --surface-0:#f4f3f0; --surface-1:#fcfcfb; --surface-2:#efeee9;
+  --line:#dedcd5; --line-soft:#e9e7e1;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7b7a74;
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a;
+  --neutral-mark:#b9b7ae; --neutral-mark-2:#d3d1c8;
+  --accent-soft:#cde2fb;
+  --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
+  --radius:14px;
+  --font:'Inter','Helvetica Neue',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'SFMono-Regular',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --surface-0:#131312; --surface-1:#1a1a19; --surface-2:#232322;
+    --line:#343431; --line-soft:#2a2a28;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#95948b;
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+    --neutral-mark:#56554f; --neutral-mark-2:#3d3d39;
+    --accent-soft:#184f95;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --surface-0:#131312; --surface-1:#1a1a19; --surface-2:#232322;
+  --line:#343431; --line-soft:#2a2a28;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#95948b;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+  --neutral-mark:#56554f; --neutral-mark-2:#3d3d39;
+  --accent-soft:#184f95;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:var(--font);
+     font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 72px}
+header.top{border-bottom:1px solid var(--line);background:var(--surface-1);margin-bottom:28px}
+header.top .wrap{padding-top:34px;padding-bottom:26px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);font-weight:600}
+h1{font-size:clamp(24px,3.4vw,38px);line-height:1.15;margin:12px 0 10px;letter-spacing:-.02em;max-width:22ch}
+.lede{color:var(--text-secondary);max-width:78ch;margin:0 0 16px}
+.badges{display:flex;flex-wrap:wrap;gap:8px}
+.badge{font-size:12px;color:var(--text-secondary);background:var(--surface-2);border:1px solid var(--line-soft);
+       border-radius:999px;padding:4px 11px}
+.theme-btn{position:absolute;top:18px;right:20px;background:var(--surface-2);border:1px solid var(--line);
+  color:var(--text-secondary);border-radius:999px;padding:6px 13px;font-size:12px;cursor:pointer;font-family:inherit}
+header.top{position:relative}
+h2{font-size:20px;margin:0 0 4px;letter-spacing:-.01em}
+h3{font-size:14px;margin:0 0 12px;color:var(--text-secondary);font-weight:600}
+section{margin-bottom:34px}
+.sec-note{color:var(--text-secondary);font-size:13.5px;margin:0 0 16px;max-width:82ch}
+.card{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px}
+.kpi{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px}
+.kpi .lab{font-size:12px;color:var(--text-muted);margin-bottom:6px}
+.kpi .val{font-size:26px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:11.5px;color:var(--text-muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.sim{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.sim{grid-template-columns:1fr}}
+.ctrl{margin-bottom:20px}
+.ctrl:last-child{margin-bottom:0}
+.ctrl .lab{font-size:12.5px;font-weight:600;color:var(--text-primary);display:flex;justify-content:space-between;
+           align-items:baseline;margin-bottom:8px;gap:8px}
+.ctrl .lab .num{font-variant-numeric:tabular-nums;color:var(--series-1);font-weight:650}
+.ctrl .hint{font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.45}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+     cursor:pointer;background:var(--surface-1);font-size:13px}
+.opt:hover{border-color:var(--neutral-mark)}
+.opt.on{border-color:var(--series-1);background:color-mix(in srgb,var(--series-1) 8%,var(--surface-1))}
+.opt input{margin:3px 0 0}
+.opt .d{display:block;font-size:11.5px;color:var(--text-muted);margin-top:2px}
+input[type=range]{width:100%;accent-color:var(--series-1);height:22px}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.preset{font-size:11.5px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);
+        background:var(--surface-2);color:var(--text-secondary);cursor:pointer;font-family:inherit}
+.preset:hover{border-color:var(--series-1);color:var(--text-primary)}
+.hero{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:760px){.hero{grid-template-columns:1fr}}
+.hero .box{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.hero .box.main{background:linear-gradient(180deg,color-mix(in srgb,var(--series-1) 10%,var(--surface-1)),var(--surface-1));
+                border-color:color-mix(in srgb,var(--series-1) 35%,var(--line))}
+.hero .lab{font-size:12px;color:var(--text-muted);margin-bottom:7px}
+.hero .big{font-size:34px;font-weight:680;letter-spacing:-.025em;line-height:1.05;font-variant-numeric:tabular-nums}
+.hero .mid{font-size:22px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.hero .rng{font-size:12px;color:var(--text-secondary);margin-top:7px;font-variant-numeric:tabular-nums}
+.mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:0;
+      border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-1);overflow:hidden}
+.mini > div{padding:13px 15px;border-right:1px solid var(--line-soft)}
+.mini > div:last-child{border-right:none}
+.mini .lab{font-size:11.5px;color:var(--text-muted);margin-bottom:4px}
+.mini .v{font-size:17px;font-weight:640;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.warn{display:none;margin-top:12px;padding:11px 14px;border-radius:10px;font-size:12.5px;line-height:1.5;
+      border:1px solid color-mix(in srgb,var(--warning) 55%,var(--line));
+      background:color-mix(in srgb,var(--warning) 12%,var(--surface-1));color:var(--text-primary)}
+.warn.on{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:2px 0 10px;font-size:12px;color:var(--text-secondary)}
+.legend span.k{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.chart-scroll{overflow-x:auto}
+.chart-scroll > svg{min-width:620px}
+#chart-perfil > svg{max-width:660px;margin:0 auto}
+.tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;background:var(--surface-1);
+     border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px;box-shadow:0 6px 22px rgba(0,0,0,.16);
+     z-index:40;max-width:250px;line-height:1.45}
+.tip.on{opacity:1}
+.tip b{font-weight:640}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;
+   text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;font-variant-numeric:normal}
+tbody tr:hover{background:var(--surface-2)}
+td.hl{font-weight:650}
+.tbl-wrap{overflow-x:auto}
+details{border-top:1px solid var(--line);padding-top:14px}
+summary{cursor:pointer;font-weight:600;font-size:14px;margin-bottom:10px}
+.meth{font-size:13px;color:var(--text-secondary);max-width:88ch}
+.meth h4{color:var(--text-primary);font-size:13.5px;margin:18px 0 6px}
+.meth code{font-family:var(--mono);font-size:12px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.meth ul{padding-left:18px;margin:6px 0}
+.meth li{margin-bottom:5px}
+.monto-grid{display:grid;grid-template-columns:minmax(260px,.9fr) 1.4fr;gap:26px;align-items:start}
+@media(max-width:800px){.monto-grid{grid-template-columns:1fr;gap:18px}}
+.monto-calc .lab,.monto-check .lab{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-muted);font-weight:600;margin-bottom:10px}
+.monto-calc .calc{font-size:15px;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.monto-calc .calc span{color:var(--text-muted);font-size:12.5px}
+.monto-calc .calc-res{font-size:34px;font-weight:680;letter-spacing:-.025em;margin:8px 0 10px;
+  color:var(--series-1);font-variant-numeric:tabular-nums;line-height:1.1}
+.monto-calc .calc-res span{font-size:13px;font-weight:500;color:var(--text-secondary);letter-spacing:0}
+.monto-calc .calc-alt{font-size:12.5px;color:var(--text-secondary);border-top:1px solid var(--line-soft);
+  padding-top:10px}
+.monto-check ul{margin:0;padding-left:18px;font-size:13px;color:var(--text-secondary)}
+.monto-check li{margin-bottom:7px}
+.ci{color:var(--text-muted);font-size:11.5px}
+.efecto{margin-top:12px;padding:18px 20px}
+.ef-tabla{display:grid;grid-template-columns:minmax(190px,1.5fr) auto auto auto auto;
+  gap:10px 16px;align-items:center}
+@media(max-width:720px){.ef-tabla{grid-template-columns:1fr auto auto auto auto;gap:8px 10px}}
+.ef-lab{font-size:13px;color:var(--text-primary)}
+.ef-lab span{display:block;font-size:11.5px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.ef-par{display:flex;flex-direction:column;align-items:flex-end}
+.ef-cap{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+.ef-num{font-size:23px;font-weight:660;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.ef-post{color:var(--series-1)}
+.ef-flecha{color:var(--text-muted);font-size:17px;padding-top:12px}
+.ef-delta{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;
+  color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--good) 35%,transparent);border-radius:999px;padding:3px 9px}
+.ef-nota{font-size:11.5px;color:var(--text-muted);margin:14px 0 0;line-height:1.5}
+footer{border-top:1px solid var(--line);padding-top:18px;font-size:12px;color:var(--text-muted)}
+a{color:var(--series-1)}
+.eq{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--line-soft);
+    border-radius:8px;padding:10px 13px;margin:10px 0;display:inline-block}
+</style></head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <button class="theme-btn" id="theme">Modo oscuro</button>
+    <div class="eyebrow">Observatorio de Desigualdad y Pobreza</div>
+    <h1>¿Cuánto costaría eliminar la pobreza con un bono uniforme por hogar?</h1>
+    <p class="lede">Todos los hogares beneficiarios reciben <strong>el mismo monto</strong>. El monto de
+      referencia es el mínimo que garantiza sacar de la pobreza a un hogar de cuatro personas —dos adultos y
+      dos niñas/os—: cuatro veces la línea de pobreza per cápita. Las estimaciones provienen de la ENEMDU de
+      diciembre de 2025 y se presentan con su intervalo de confianza al 95%.</p>
+    <div class="badges" id="badges"></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section>
+  <h2>El punto de partida</h2>
+  <p class="sec-note">Pobreza por ingresos en diciembre de 2025, medida sobre personas y sobre hogares. La
+    <em>brecha</em> de un hogar es lo que le falta al hogar completo para que su ingreso per cápita alcance la
+    línea: es la referencia contra la cual se compara el monto del bono.</p>
+  <div class="kpis" id="kpis"></div>
+</section>
+
+<section>
+  <h2>El monto del bono</h2>
+  <p class="sec-note">La línea oficial es per cápita y no usa escalas de equivalencia: la composición del hogar
+    de referencia (dos adultos y dos niñas/os) no cambia el umbral, solo su tamaño. Un hogar de cuatro personas
+    necesita cuatro veces la línea para quedar sobre ella, cualquiera sea su ingreso previo.</p>
+  <div class="monto-card card" id="monto-ref"></div>
+</section>
+
+<section>
+  <h2>Simulador de costo fiscal</h2>
+  <p class="sec-note">Todos los hogares pobres del grupo objetivo reciben el bono. Por problemas de
+    focalización, el programa alcanza además a hogares no pobres: el usuario fija cuántas personas no pobres
+    reciben el bono por cada persona pobre que lo recibe.</p>
+  <div class="sim">
+    <div class="card">
+      <div class="ctrl">
+        <div class="lab">Grupo objetivo</div>
+        <div class="opts" id="grupo"></div>
+      </div>
+      <div class="ctrl">
+        <div class="lab">Meta</div>
+        <div class="opts" id="linea"></div>
+      </div>
+      <div class="ctrl">
+        <div class="lab"><span>Monto mensual por hogar</span><span class="num" id="v-mon">—</span></div>
+        <input type="range" id="s-mon" min="0" max="700" step="0.2" value="369.6">
+        <div class="hint" id="hint-mon"></div>
+        <div class="presets"><button class="preset" id="btn-ref">Volver al monto de referencia</button></div>
+      </div>
+      <div class="ctrl">
+        <div class="lab"><span>Efecto inflacionario del programa</span><span class="num" id="v-infl">10%</span></div>
+        <input type="range" id="s-infl" min="0" max="40" step="1" value="10">
+        <div class="hint">Aumento de precios que provoca la inyección de dinero. Encarece la línea de pobreza en
+          el mismo porcentaje: el bono pierde poder adquisitivo, algunos hogares beneficiarios ya no alcanzan a
+          cruzar la línea y hogares que estaban justo por encima pueden caer bajo ella. El valor se aplica tal
+          como se elige, <strong>sin escalarlo por el tamaño del programa</strong>: en los escenarios de menor
+          cobertura conviene bajarlo.</div>
+      </div>
+      <div class="ctrl">
+        <div class="lab"><span>Filtración</span><span class="num" id="v-fil">1,0</span></div>
+        <input type="range" id="s-fil" min="0" max="5" step="0.1" value="1">
+        <div class="hint">Personas <strong>no pobres</strong> que reciben el bono por cada persona pobre que lo
+          recibe. Con 1, el programa llega a tantas personas no pobres como pobres. La probabilidad de ser
+          incluido por error <strong>cae con el ingreso</strong> (ver el deslizador siguiente), así que la
+          filtración se concentra en los hogares apenas por encima de la línea, que reciben el bono como
+          ingreso adicional.</div>
+      </div>
+      <div class="ctrl">
+        <div class="lab"><span>Concentración de la filtración</span><span class="num" id="v-hl">25%</span></div>
+        <input type="range" id="s-hl" min="10" max="150" step="5" value="25">
+        <div class="hint">Cada cuánto se reduce a la mitad la probabilidad de inclusión, medido en porcentaje de
+          la línea. Valores bajos concentran el error en los hogares vecinos a la línea; valores altos lo
+          reparten hacia hogares de mayor ingreso.</div>
+      </div>
+      <div class="ctrl">
+        <div class="lab"><span>Costo administrativo</span><span class="num" id="v-adm">5%</span></div>
+        <input type="range" id="s-adm" min="0" max="20" step="1" value="5">
+        <div class="hint">Gasto de gestión, registro y entrega, como porcentaje del monto transferido.</div>
+      </div>
+    </div>
+    <div>
+      <div class="hero">
+        <div class="box main">
+          <div class="lab">Costo anual del bono</div>
+          <div class="big" id="h-anual">—</div>
+          <div class="rng" id="h-anual-ic">—</div>
+        </div>
+        <div class="box">
+          <div class="lab">Costo mensual</div>
+          <div class="mid" id="h-mes">—</div>
+          <div class="rng" id="h-mes-ic">—</div>
+        </div>
+        <div class="box">
+          <div class="lab">Equivalente en gasto público</div>
+          <div class="mid" id="h-pge">—</div>
+          <div class="rng" id="h-pib">—</div>
+        </div>
+      </div>
+      <div class="card efecto" id="efecto"></div>
+      <div class="mini" id="mini"></div>
+      <div class="mini" id="mini2" style="margin-top:12px"></div>
+      <div class="warn" id="warn"></div>
+      <div class="card" style="margin-top:16px">
+        <h3>Costo anual frente a partidas del Presupuesto General del Estado 2025 <span style="font-weight:400">· millones de USD</span></h3>
+        <div class="legend">
+          <span class="k"><i style="background:var(--series-1)"></i>Escenario simulado</span>
+          <span class="k"><i style="background:var(--neutral-mark)"></i>Gasto público 2025</span>
+          <span class="k"><i style="background:var(--series-2)"></i>Gasto tributario (SRI)</span>
+          <span class="k" style="color:var(--text-muted)">La línea fina sobre la barra azul marca el intervalo de confianza al 95%</span>
+        </div>
+        <div id="chart-comp" class="chart-scroll"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Qué logra cada monto</h2>
+  <p class="sec-note">Como el bono es igual para todos, los hogares grandes y los más pobres pueden quedar bajo
+    la línea aunque reciban la transferencia, mientras que los hogares pequeños reciben más de lo que les
+    faltaba. La línea vertical marca el monto de referencia del hogar de cuatro personas.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>Personas que salen de la pobreza <span style="font-weight:400">· según el monto del bono</span></h3>
+      <div class="legend"><span class="k"><i style="background:var(--series-3)"></i>Personas del grupo objetivo que superan la línea</span></div>
+      <div id="chart-monto1" class="chart-scroll"></div>
+    </div>
+    <div class="card">
+      <h3>Costo anual <span style="font-weight:400">· millones de USD, según el monto del bono</span></h3>
+      <div class="legend"><span class="k"><i style="background:var(--series-1)"></i>Costo anual con la filtración elegida</span></div>
+      <div id="chart-monto2" class="chart-scroll"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>El efecto inflacionario</h2>
+  <p class="sec-note">Si la inyección de dinero encarece los precios, la línea de pobreza sube en la misma
+    proporción: el bono pierde poder adquisitivo, algunos hogares beneficiarios ya no logran cruzar la línea y
+    hogares que estaban apenas por encima caen bajo ella. Aquí el monto del bono se mantiene fijo en el elegido
+    en el simulador, para aislar el efecto del alza de precios.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>Personas que salen de la pobreza <span style="font-weight:400">· según la inflación</span></h3>
+      <div class="legend"><span class="k"><i style="background:var(--series-3)"></i>Con el monto fijo del simulador</span></div>
+      <div id="chart-infl1" class="chart-scroll"></div>
+    </div>
+    <div class="card">
+      <h3>Pobreza nacional después de la transferencia <span style="font-weight:400">· según la inflación</span></h3>
+      <div class="legend">
+        <span class="k"><i style="background:var(--series-2)"></i>Incidencia resultante</span>
+        <span class="k"><i style="background:var(--neutral-mark)"></i>Incidencia antes del programa</span>
+      </div>
+      <div id="chart-infl2" class="chart-scroll"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Lo que cuesta la mala focalización</h2>
+  <p class="sec-note">La filtración no saca a nadie más de la pobreza: agrega beneficiarios que no lo
+    necesitan, encarece el programa y eleva el costo por persona efectivamente rescatada. Lo que sí hace es
+    entregar ingreso adicional a hogares que estaban apenas por encima de la línea, que con inflación son
+    justamente los que corrían riesgo de caer bajo ella.</p>
+  <div class="card" style="margin-bottom:16px">
+    <h3>Probabilidad de recibir el bono siendo no pobre <span style="font-weight:400">· según el ingreso per cápita del hogar</span></h3>
+    <div class="legend">
+      <span class="k"><i style="background:var(--series-3)"></i>Probabilidad de inclusión por error</span>
+      <span class="k" style="color:var(--text-muted)" id="leg-perfil"></span>
+    </div>
+    <div id="chart-perfil" class="chart-scroll"></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Costo anual <span style="font-weight:400">· millones de USD, según la filtración</span></h3>
+      <div class="legend"><span class="k"><i style="background:var(--series-1)"></i>Costo anual del programa</span></div>
+      <div id="chart-fil1" class="chart-scroll"></div>
+    </div>
+    <div class="card">
+      <h3>Costo anual por persona que sale de la pobreza <span style="font-weight:400">· USD</span></h3>
+      <div class="legend"><span class="k"><i style="background:var(--series-2)"></i>Costo total ÷ personas que superan la línea</span></div>
+      <div id="chart-fil2" class="chart-scroll"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Todos los escenarios</h2>
+  <p class="sec-note">Cada escenario usa su monto de referencia (cuatro veces la línea correspondiente) y la
+    filtración elegida en el simulador. Entre corchetes, el intervalo de confianza al 95%.</p>
+  <div class="card tbl-wrap">
+    <table id="tabla">
+      <thead><tr>
+        <th>Grupo objetivo</th><th>Meta</th><th>Hogares pobres</th><th>Monto mensual<br>por hogar (USD)</th>
+        <th>Hogares que salen<br>de la pobreza</th><th>Personas que salen<br>de la pobreza</th>
+        <th>Pobreza nacional<br>antes → después</th>
+        <th>Costo anual sin filtración<br>(millones USD)</th><th>Costo anual con filtración<br>(millones USD)</th>
+        <th>% del PGE 2025</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <details open>
+    <summary>Metodología, supuestos y fuentes</summary>
+    <div class="meth" id="meth"></div>
+  </details>
+</section>
+
+<footer><div id="foot"></div></footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const DATOS = /*__DATOS__*/null;
+
+/* ---------------------------------------------------------------- utils --- */
+const nf = (d=0)=>new Intl.NumberFormat('es-EC',{minimumFractionDigits:d,maximumFractionDigits:d});
+const num = (x,d=0)=>nf(d).format(x);
+const usd = (x,d=0)=>'USD '+num(x,d);
+const montoLargo = x => 'USD ' + num(x/1e6, x/1e6 < 10 ? 1 : 0) + ' millones';
+const pct = (x,d=1)=>num(x*100,d)+'%';
+const el = id => document.getElementById(id);
+
+/* --------------------------------------------------------------- estado --- */
+const G = DATOS.escenarios, N = DATOS.nacional, M = DATOS.meta, REF = DATOS.hogar_referencia;
+const MD = DATOS.microdatos;
+const S = { grupo:'total', linea:'pobreza', monto:0, fil:1, adm:5, infl:M.inflacion_defecto*100,
+            hl:M.vida_media_filtracion*100 };
+const esc = () => G[S.grupo+'__'+S.linea];
+const lineaZ = () => S.linea==='pobreza' ? M.linea_pobreza : M.linea_pobreza_extrema;
+// El monto de referencia se encarece junto con la línea: sigue siendo el mínimo que
+// saca de la pobreza a un hogar de cuatro personas una vez que los precios subieron.
+const montoRef = (infl = S.infl/100) => M.tam_referencia * lineaZ() * (1 + infl);
+S.monto = montoRef();
+
+const gruposDef = [
+  ['total','Todos los hogares','El bono llega a todo hogar pobre del país'],
+  ['menor5','Hogares con niñas/os menores de 5 años','Solo hogares con al menos un menor de 5 años'],
+  ['mayor65','Hogares con personas de 65 años o más','Solo hogares con al menos una persona de 65 años o más']
+];
+const lineasDef = [
+  ['pobreza','Eliminar la pobreza','Línea de USD '+num(M.linea_pobreza,2)+' per cápita al mes'],
+  ['extrema','Eliminar la pobreza extrema','Línea de USD '+num(M.linea_pobreza_extrema,2)+' per cápita al mes']
+];
+
+/* ------------------------------------------------- modelo de simulación --- */
+// Se recalcula sobre los microdatos de hogares: el efecto inflacionario mueve la línea
+// y la filtración se reparte entre los hogares no pobres con probabilidad decreciente
+// en el ingreso, de modo que el bono también suma al ingreso de quienes lo reciben.
+const enGrupo = (i, grupo) => grupo==='total' ? 1 : (grupo==='menor5' ? MD.m5[i] : MD.m65[i]);
+const lineaDe = linea => linea==='pobreza' ? M.linea_pobreza : M.linea_pobreza_extrema;
+
+// Probabilidad relativa de que un hogar no pobre con ingreso y sea incluido por error:
+// se reduce a la mitad cada vez que el ingreso supera la línea en otro hl (fracción de la línea).
+const perfil = (y, z, hl = S.hl/100) => Math.pow(2, -(y - z)/(hl*z));
+
+// Universo de hogares no pobres del grupo objetivo y de hogares pobres del grupo
+const cachePob = new Map();
+function poblaciones(grupo, linea){
+  const key = grupo+'|'+linea;
+  if(cachePob.has(key)) return cachePob.get(key);
+  const z = lineaDe(linea);
+  const np = {y:[], wn:[], w:[]};
+  let hogP=0, perP=0;
+  for(let i=0;i<MD.y.length;i++){
+    const dentro = enGrupo(i, grupo);
+    if(MD.y[i] < z){ if(dentro){ hogP += MD.w[i]; perP += MD.w[i]*MD.n[i]; } }
+    else if(dentro){ np.y.push(MD.y[i]); np.wn.push(MD.w[i]*MD.n[i]); np.w.push(MD.w[i]); }
+  }
+  const r = {z, np, hogP, perP, perNPtotal: np.wn.reduce((a,b)=>a+b, 0)};
+  cachePob.set(key, r); return r;
+}
+
+// Curva de decaimiento evaluada en cada hogar no pobre (depende de la concentración elegida)
+const cacheG = new Map();
+function pesos(grupo, linea, hl){
+  const key = grupo+'|'+linea+'|'+hl;
+  if(cacheG.has(key)) return cacheG.get(key);
+  const P = poblaciones(grupo, linea);
+  const g = P.np.y.map(y => perfil(y, P.z, hl));
+  cacheG.set(key, g); return g;
+}
+
+// Nivel de la curva de filtración: se calibra para que las personas no pobres alcanzadas
+// sean exactamente "fil" por cada persona pobre cubierta.
+const cacheNivel = new Map();
+function nivelFiltracion(grupo, linea, fil, hl = S.hl/100){
+  const key = grupo+'|'+linea+'|'+fil+'|'+hl;
+  if(cacheNivel.has(key)) return cacheNivel.get(key);
+  const P = poblaciones(grupo, linea), g = pesos(grupo, linea, hl);
+  const objetivo = fil * P.perP;
+  const suma = c => { let s=0; for(let j=0;j<g.length;j++) s += P.np.wn[j]*Math.min(1, c*g[j]); return s; };
+  let res;
+  if(objetivo <= 0) res = {c:0, saturado:false};
+  else if(objetivo >= P.perNPtotal) res = {c:Infinity, saturado:true};
+  else {
+    let lo=0, hi=1;
+    while(suma(hi) < objetivo && hi < 1e12) hi *= 4;
+    for(let it=0; it<60; it++){ const mid=(lo+hi)/2; if(suma(mid) < objetivo) lo=mid; else hi=mid; }
+    res = {c:(lo+hi)/2, saturado:false};
+  }
+  cacheNivel.set(key, res); return res;
+}
+
+function agregados(grupo, linea, infl, T, fil, hl = S.hl/100){
+  const z = lineaDe(linea), zi = z*(1+infl);
+  const {c, saturado} = nivelFiltracion(grupo, linea, fil, hl);
+  let hogP=0, perP=0, hogSale=0, perSale=0, brechaObj=0, brechaCub=0,
+      hogNP=0, perNP=0, transfNP=0, ingNP=0,
+      caenHog=0, caenPer=0, caenPerGrupo=0, caenPerSinBono=0;
+  for(let i=0;i<MD.y.length;i++){
+    const y = MD.y[i], n = MD.n[i], w = MD.w[i], dentro = enGrupo(i, grupo);
+    if(y < z){                                     // pobre antes del programa
+      if(dentro){
+        hogP += w; perP += w*n;
+        const brecha = (zi - y)*n;
+        brechaObj += w*brecha; brechaCub += w*Math.min(T, brecha);
+        if(T >= brecha){ hogSale += w; perSale += w*n; }
+      }
+    } else {                                       // no pobre: puede recibir el bono por error
+      const pi = dentro ? Math.min(1, c*perfil(y, z, hl)) : 0;
+      if(pi > 0){ hogNP += w*pi; perNP += w*n*pi; transfNP += w*pi*T; ingNP += w*n*pi*y; }
+      if(y < zi){                                  // quedaría bajo la línea encarecida
+        const salvado = (y + T/n) >= zi ? pi : 0;  // el bono lo mantiene sobre la línea
+        const cae = 1 - salvado;
+        caenHog += w*cae; caenPer += w*n*cae; caenPerSinBono += w*n;
+        if(dentro) caenPerGrupo += w*n*cae;
+      }
+    }
+  }
+  return {hogP, perP, hogSale, perSale, brechaObj, brechaCub,
+          shareHog: hogP? hogSale/hogP : 0, sharePer: perP? perSale/perP : 0,
+          hogNP, perNP, transfNP, ingMedioNP: perNP? ingNP/perNP : 0,
+          caenHog, caenPer, caenPerGrupo, caenPerSinBono, saturado};
+}
+
+// Bono uniforme T por hogar: lo reciben todos los hogares pobres del grupo objetivo y,
+// por filtración, hogares no pobres del mismo grupo con probabilidad decreciente en el ingreso.
+function simular(T = S.monto, fil = S.fil, infl = S.infl/100, hl = S.hl/100){
+  const r = esc(), adm = S.adm/100;
+  const a = agregados(S.grupo, S.linea, infl, T, fil, hl);
+
+  const hogPobres = r.hogares_pobres.est, perPobres = r.personas_pobres.est;
+  const hogBenef = a.hogP + a.hogNP;
+  const costoMes = T * hogBenef * (1 + adm);
+  const anualCon = (hp, pp) => T * (hp + a.hogNP*pp/(r.personas_pobres.est||1)) * (1+adm) * 12;
+
+  const hogSalen = a.shareHog * hogPobres, perSalen = a.sharePer * perPobres;
+  const pobresNac = S.linea==='pobreza' ? N.pobres.est : N.pobres_extremos.est;
+  const hogPobresNac = S.linea==='pobreza' ? N.hogares_pobres.est : N.hogares_pobres_extremos.est;
+
+  const inicial = pobresNac/N.poblacion.est;
+  const residual = (pobresNac - perSalen + a.caenPer)/N.poblacion.est;
+  const inicialHog = hogPobresNac/N.hogares.est;
+  const residualHog = (hogPobresNac - hogSalen + a.caenHog)/N.hogares.est;
+  const inicialGrupo = perPobres/r.personas_grupo.est;
+  const residualGrupo = (perPobres - perSalen + a.caenPerGrupo)/r.personas_grupo.est;
+
+  return {
+    mes:{est:costoMes, li:anualCon(r.hogares_pobres.li, r.personas_pobres.li)/12,
+         ls:anualCon(r.hogares_pobres.ls, r.personas_pobres.ls)/12},
+    anual:{est:costoMes*12, li:anualCon(r.hogares_pobres.li, r.personas_pobres.li),
+           ls:anualCon(r.hogares_pobres.ls, r.personas_pobres.ls)},
+    hogPobres, perPobres,
+    hogNoPobres: a.hogNP, perNoPobres: a.perNP,
+    hogBenef, perBenef: perPobres + a.perNP,
+    transfNoPobresAnual: a.transfNP*12*(1+adm),
+    ingMedioNP: a.ingMedioNP,
+    gananciaNP: a.perNP ? (a.transfNP/a.perNP)/(a.ingMedioNP||1) : 0,
+    hogSalen, perSalen, hogSiguenPobres: hogPobres - hogSalen,
+    shareHogSalen: a.shareHog, sharePerSalen: a.sharePer,
+    perCaen: a.caenPer, hogCaen: a.caenHog, perCaenSinProteccion: a.caenPerSinBono,
+    brechaCub: a.brechaCub, brechaObj: a.brechaObj,
+    costoPorPersona: perSalen>0 ? costoMes*12/perSalen : NaN,
+    montoPorPersona: T/r.tamano_hogar_pobre,
+    inicial, residual, inicialHog, residualHog, inicialGrupo, residualGrupo,
+    excedeNoPobres: a.saturado
+  };
+}
+
+/* ------------------------------------------------------- gráficos (SVG) --- */
+const tip = el('tip');
+function showTip(evt, html){ tip.innerHTML=html; tip.classList.add('on');
+  const r=tip.getBoundingClientRect(); let x=evt.clientX+14, y=evt.clientY-10;
+  if(x+r.width>window.innerWidth-10) x=evt.clientX-r.width-14;
+  if(y+r.height>window.innerHeight-10) y=window.innerHeight-r.height-10;
+  tip.style.left=x+'px'; tip.style.top=y+'px'; }
+function hideTip(){ tip.classList.remove('on'); }
+const SVGNS='http://www.w3.org/2000/svg';
+function mk(tag, attrs={}, parent){ const n=document.createElementNS(SVGNS,tag);
+  for(const k in attrs) n.setAttribute(k, attrs[k]); if(parent) parent.appendChild(n); return n; }
+
+/* Barras horizontales comparativas */
+function barrasComp(cont, items){
+  cont.innerHTML='';
+  const W=900, rowH=34, padTop=6, L=310, R=120;
+  const H=padTop+items.length*rowH+6;
+  const svg=mk('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':'Comparación de costo anual con partidas de gasto público'},cont);
+  const max=Math.max(...items.map(d=>Math.max(d.v,d.ls||0)))*1.02;
+  const x=v=>L+ (v/max)*(W-L-R);
+  items.forEach((d,i)=>{
+    const y=padTop+i*rowH, h=16, yc=y+(rowH-h)/2;
+    mk('text',{x:L-12,y:y+rowH/2+4,'text-anchor':'end','font-size':12.5,
+      fill: d.hi?'var(--text-primary)':'var(--text-secondary)','font-weight':d.hi?650:400},svg).textContent=d.n;
+    const bw=Math.max(2,x(d.v)-L);
+    const rect=mk('rect',{x:L,y:yc,width:bw,height:h,rx:4,
+      fill:d.hi?'var(--series-1)':(d.trib?'var(--series-2)':'var(--neutral-mark)')},svg);
+    if(d.li!=null){
+      const ym=yc+h/2;
+      mk('line',{x1:x(d.li),x2:x(d.ls),y1:ym,y2:ym,stroke:'var(--text-primary)','stroke-width':1.5,opacity:.6},svg);
+      [d.li,d.ls].forEach(v=>mk('line',{x1:x(v),x2:x(v),y1:ym-5,y2:ym+5,
+        stroke:'var(--text-primary)','stroke-width':1.5,opacity:.6},svg));
+    }
+    mk('text',{x:(d.ls!=null?x(d.ls):x(d.v))+9,y:yc+12,'font-size':12.5,'font-weight':d.hi?650:500,
+      fill:'var(--text-primary)'},svg).textContent=num(d.v/1e6,0);
+    rect.addEventListener('mousemove',ev=>showTip(ev,
+      `<b>${d.n}</b><br>${montoLargo(d.v)}${d.li!=null?`<br>IC 95%: ${num(d.li/1e6,0)}–${num(d.ls/1e6,0)} MM`:''}${d.f?`<br><span style="color:var(--text-muted)">${d.f}</span>`:''}`));
+    rect.addEventListener('mouseleave',hideTip);
+  });
+}
+
+/* Gráfico de líneas genérico */
+function escalaBonita(max, n){
+  if(!(max>0)) return {max:1, paso:0.25};
+  const mag = Math.pow(10, Math.floor(Math.log10(max/n)));
+  const cand = [1,2,2.5,5,10,20].map(m=>m*mag);
+  const paso = cand.find(v=>Math.ceil(max/v) <= n+1) || cand[cand.length-1];
+  return {max: paso*Math.ceil(max/paso), paso};
+}
+function lineas(cont, series, opts){
+  cont.innerHTML='';
+  const W=560,H=300,L=62,R=18,T=14,B=42;
+  const svg=mk('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':opts.aria||''},cont);
+  const xs=series.flatMap(s=>s.pts.map(p=>p[0])), ys=series.flatMap(s=>s.pts.map(p=>p[1]));
+  const x0=opts.x0??Math.min(...xs), x1=opts.x1??Math.max(...xs);
+  const y0=0, crudo = opts.y1 ?? Math.max(...ys)*1.05;
+  const esc = escalaBonita(crudo, 4), y1 = esc.max;
+  const X=v=>L+(v-x0)/(x1-x0)*(W-L-R), Y=v=>H-B-(v-y0)/(y1-y0)*(H-T-B);
+  // grid + eje y
+  const ticks=Math.round(y1/esc.paso);
+  for(let i=0;i<=ticks;i++){ const v=y0+esc.paso*i;
+    mk('line',{x1:L,x2:W-R,y1:Y(v),y2:Y(v),stroke:'var(--line-soft)','stroke-width':1},svg);
+    mk('text',{x:L-9,y:Y(v)+4,'text-anchor':'end','font-size':11,fill:'var(--text-muted)'},svg)
+      .textContent=opts.fy(v);
+  }
+  // eje x
+  const xt=opts.xticks||5;
+  for(let i=0;i<=xt;i++){ const v=x0+(x1-x0)*i/xt;
+    mk('text',{x:X(v),y:H-B+18,'text-anchor':'middle','font-size':11,fill:'var(--text-muted)'},svg)
+      .textContent=opts.fx(v); }
+  mk('text',{x:(L+W-R)/2,y:H-6,'text-anchor':'middle','font-size':11.5,fill:'var(--text-secondary)'},svg)
+    .textContent=opts.xlab||'';
+  series.forEach(s=>{
+    const dpath=s.pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
+    mk('path',{d:dpath,fill:'none',stroke:s.color,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'},svg);
+    if(s.label){ const last=s.pts[s.pts.length-1];
+      mk('text',{x:X(last[0])-4,y:Y(last[1])-9,'text-anchor':'end','font-size':11,fill:'var(--text-secondary)'},svg)
+        .textContent=s.label; }
+  });
+  if(opts.vline){
+    const [vx, vlab] = opts.vline;
+    if(vx>=x0 && vx<=x1){
+      mk('line',{x1:X(vx),x2:X(vx),y1:T,y2:H-B,stroke:'var(--text-muted)','stroke-width':1.5,
+        'stroke-dasharray':'4 4'},svg);
+      mk('text',{x:X(vx)+6,y:T+11,'font-size':10.5,fill:'var(--text-muted)'},svg).textContent=vlab;
+    }
+  }
+  if(opts.marker){
+    const [mx,my]=opts.marker;
+    mk('circle',{cx:X(mx),cy:Y(my),r:6,fill:opts.markerColor||'var(--series-1)',
+      stroke:'var(--surface-1)','stroke-width':2},svg);
+  }
+  // capa de hover
+  const hover=mk('rect',{x:L,y:T,width:W-L-R,height:H-T-B,fill:'transparent'},svg);
+  const cross=mk('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--neutral-mark)','stroke-width':1,opacity:0},svg);
+  hover.addEventListener('mousemove',ev=>{
+    const bb=svg.getBoundingClientRect(); const px=(ev.clientX-bb.left)/bb.width*W;
+    const v=x0+(px-L)/(W-L-R)*(x1-x0);
+    cross.setAttribute('x1',X(v)); cross.setAttribute('x2',X(v)); cross.setAttribute('opacity',1);
+    const rows=series.map(s=>{
+      let best=s.pts[0], bd=1e18;
+      s.pts.forEach(p=>{const d=Math.abs(p[0]-v); if(d<bd){bd=d;best=p;}});
+      return `<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:9px;height:9px;border-radius:2px;background:${s.color};display:inline-block"></i>${s.name}: <b>${opts.ftip(best[1])}</b></span>`;
+    }).join('<br>');
+    showTip(ev,`<b>${opts.fx(v)}${opts.xunit||''}</b><br>${rows}`);
+  });
+  hover.addEventListener('mouseleave',()=>{hideTip();cross.setAttribute('opacity',0);});
+}
+
+/* ------------------------------------------------------------- render ---- */
+function renderControles(){
+  el('grupo').innerHTML = gruposDef.map(([k,n,d])=>
+    `<label class="opt ${S.grupo===k?'on':''}" data-k="${k}" data-t="grupo">
+       <input type="radio" name="grupo" ${S.grupo===k?'checked':''}>
+       <span>${n}<span class="d">${d}</span></span></label>`).join('');
+  el('linea').innerHTML = lineasDef.map(([k,n,d])=>
+    `<label class="opt ${S.linea===k?'on':''}" data-k="${k}" data-t="linea">
+       <input type="radio" name="linea" ${S.linea===k?'checked':''}>
+       <span>${n}<span class="d">${d}</span></span></label>`).join('');
+  document.querySelectorAll('.opt').forEach(o=>o.addEventListener('click',()=>{
+    const cambiaLinea = o.dataset.t==='linea' && S.linea!==o.dataset.k;
+    S[o.dataset.t] = o.dataset.k;
+    if(cambiaLinea){ S.monto = montoRef(); el('s-mon').value = S.monto; }
+    renderControles(); render();
+  }));
+}
+
+function renderKPIs(){
+  el('badges').innerHTML = [
+    `Fuente: ${M.fuente}`,
+    `${num(M.n_hogares)} hogares · ${num(M.n_personas)} personas`,
+    `Línea de pobreza: USD ${num(M.linea_pobreza,2)} per cápita`,
+    `Línea de pobreza extrema: USD ${num(M.linea_pobreza_extrema,2)} per cápita`
+  ].map(t=>`<span class="badge">${t}</span>`).join('');
+
+  const k = [
+    ['Personas pobres', num(N.pobres.est), `${pct(N.incidencia_pobreza.est)} de la población · IC 95%: ${pct(N.incidencia_pobreza.li)} – ${pct(N.incidencia_pobreza.ls)}`],
+    ['Hogares pobres', num(N.hogares_pobres.est), `${pct(N.hogares_pobres.est/N.hogares.est)} de los ${num(N.hogares.est)} hogares del país`],
+    ['Personas en pobreza extrema', num(N.pobres_extremos.est), `${pct(N.incidencia_extrema.est)} de la población · IC 95%: ${pct(N.incidencia_extrema.li)} – ${pct(N.incidencia_extrema.ls)}`],
+    ['Hogares en pobreza extrema', num(N.hogares_pobres_extremos.est), `${pct(N.hogares_pobres_extremos.est/N.hogares.est)} de los hogares`],
+    ['Brecha media del hogar pobre', usd(G.total__pobreza.brecha_media_hogar,0), 'Lo que le falta al mes al hogar pobre promedio'],
+    ['Tamaño del hogar pobre', num(G.total__pobreza.tamano_hogar_pobre,1), `Personas por hogar, frente a ${num(N.tamano_hogar_nopobre,1)} en los hogares no pobres`],
+    ['Coeficiente de Gini', num(N.gini,3), 'Ingreso per cápita del hogar'],
+    ['Ingreso per cápita medio', usd(N.ingreso_pc_medio.est,0), 'Promedio mensual por persona']
+  ];
+  el('kpis').innerHTML = k.map(([l,v,s])=>
+    `<div class="kpi"><div class="lab">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join('');
+
+}
+
+function renderMontoRef(){
+  const inf = S.infl/100;
+  el('monto-ref').innerHTML = `
+    <div class="monto-grid">
+      <div class="monto-calc">
+        <div class="lab">Hogar de referencia</div>
+        <div class="calc">${REF.tamano} personas × ${usd(M.linea_pobreza,2)} <span>(línea de pobreza per cápita)</span>
+          ${inf>0?` × ${num(1+inf,2)} <span>(precios +${num(S.infl,0)}%)</span>`:''}</div>
+        <div class="calc-res">${usd(M.tam_referencia*M.linea_pobreza*(1+inf),2)} <span>al mes por hogar</span></div>
+        <div class="calc-alt">${inf>0?`Sin efecto inflacionario serían <strong>${usd(M.monto_referencia_pobreza,2)}</strong>. `:''}
+          Para la meta de pobreza extrema: ${REF.tamano} × ${usd(M.linea_pobreza_extrema,2)}${inf>0?` × ${num(1+inf,2)}`:''} =
+          <strong>${usd(M.tam_referencia*M.linea_pobreza_extrema*(1+inf),2)}</strong> al mes por hogar</div>
+      </div>
+      <div class="monto-check">
+        <div class="lab">Comprobación con los datos</div>
+        <ul>
+          <li>En el país hay <strong>${num(REF.hogares.est)}</strong> hogares de dos adultos y dos niñas/os;
+              <strong>${num(REF.hogares_pobres.est)}</strong> de ellos son pobres.</li>
+          <li>A esos hogares pobres les falta en promedio <strong>${usd(REF.brecha_media,0)}</strong> al mes
+              (mediana ${usd(REF.brecha_mediana,0)}) y, en el caso más extremo,
+              <strong>${usd(REF.brecha_maxima,0)}</strong>.</li>
+          <li>El monto de referencia de ${usd(M.monto_referencia_pobreza,2)} cubre la brecha del
+              <strong>100%</strong> de ellos: es el mínimo que garantiza sacar de la pobreza a un hogar de
+              cuatro personas, incluso si no tiene ningún ingreso.</li>
+          <li>Si el programa encarece los precios, ese mínimo sube en la misma proporción: con
+              <strong>${num(S.infl,0)}%</strong> de inflación pasa a
+              <strong>${usd(M.tam_referencia*M.linea_pobreza*(1+inf),2)}</strong>.</li>
+          <li>Aplicado a todos los hogares pobres del país, ese mismo monto es
+              <strong>insuficiente</strong> para los hogares más grandes: la sección siguiente muestra cuántos
+              quedan bajo la línea.</li>
+        </ul>
+      </div>
+    </div>`;
+}
+
+function render(){
+  const r = esc(), s = simular();
+  const ref = montoRef();
+  el('v-mon').textContent = usd(S.monto, S.monto % 1 ? 2 : 0);
+  el('v-fil').textContent = num(S.fil,1);
+  el('v-adm').textContent = S.adm+'%';
+  el('v-infl').textContent = num(S.infl,0)+'%';
+  el('v-hl').textContent = num(S.hl,0)+'%';
+  el('hint-mon').innerHTML = `Mismo monto para todos los hogares beneficiarios. El de referencia es
+    <strong>${usd(ref,2)}</strong> = ${REF.tamano} × la línea ${S.linea==='pobreza'?'de pobreza':'de pobreza extrema'}
+    ${S.infl>0?` × ${num(1+S.infl/100,2)} por el efecto inflacionario`:''}.
+    Equivale a ${usd(s.montoPorPersona,0)} por persona en el hogar pobre promedio.`;
+  renderMontoRef();
+
+  el('h-anual').textContent = montoLargo(s.anual.est);
+  el('h-anual-ic').textContent = `IC 95%: ${montoLargo(s.anual.li)} – ${montoLargo(s.anual.ls)}`;
+  el('h-mes').textContent = montoLargo(s.mes.est);
+  el('h-mes-ic').textContent = `IC 95%: ${num(s.mes.li/1e6,0)} – ${num(s.mes.ls/1e6,0)} millones al mes`;
+  el('h-pge').textContent = pct(s.anual.est/DATOS.macro.pge_2025) + ' del PGE';
+  el('h-pib').textContent = pct(s.anual.est/DATOS.macro.pib_2025,2) + ' del PIB 2025';
+
+  const filas_ef = [
+    ['Personas · nacional', s.inicial, s.residual,
+     `${num(N.poblacion.est*s.inicial)} → ${num(N.poblacion.est*s.residual)} personas`],
+    ['Hogares · nacional', s.inicialHog, s.residualHog,
+     `${num(N.hogares.est*s.inicialHog)} → ${num(N.hogares.est*s.residualHog)} hogares`]
+  ];
+  if(S.grupo!=='total') filas_ef.push(['Personas · dentro del grupo objetivo', s.inicialGrupo, s.residualGrupo,
+     `${num(r.personas_grupo.est*s.inicialGrupo)} → ${num(r.personas_grupo.est*s.residualGrupo)} personas`]);
+  el('efecto').innerHTML = `
+    <h3>Pobreza ${S.linea==='extrema'?'extrema ':''}antes y después de la transferencia</h3>
+    <div class="ef-tabla">` + filas_ef.map(([lab, a, b, det])=>`
+      <div class="ef-lab">${lab}<span>${det}</span></div>
+      <div class="ef-par"><span class="ef-cap">Antes</span><span class="ef-num">${pct(a)}</span></div>
+      <div class="ef-flecha">→</div>
+      <div class="ef-par"><span class="ef-cap">Después</span><span class="ef-num ef-post">${pct(b)}</span></div>
+      <div class="ef-delta">${num(-(a-b)*100,1)} p.p.</div>`).join('') + `</div>
+    <p class="ef-nota">La incidencia después es el conteo de pobres menos quienes cruzan la línea gracias al bono,
+      más quienes caen bajo ella por el alza de precios. Los hogares que reciben el bono pero no alcanzan la línea
+      siguen contando como pobres. El denominador no cambia.
+      ${S.infl>0?`<br>Con ${num(S.infl,0)}% de inflación caerían <strong>${num(s.perCaenSinProteccion)}</strong>
+        personas que no eran pobres; el bono que reciben por filtración ` +
+        (s.perCaen < 1 ? `las protege a todas.`
+                       : `protege a ${num(s.perCaenSinProteccion - s.perCaen)} de ellas, así que quedan
+                          <strong>${num(s.perCaen)}</strong>.`):''}</p>`;
+
+  el('mini').innerHTML = [
+    ['Hogares beneficiarios', num(s.hogBenef)],
+    ['Hogares pobres', num(s.hogPobres)],
+    ['Hogares no pobres (filtración)', num(s.hogNoPobres)],
+    ['Personas no pobres alcanzadas', num(s.perNoPobres)],
+    ['Ingreso extra a hogares no pobres', montoLargo(s.transfNoPobresAnual)+' al año'],
+    ['Costo por hogar al año', usd(S.monto*12,0)]
+  ].map(([l,v])=>`<div><div class="lab">${l}</div><div class="v">${v}</div></div>`).join('');
+
+  el('mini2').innerHTML = [
+    ['Hogares que salen de la pobreza', num(s.hogSalen)+' ('+pct(s.shareHogSalen,0)+')'],
+    ['Personas que salen', num(s.perSalen)],
+    ['Hogares pobres que siguen pobres', num(s.hogSiguenPobres)],
+    ['Personas que caen en pobreza por inflación', num(s.perCaen) +
+       (s.perCaenSinProteccion > s.perCaen+1000 ? ' (sin bono: '+num(s.perCaenSinProteccion)+')' : '')],
+    ['Costo anual por persona rescatada', usd(s.costoPorPersona,0)],
+    ['Brecha de pobreza cubierta', pct(s.brechaCub/s.brechaObj,0)]
+  ].map(([l,v])=>`<div><div class="lab">${l}</div><div class="v">${v}</div></div>`).join('');
+
+  const msgs = [];
+  if(s.excedeNoPobres) msgs.push('<strong>Combinación no factible:</strong> con esta filtración los hogares no '+
+    'pobres beneficiarios superan a todos los hogares no pobres del país.');
+  if(s.residual > 0.0005){
+    const causas = [];
+    if(s.shareHogSalen < 0.999) causas.push(`el bono de ${usd(S.monto, S.monto%1?2:0)} no alcanza para cubrir la brecha de ` +
+      `${num(s.hogSiguenPobres)} hogares pobres, en general los más numerosos`);
+    if(S.grupo!=='total') causas.push('el grupo objetivo no cubre a todos los hogares pobres del país');
+    if(s.perCaen > 1000) causas.push(`el alza de precios de ${num(S.infl,0)}% empuja bajo la línea a ` +
+      `${num(s.perCaen)} personas que no eran pobres`);
+    msgs.push(`Quedan <strong>${num(N.poblacion.est*s.residual)}</strong> personas bajo la línea ` +
+      `(${pct(s.residual)} de la población) porque ` + causas.join(' y ') + '.');
+  } else {
+    msgs.push(`Con estos parámetros la pobreza ${S.linea==='extrema'?'extrema ':''}por ingresos se elimina: la ` +
+      `incidencia pasa de ${pct(s.inicial)} a 0%.`);
+  }
+  el('warn').className = 'warn on';
+  el('warn').innerHTML = msgs.join('<br>');
+
+  // Comparación con gasto público
+  const gp = DATOS.gasto_publico.filter(g=>g.tipo!=='total');
+  const items = [{n:'Escenario simulado (costo anual)', v:s.anual.est, li:s.anual.li, ls:s.anual.ls, hi:true,
+                  f:`${r.grupo_nombre} · ${r.linea_nombre} · ${usd(S.monto,0)} por hogar`}]
+    .concat(gp.map(g=>({n:g.nombre, v:g.monto, f:g.fuente, trib:g.tipo==='tributario'})))
+    .sort((a,b)=>b.v-a.v);
+  barrasComp(el('chart-comp'), items);
+
+  // Curvas según el monto del bono
+  const tg = Array.from({length:71},(_,i)=>i*10);
+  lineas(el('chart-monto1'), [{name:'Personas que salen', color:'var(--series-3)',
+      pts: tg.map(t=>[t, simular(t).perSalen])}], {
+    x0:0, x1:700, xticks:7, xlab:'Monto mensual por hogar (USD)', xunit:' por hogar',
+    fy:v=>num(v/1e6,1)+' M', fx:v=>'$'+num(v,0), ftip:v=>num(v)+' personas',
+    marker:[S.monto, s.perSalen], markerColor:'var(--series-3)', vline:[ref,'Monto de referencia'],
+    aria:'Personas que salen de la pobreza según el monto del bono'
+  });
+  lineas(el('chart-monto2'), [{name:'Costo anual', color:'var(--series-1)',
+      pts: tg.map(t=>[t, simular(t).anual.est])}], {
+    x0:0, x1:700, xticks:7, xlab:'Monto mensual por hogar (USD)', xunit:' por hogar',
+    fy:v=>num(v/1e6,0), fx:v=>'$'+num(v,0), ftip:v=>montoLargo(v),
+    marker:[S.monto, s.anual.est], vline:[ref,'Monto de referencia'],
+    aria:'Costo anual según el monto del bono'
+  });
+
+  // Curvas según el efecto inflacionario (monto fijo)
+  const ig = Array.from({length:41},(_,i)=>i);
+  lineas(el('chart-infl1'), [{name:'Personas que salen', color:'var(--series-3)',
+      pts: ig.map(v=>[v, simular(S.monto, S.fil, v/100).perSalen])}], {
+    x0:0, x1:40, xticks:8, xlab:'Inflación provocada por el programa (%)', xunit:'% de inflación',
+    fy:v=>num(v/1e6,1)+' M', fx:v=>num(v,0)+'%', ftip:v=>num(v)+' personas',
+    marker:[S.infl, s.perSalen], markerColor:'var(--series-3)',
+    aria:'Personas que salen de la pobreza según la inflación'
+  });
+  lineas(el('chart-infl2'), [
+    {name:'Pobreza después', color:'var(--series-2)',
+     pts: ig.map(v=>[v, simular(S.monto, S.fil, v/100).residual*100])},
+    {name:'Pobreza antes', color:'var(--neutral-mark)',
+     pts: ig.map(v=>[v, s.inicial*100])}
+  ], {
+    x0:0, x1:40, xticks:8, y1:Math.max(s.inicial*100*1.15, s.residual*100*1.15),
+    xlab:'Inflación provocada por el programa (%)', xunit:'% de inflación',
+    fy:v=>num(v,v%1?1:0)+'%', fx:v=>num(v,0)+'%', ftip:v=>num(v,1)+'% de la población',
+    marker:[S.infl, s.residual*100], markerColor:'var(--series-2)',
+    aria:'Pobreza nacional resultante según la inflación'
+  });
+
+  // Perfil de la filtración: probabilidad de inclusión por nivel de ingreso
+  const zl = lineaDe(S.linea), niv = nivelFiltracion(S.grupo, S.linea, S.fil);
+  el('leg-perfil').textContent = `Calibrada para alcanzar la filtración elegida; se reduce a la mitad cada ` +
+    `${num(S.hl,0)}% de la línea`;
+  const yg = Array.from({length:81},(_,i)=>zl*(1 + i*0.025));
+  lineas(el('chart-perfil'), [{name:'Probabilidad de inclusión', color:'var(--series-3)',
+      pts: yg.map(y=>[y, 100*Math.min(1, niv.c*perfil(y, zl))])}], {
+    x0:zl, x1:zl*3, xticks:8, y1:100,
+    xlab:'Ingreso per cápita del hogar (USD al mes)', xunit:' de ingreso per cápita',
+    fy:v=>num(v,0)+'%', fx:v=>'$'+num(v,0), ftip:v=>num(v,1)+'% de probabilidad',
+    vline:[zl*(1+S.infl/100), 'Línea encarecida'],
+    aria:'Probabilidad de recibir el bono siendo no pobre según el ingreso'
+  });
+
+  // Curvas según la filtración
+  const fg = Array.from({length:51},(_,i)=>i/10);
+  lineas(el('chart-fil1'), [{name:'Costo anual', color:'var(--series-1)',
+      pts: fg.map(f=>[f, simular(S.monto, f).anual.est])}], {
+    x0:0, x1:5, xticks:5, xlab:'Personas no pobres que reciben el bono por cada persona pobre',
+    xunit:' personas no pobres por pobre',
+    fy:v=>num(v/1e6,0), fx:v=>num(v,1), ftip:v=>montoLargo(v),
+    marker:[S.fil, s.anual.est], aria:'Costo anual según la filtración'
+  });
+  lineas(el('chart-fil2'), [{name:'Costo por persona rescatada', color:'var(--series-2)',
+      pts: fg.map(f=>[f, simular(S.monto, f).costoPorPersona])}], {
+    x0:0, x1:5, xticks:5, xlab:'Personas no pobres que reciben el bono por cada persona pobre',
+    xunit:' personas no pobres por pobre',
+    fy:v=>'$'+num(v,0), fx:v=>num(v,1), ftip:v=>usd(v,0)+' al año',
+    marker:[S.fil, s.costoPorPersona], markerColor:'var(--series-2)',
+    aria:'Costo por persona que sale de la pobreza según la filtración'
+  });
+
+  renderTabla();
+}
+
+function renderTabla(){
+  const guardado = {grupo:S.grupo, linea:S.linea, monto:S.monto};
+  const filas = [];
+  for(const gk of ['total','menor5','mayor65']) for(const lk of ['pobreza','extrema']){
+    S.grupo = gk; S.linea = lk;
+    const r = esc(), ref = montoRef();
+    S.monto = ref;
+    const sinFil = simular(ref, 0), conFil = simular(ref, S.fil);
+    filas.push(`<tr>
+      <td>${r.grupo_nombre}</td><td>${r.linea_nombre}</td>
+      <td>${num(r.hogares_pobres.est)}<br><span class="ci">[${num(r.hogares_pobres.li)} – ${num(r.hogares_pobres.ls)}]</span></td>
+      <td>${num(ref,2)}</td>
+      <td>${num(sinFil.hogSalen)}<br><span class="ci">${pct(sinFil.shareHogSalen,0)} de los hogares pobres</span></td>
+      <td>${num(sinFil.perSalen)}</td>
+      <td>${pct(conFil.inicial)} → <strong>${pct(conFil.residual)}</strong>
+          <br><span class="ci">${num(-(conFil.inicial-conFil.residual)*100,1)} p.p.</span></td>
+      <td class="hl">${num(sinFil.anual.est/1e6,0)}<br><span class="ci">[${num(sinFil.anual.li/1e6,0)} – ${num(sinFil.anual.ls/1e6,0)}]</span></td>
+      <td class="hl">${num(conFil.anual.est/1e6,0)}<br><span class="ci">[${num(conFil.anual.li/1e6,0)} – ${num(conFil.anual.ls/1e6,0)}]</span></td>
+      <td>${pct(conFil.anual.est/DATOS.macro.pge_2025,2)}</td></tr>`);
+  }
+  Object.assign(S, guardado);
+  document.querySelector('#tabla tbody').innerHTML = filas.join('');
+}
+
+function renderMeth(){
+  const fuentes = [...new Set(DATOS.gasto_publico.map(g=>g.fuente))];
+  el('meth').innerHTML = `
+  <h4>Datos y estimación</h4>
+  <ul>
+    <li>Fuente: <strong>${M.fuente}</strong>, período ${M.periodo}. Muestra efectiva: ${num(M.n_hogares)} hogares
+      y ${num(M.n_personas)} personas (se excluyen los hogares sin ingreso per cápita registrado).</li>
+    <li>Todo el procesamiento estadístico se hizo en <strong>R</strong> con el paquete <code>survey</code>,
+      declarando el diseño complejo de la ENEMDU: estratificación por <code>estrato</code>, conglomerados por
+      <code>upm</code> y factores de expansión <code>fexp</code> (${num(M.gl_diseno)} grados de libertad). La
+      unidad de análisis es el <strong>hogar</strong>; las cifras de personas se obtienen ponderando cada hogar
+      por su número de miembros.</li>
+    <li>Los intervalos de confianza al 95% provienen de los errores estándar del diseño muestral. La ENEMDU de un
+      mes tiene muestra reducida: la pobreza de diciembre de 2025 es ${pct(N.incidencia_pobreza.est)} con un
+      intervalo de ${pct(N.incidencia_pobreza.li)} a ${pct(N.incidencia_pobreza.ls)}, y los rangos de costo
+      heredan esa incertidumbre.</li>
+    <li>Se replican las cifras oficiales del INEC para diciembre de 2025: pobreza ${pct(N.incidencia_pobreza.est)},
+      pobreza extrema ${pct(N.incidencia_extrema.est)}, Gini ${num(N.gini,3)}. Líneas oficiales:
+      USD ${num(M.linea_pobreza,2)} y USD ${num(M.linea_pobreza_extrema,2)} per cápita al mes.</li>
+  </ul>
+
+  <h4>El monto del bono</h4>
+  <p>El diseño analizado entrega <strong>el mismo monto a todos los hogares beneficiarios</strong>, sin ajustar
+     por tamaño ni por brecha. El monto de referencia es el mínimo que garantiza que un hogar de cuatro personas
+     quede sobre la línea aunque no tenga ningún ingreso:</p>
+  <div class="eq">Monto = 4 personas × USD ${num(M.linea_pobreza,2)} = USD ${num(M.monto_referencia_pobreza,2)} al mes por hogar</div>
+  <p>La medición oficial de pobreza en Ecuador es per cápita y no aplica escalas de equivalencia entre adultos y
+     niñas/os, de modo que la composición del hogar de referencia (dos adultos y dos niñas/os) no altera el
+     umbral: solo cuenta su tamaño. El deslizador permite explorar otros montos.</p>
+
+  <h4>Efecto inflacionario</h4>
+  <p>El programa inyecta dinero en la economía y puede empujar los precios. El usuario fija ese efecto (10% por
+     defecto) y el tablero lo aplica <strong>encareciendo la línea de pobreza en la misma proporción</strong>,
+     manteniendo fijos los ingresos nominales de los hogares:</p>
+  <div class="eq">línea ajustada = línea × (1 + inflación) &nbsp;·&nbsp; monto de referencia = 4 × línea × (1 + inflación)</div>
+  <ul>
+    <li>Un hogar beneficiario sale de la pobreza solo si el bono cubre su brecha frente a la <em>línea ajustada</em>.</li>
+    <li>Los hogares que no eran pobres, no reciben el bono y tienen un ingreso per cápita entre la línea original
+      y la ajustada <strong>caen bajo la línea</strong>: ese conteo se suma a la pobreza posterior. Se supone que
+      los hogares no pobres que reciben el bono suman ese ingreso y quedan protegidos si con él superan la línea
+      encarecida: por eso una filtración mayor encarece el programa pero amortigua el efecto del alza de precios
+      sobre la pobreza, sobre todo porque la inclusión se concentra en los hogares vecinos a la línea.</li>
+    <li>El costo del programa no cambia con la inflación (depende del monto y del número de beneficiarios), pero sí
+      cambia el monto de referencia, que se recalcula sobre la línea ajustada.</li>
+    <li>Supuesto fuerte: <strong>ningún ingreso nominal se ajusta</strong> a los precios en el mismo período (ni
+      salarios, ni remesas, ni otras transferencias). Es el escenario de corto plazo más desfavorable; con
+      traspaso parcial a los ingresos, el efecto sería menor. La inflación se supone pareja para todos los
+      hogares, sin diferencias por canasta de consumo.</li>
+    <li>El cálculo se hace sobre los microdatos de los ${num(M.n_hogares)} hogares de la muestra con ingreso per
+      cápita por debajo de USD ${num(M.umbral_microdatos,2)} —los únicos que pueden estar bajo la línea con
+      cualquier inflación simulable—, aplicando las proporciones resultantes a los totales estimados con el
+      diseño muestral.</li>
+  </ul>
+
+  <h4>Costo y focalización</h4>
+  <div class="eq">Costo mensual = Monto × (hogares pobres del grupo + hogares no pobres alcanzados) × (1 + costo administrativo)</div>
+  <ul>
+    <li>Reciben el bono <strong>todos los hogares pobres</strong> del grupo objetivo.</li>
+    <li>La <strong>filtración</strong> se define como el usuario la fija: cuántas personas no pobres reciben el
+      bono por cada persona pobre que lo recibe. No se reparte al azar: la probabilidad de que un hogar no pobre
+      sea incluido por error <strong>decae con su ingreso per cápita</strong> —se reduce a la mitad cada vez que
+      el ingreso supera la línea en otro ${num(S.hl,0)}%, parámetro que el usuario elige— y el nivel de esa curva se calibra
+      hogar por hogar hasta alcanzar exactamente las personas no pobres que fija el parámetro. Es el supuesto
+      razonable si el programa usa un índice de vulnerabilidad imperfecto: los errores se concentran cerca de la
+      línea, no en los hogares acomodados.</li>
+    <li>Los hogares no pobres incluidos por error <strong>reciben el bono como ingreso</strong>: su ingreso per
+      cápita sube en el monto dividido para el número de miembros. Eso no cambia la pobreza sin inflación, pero
+      con inflación los protege de caer bajo la línea encarecida, que es el riesgo que corren precisamente los
+      hogares apenas por encima de ella.</li>
+    <li>Cuando el grupo objetivo es demográfico, la filtración proviene de hogares <strong>del mismo grupo</strong>
+      (la condición demográfica es verificable; el ingreso no), de modo que los hogares fuera del grupo no
+      reciben nada ni quedan protegidos del alza de precios.</li>
+    <li>Un hogar pobre <strong>sale de la pobreza</strong> si el monto cubre su brecha, es decir si
+      Monto ≥ (línea − ingreso per cápita) × número de miembros. Los hogares grandes con ingresos muy bajos
+      siguen bajo la línea aun recibiendo el bono.</li>
+    <li>La filtración no altera cuántas personas salen de la pobreza: solo agrega costo.</li>
+  </ul>
+
+  <h4>Supuestos y límites</h4>
+  <ul>
+    <li>Cálculo <strong>estático</strong>: no incorpora respuestas de comportamiento (oferta laboral, remesas,
+      ahorro), efectos multiplicadores ni el efecto de la inflación futura sobre la línea.</li>
+    <li>El costo corresponde a diciembre de 2025 llevado a doce meses, suponiendo constantes la distribución del
+      ingreso y la composición de los hogares.</li>
+    <li>No se descuentan las transferencias públicas ya existentes: el ingreso de la ENEMDU ya las incluye, así
+      que el resultado es el <em>gasto adicional</em> sobre la situación actual.</li>
+    <li>Se supone que los hogares no pobres alcanzados por filtración tienen el tamaño medio de los hogares no
+      pobres y que ningún hogar pobre del grupo objetivo queda excluido.</li>
+    <li>El costo administrativo es un parámetro del usuario, no una estimación empírica.</li>
+    <li>La comparación con partidas presupuestarias es solo de magnitud: no implica que esos rubros sean
+      sustituibles ni que exista espacio fiscal disponible.</li>
+  </ul>
+
+  <h4>Gasto tributario</h4>
+  <p>Se incluye como categoría de comparación porque es gasto público que no pasa por el presupuesto: son
+     ingresos que el Estado deja de percibir por exoneraciones, tarifa 0% de IVA, devoluciones y otros beneficios
+     tributarios. El SRI proyecta ${montoLargo(7230000000)} para 2025 (5,6% del PIB), de los cuales el IVA
+     explicaba ${montoLargo(4180170000)} y el impuesto a la renta ${montoLargo(1795790000)} en 2023. Las cifras de
+     gasto tributario y las del Presupuesto General del Estado corresponden a años distintos y no son sumables.</p>
+
+  <h4>Fuentes de las cifras de gasto público</h4>
+  <ul>${fuentes.map(f=>`<li>${f}</li>`).join('')}<li>PIB nominal 2025: ${DATOS.macro.pib_fuente}.</li></ul>`;
+
+  el('foot').innerHTML = `Elaboración: Observatorio de Desigualdad y Pobreza (FLACSO Ecuador) · Procesamiento en R
+    (<code>survey</code>) sobre la ENEMDU de diciembre de 2025 (INEC) · Cifras de gasto público del Presupuesto
+    General del Estado 2025 (Ministerio de Economía y Finanzas) · Generado el ${M.fecha_procesamiento}.`;
+}
+
+/* --------------------------------------------------------------- eventos -- */
+el('s-mon').addEventListener('input', e=>{ S.monto = +e.target.value; render(); });
+el('s-fil').addEventListener('input', e=>{ S.fil = +e.target.value; render(); });
+el('s-infl').addEventListener('input', e=>{
+  const anterior = montoRef();
+  S.infl = +e.target.value;
+  if(Math.abs(S.monto - anterior) < 0.01){ S.monto = montoRef(); el('s-mon').value = S.monto; }
+  render();
+});
+el('s-adm').addEventListener('input', e=>{ S.adm = +e.target.value; render(); });
+el('s-hl').addEventListener('input', e=>{ S.hl = +e.target.value; render(); });
+el('btn-ref').addEventListener('click', ()=>{ S.monto = montoRef(); el('s-mon').value = S.monto; render(); });
+el('theme').addEventListener('click',()=>{
+  const dark = document.documentElement.getAttribute('data-theme')==='dark' ||
+    (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', dark?'light':'dark');
+  el('theme').textContent = dark? 'Modo oscuro':'Modo claro';
+});
+window.addEventListener('resize',()=>render());
+
+el('s-mon').value = S.monto;
+renderControles(); renderKPIs(); renderMeth(); render();
+</script>
+</body>
+</html>
