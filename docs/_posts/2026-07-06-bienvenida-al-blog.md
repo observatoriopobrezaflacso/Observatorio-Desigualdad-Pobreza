@@ -7,6 +7,6 @@ description: Presentamos el nuevo espacio de análisis del Observatorio de
 layout: post
 ---
 Damos la bienvenida al **blog del Observatorio de Desigualdad, Pobreza y Empleo** de  
-FLACSO Ecuador. Este será un espacio para compartir análisis que acompañan y amplían los indicadores disponibles en el  
+FLACSO Ecuador. Un espacio para compartir análisis que acompañan y amplían los indicadores disponibles en el  
 [dashboard]({{ '/dashboard/' | relative_url }}).
 
