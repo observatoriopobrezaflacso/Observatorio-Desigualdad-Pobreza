@@ -5,6 +5,14 @@
 *===============================================================
 
 clear all
+
+* Raíz del Google Drive: Windows (H:) o macOS. La respeta si ya viene
+* definida por el master.
+if "$gd" == "" {
+    if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
+    else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+}
+
 set more off
 set graphics off
 
@@ -12,7 +20,7 @@ set graphics off
 * SECTION 1: PATH CONFIGURATION
 *---------------------------------------------------------------
 
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+global user_root "$gd"
 
 global gh_root "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza"
 

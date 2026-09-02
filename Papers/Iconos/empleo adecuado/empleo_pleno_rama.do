@@ -8,11 +8,19 @@
 *==============================================================================
 
 clear all
+
+* Raíz del Google Drive: Windows (H:) o macOS. La respeta si ya viene
+* definida por el master.
+if "$gd" == "" {
+    if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
+    else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+}
+
 set more off
 
 *------------------------------------------------ 1. Parámetros y utilidades --
-global limpias "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
-global root    "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Íconos"
+global limpias "$gd/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+global root    "$gd/Papers/Íconos"
 
 local anios  2001 2010 2011 2024      // años comparados
 local pares  2001-2010 2011-2024 2001-2024

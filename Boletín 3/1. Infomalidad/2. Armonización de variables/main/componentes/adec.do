@@ -20,7 +20,7 @@ capture log close
 *------------------------------------------------------------------------------*
 * 0. RUTAS
 *------------------------------------------------------------------------------*
-global user_root_drive "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
+global user_root_drive "H:\Mi unidad"
 global bases     "$user_root_drive/Bases"
 global raw       "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios  "$bases/Salarios"
@@ -93,7 +93,7 @@ import delimited "$salarios/Salario unificado y componentes salariales.csv", cle
 encode componentesalarial, gen(componente)
 drop componentesalarial
 keep if componente == 6 & mes == "Diciembre"
-rename (año valorsalariocomponenteendolares) (anio salario_min)
+rename (anio valorsalariocomponenteendolares) (anio salario_min)
 replace salario_min = subinstr(salario_min, ",", ".", .)
 destring salario_min, replace
 keep anio salario_min

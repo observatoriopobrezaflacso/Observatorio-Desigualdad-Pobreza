@@ -14,18 +14,29 @@
 *==============================================================================*
 
 clear all
+
+* Raíz del Google Drive: Windows (H:) o macOS. La respeta si ya viene
+* definida por el master.
+if "$gd" == "" {
+    if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
+    else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+}
+
 set more off
 
-local urb  "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/Urbano"
-local nac  "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
-local root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Íconos"
+
+local urb  "$gd/Bases/ENEMDU/Procesadas/ingresos_pc/Urbano"
+local nac  "$gd/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+local root "$gd/Papers/Íconos"
 local out  "`root'/outputs/educ_ingrl"
 cap mkdir "`root'/outputs"
 cap mkdir "`out'"
 
 * Años pedidos. 1990 y 2002 no tienen base: se reemplazan por 1991 y 2003.
 * En el nacional sólo existen desde 2000, así que se añade 2001 como ancla.
-local anios_urb "1991 1993 1996 1999 2003 2005 2008 2011 2014 2017 2021 2025"
+* 2001 se agrega al urbano para tener el mismo anclaje que el nacional
+* (la figura del paper no lo etiqueta, pero la base existe).
+local anios_urb "1991 1993 1996 1999 2001 2003 2005 2008 2011 2014 2017 2021 2025"
 local anios_nac "2001 2003 2005 2008 2011 2014 2017 2021 2025"
 
 * tope de horas semanales plausibles (16 h/día x 7 días)
@@ -246,6 +257,12 @@ postclose `pf'
 * 3. MODELOS AGRUPADOS
 *==============================================================================*
 
+* Además de eststo, se guardan los resultados en un tempfile para poder
+* llevarlos después a la hoja "modelo_agrupado" del Excel.
+tempname pf2
+tempfile pooledres
+postfile `pf2' byte ambito byte grupo double(b se N r2) using "`pooledres'", replace
+
 eststo clear
 local i = 0
 foreach amb of numlist 2 1 {
@@ -257,8 +274,11 @@ foreach amb of numlist 2 1 {
         * dentro de cada año en el modelo agrupado
         local ctrl "c.edad c.edad2 i.anio"
         eststo m`i': qui reg lnw i.educ_univ `ctrl' [pw=fexp] if `cond', vce(cluster anio)
+        post `pf2' (`amb') (`g') (_b[1.educ_univ]) (_se[1.educ_univ]) ///
+            (e(N)) (e(r2))
     }
 }
+postclose `pf2'
 
 esttab m1 m2 m3 m4 m5 m6 using "`out'/hora_tabla_pooled.rtf", replace ///
     keep(1.educ_univ) b(4) se(4) star(* 0.10 ** 0.05 *** 0.01) ///
@@ -378,4 +398,103 @@ graph save   "`out'/fig_hora_urb_vs_nac.gph", replace
 * Los PNG se generan convirtiendo los PDF (Stata batch en Mac no trae Graph2png):
 *   sips -s format png --resampleWidth 2400 fig.pdf --out fig.png
 
+*==============================================================================*
+* 6. TABLAS EN EXCEL
+*
+* Un solo libro con todas las tablas de este análisis, en la carpeta del
+* análisis dentro de Papers/Íconos. La primera hoja usa `replace` (crea el
+* archivo) y las demás `sheetreplace` (sólo reemplazan su hoja).
+*==============================================================================*
+
+local xls "`out'/prima_hora_tablas.xlsx"
+
+*--- 6.1 Coeficientes por ámbito x grupo x año (formato largo) -----------------
+use "`out'/hora_coef_educ_ingrl.dta", clear
+decode ambito, gen(ambito_t)
+decode grupo,  gen(grupo_t)
+drop ambito grupo
+rename ambito_t ambito
+rename grupo_t  grupo
+label var ambito "Ámbito"
+label var grupo  "Grupo"
+label var anio   "Año"
+label var N      "Observaciones"
+order ambito grupo anio b_raw se_raw b_adj se_adj pct_adj t_adj p_adj ///
+    share_univ w_no w_si h_no h_si N
+sort ambito grupo anio
+export excel using "`xls'", sheet("coeficientes") firstrow(varlabels) replace
+
+*--- 6.2 Formato ancho: lo que se pega en la hoja prima_salarial ---------------
+use "`out'/hora_coef_educ_ingrl.dta", clear
+keep ambito grupo anio b_adj
+decode ambito, gen(amb)
+drop ambito
+reshape wide b_adj, i(amb anio) j(grupo)
+rename b_adj0 total
+rename b_adj1 hombres
+rename b_adj2 mujeres
+rename amb ambito
+label var ambito  "Ámbito"
+label var anio    "Año"
+label var total   "Total"
+label var hombres "Hombres"
+label var mujeres "Mujeres"
+order ambito anio total hombres mujeres
+sort ambito anio
+export excel using "`xls'", sheet("ancho_para_grafico") firstrow(varlabels) sheetreplace
+
+*--- 6.3 Horas y tamaño de muestra --------------------------------------------
+use "`out'/hora_coef_educ_ingrl.dta", clear
+keep if grupo == 0
+keep ambito anio h_no h_si w_no w_si share_univ N
+decode ambito, gen(amb)
+drop ambito
+rename amb ambito
+label var ambito "Ámbito"
+label var anio   "Año"
+label var N      "Observaciones"
+order ambito anio h_no h_si w_no w_si share_univ N
+sort ambito anio
+export excel using "`xls'", sheet("horas_y_muestra") firstrow(varlabels) sheetreplace
+
+*--- 6.4 Modelo agrupado (todos los años juntos) ------------------------------
+use "`pooledres'", clear
+label define lbl_amb   1 "Nacional" 2 "Urbano", replace
+label values ambito lbl_amb
+label define lbl_grupo 0 "Total" 1 "Hombres" 2 "Mujeres", replace
+label values grupo lbl_grupo
+decode ambito, gen(ambito_t)
+decode grupo,  gen(grupo_t)
+drop ambito grupo
+rename ambito_t ambito
+rename grupo_t  grupo
+gen double pct = 100*(exp(b)-1)
+gen double t   = b/se
+label var ambito "Ámbito"
+label var grupo  "Grupo"
+label var b      "Coeficiente universitaria o más"
+label var se     "Error estándar (cluster por año)"
+label var pct    "Prima en % sobre el ingreso por hora"
+label var t      "Estadístico t"
+label var N      "Observaciones"
+label var r2     "R2"
+order ambito grupo b se t pct N r2
+export excel using "`xls'", sheet("modelo_agrupado") firstrow(varlabels) sheetreplace
+
+*--- 6.5 Notas metodológicas ---------------------------------------------------
+clear
+set obs 8
+gen str244 nota = ""
+replace nota = "Prima salarial por hora de la educación universitaria o más." in 1
+replace nota = "Variable dependiente: ln(ingreso laboral real por hora)." in 2
+replace nota = "Ingreso por hora = ingreso laboral / (horas semanales x 4.33)." in 3
+replace nota = "Horas = suma del trabajo principal + secundario + otros trabajos." in 4
+replace nota = "MCO por año, ponderado por fexp, errores estándar robustos." in 5
+replace nota = "b_raw = sin controles. b_adj = con edad y edad^2 (es la serie del gráfico)." in 6
+replace nota = "Muestra: perceptores de ingreso laboral con horas > 0, sin restricción de edad." in 7
+replace nota = "1990 y 2002 no tienen base: se usan 1991 y 2003. Generado por educ_ingrl_hora.do." in 8
+label var nota "Notas"
+export excel using "`xls'", sheet("notas") firstrow(varlabels) sheetreplace
+
+di as res "Tablas en Excel: `xls'"
 di as res "Listo. Salidas en: `out'"
