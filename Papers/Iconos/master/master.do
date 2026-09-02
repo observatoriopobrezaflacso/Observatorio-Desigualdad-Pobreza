@@ -42,6 +42,8 @@ global run_prima     1     // prima_salarial  (Gráficos 16, 17)
 global run_adecuado  1     // empleo_adec     (Gráfico 15)
 global run_rama      1     // panel_educ_pleno(Gráficos 21, 22)
 global run_calif     1     // panel_crecimiento (Gráficos 17-20)
+global run_ginipalma 1     // gini y palma   (Gráficos 1, 2, 3)
+global run_brechas   1     // brechas        (Gráficos 12, 13)
 global run_gic       0     // GIC (Gráficos 5, 6, 7) — ver nota en la sección 4
 global run_sri       0     // ineq_SRI (Gráfico 3) — ver nota en la sección 4
 
@@ -60,6 +62,33 @@ local hoy = subinstr("`c(current_date)'", " ", "_", .)
 *==============================================================================*
 * 3. BLOQUES QUE SÍ TIENEN CÓDIGO
 *==============================================================================*
+
+*------------------------------------------------------------------------------
+* 3.0 Serie del Gini y del Palma -> hojas gini y palma (Gráficos 1, 2 y 3)
+*     Salida: $out/desigualdad/gini_palma_serie.dta
+*             $out/desigualdad/gini_palma_tablas.xlsx
+*     El Gini reproduce los valores del libro. El Palma NO: el pie del
+*     Gráfico 3 cita CEPALSTAT, así que esa serie no sale de la ENEMDU.
+*     El do-file imprime la comparación al final.
+*------------------------------------------------------------------------------
+if $run_ginipalma {
+    di as res _n "=== [0/7] Serie del Gini y del Palma ==="
+    capture noisily do "$cod/desigualdad/gini_palma_serie.do"
+    if _rc global fallos "$fallos gini_palma_serie(_rc=`=_rc')"
+}
+
+*------------------------------------------------------------------------------
+* 3.0b Brechas salariales -> hoja brechas (Gráficos 12 y 13)
+*      Salida: $out/brechas/brechas_salariales.dta / .xlsx
+*      Las cuatro razones reproducen el libro. Los NIVELES de ingreso no,
+*      porque el libro se deflactó con un factor desalineado por fila; este
+*      do-file aplica a cada año el suyo. Ver la nota al final del do-file.
+*------------------------------------------------------------------------------
+if $run_brechas {
+    di as res _n "=== [0b/7] Brechas salariales ==="
+    capture noisily do "$cod/brechas/brechas_salariales.do"
+    if _rc global fallos "$fallos brechas_salariales(_rc=`=_rc')"
+}
 
 *------------------------------------------------------------------------------
 * 3.1 Descomposición del Gini  -> hoja gini_decomp (Gráficos 8, 9, 10, 11)
@@ -158,25 +187,25 @@ di as err _n "{hline 78}"
 di as err "HOJAS SIN CÓDIGO GENERADOR"
 di as err "{hline 78}"
 
-di as txt "1) gini  (Gráficos 1 y 2: coeficiente de Gini urbano y nacional)"
-di as txt "   No existe un do-file que produzca la serie. Los valores del libro"
-di as txt "   vienen de Cuadros_Boletin_1.xlsx. Hay Ineq_<año>.do sueltos en"
-di as txt "   Boletín 1/Procesamiento/Codigos/Ingresos/Por separado/, uno por año,"
-di as txt "   que calculan el Gini pero sólo lo muestran en pantalla."
-di as txt "   FALTA: consolidarlos en una serie 1991-2025 por ámbito."
+di as txt "Ya no falta código para gini, palma ni brechas: los generan"
+di as txt "gini_palma_serie.do y brechas_salariales.do (bloques 3.0 y 3.0b)."
 di as txt ""
-di as txt "2) palma (Gráfico 2: razón 10% más rico / 40% más pobre)"
-di as txt "   Mismo caso: Ind_<año>.do calculan el índice con 'display', sin"
-di as txt "   exportar. FALTA: una serie consolidada 2001-2025."
+di as txt "Quedan tres hojas que no se generan desde las bases porque su fuente"
+di as txt "no es la ENEMDU:"
 di as txt ""
-di as txt "3) brechas (Gráficos 12 y 13: brechas por calificación, sector"
-di as txt "   público, sexo y etnia; e ingreso laboral por nivel educativo)"
-di as txt "   No hay do-file. FALTA por completo."
+di as txt "1) PIB (Gráfico 4) — Banco Central del Ecuador."
+di as txt "2) sal_min (Gráfico 14) — Ministerio del Trabajo + IPC."
+di as txt "3) tributacion (Gráfico 23) — tablas del impuesto a la renta del SRI."
+di as txt "   Se copian de Cuadros_Boletin_1_sv.xlsx, hoja 'Impuesto a la renta'."
 di as txt ""
-di as txt "4) PIB (Gráfico 4) — fuente BCE, no ENEMDU. No requiere do-file."
-di as txt "5) sal_min (Gráfico 14) — Ministerio del Trabajo + IPC. Externo."
-di as txt "6) tributacion (Gráfico 23) — tablas del SRI. Se copia a mano de"
-di as txt "   Cuadros_Boletin_1_sv.xlsx, hoja 'Impuesto a la renta'."
+di as txt "Y dos series del libro que NO reproducen a los do-files:"
+di as txt ""
+di as txt "a) palma: el pie del Gráfico 3 cita CEPALSTAT. El Palma calculado"
+di as txt "   sobre la ENEMDU da valores distintos (2001: 4.91 nacional contra"
+di as txt "   5.61 en el libro). Hay que decidir cuál se publica."
+di as txt "b) brechas, columnas de NIVEL de ingreso: el libro las deflactó con"
+di as txt "   un factor desalineado por fila (2001 recibió el factor de 2000,"
+di as txt "   2003 el de 2001, y así). Las razones no se ven afectadas."
 
 *==============================================================================*
 * 6. CIERRE
