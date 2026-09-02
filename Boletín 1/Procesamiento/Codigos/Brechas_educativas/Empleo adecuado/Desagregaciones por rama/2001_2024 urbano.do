@@ -5,7 +5,7 @@ clear
 * ============================================================
 
 * Ruta global para facilitar portabilidad del código
-global limpias "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+global limpias "H:/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 
 * Cargar base 2001 con variables relevantes
@@ -43,7 +43,7 @@ rename condact condact_2024
 * 2. FILTRO AREA
 * ============================================================
 
-keep if area == 1 
+*keep if area == 1 
 drop area
 
 * ============================================================
@@ -179,7 +179,7 @@ graph bar (mean) uni_crecimiento nouni_crecimiento, ///
 
 restore
 
-
+s
 
 * ============================================================
 * 8. GRÁFICOS CRECIMIENTO Y EDUCACIÓN

@@ -5,10 +5,18 @@
 *==============================================================================
 
 clear all
+
+* Raíz del Google Drive: Windows (H:) o macOS. La respeta si ya viene
+* definida por el master.
+if "$gd" == "" {
+    if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
+    else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+}
+
 set more off
 
-local base "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/analisis informalidad/Santiago/base_trabajo.dta"
-local root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Íconos"
+local base "$gd/Bases/ENEMDU/Procesadas/analisis informalidad/Santiago/base_trabajo.dta"
+local root "$gd/Papers/Íconos"
 local out  "`root'/outputs/educ_ingrl"
 cap mkdir "`root'/outputs"
 cap mkdir "`out'"

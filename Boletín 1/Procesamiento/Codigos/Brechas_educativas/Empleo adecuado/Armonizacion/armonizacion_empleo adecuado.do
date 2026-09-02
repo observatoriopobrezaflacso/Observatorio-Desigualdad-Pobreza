@@ -138,7 +138,7 @@ global bases "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletí
 global raw "$bases/enemdu_diciembres"
 global procesado "$bases/Procesadas"
 global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Outcomes/Curvas de crecimiento"
-global salarios "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Procesamiento/Bases/Salarios"
+global salarios "H:/Mi unidad/Bases/Salarios"
 
 
 
@@ -149,7 +149,7 @@ import delimited "$salarios/Salario unificado y componentes salariales.csv", cle
 encode componentesalarial, gen(componente)
 drop componentesalarial 
 keep if componente == 6 & mes == "Diciembre"
-rename (año valor) (anio salario_min)
+rename (anio valor) (anio salario_min)
 replace salario_min = subinstr(salario_min, ",", ".", .)
 destring salario_min, replace
 keep anio salario_min
@@ -193,8 +193,9 @@ quietly {
 	use "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta", clear
 	
 	* Añade la variable salario mínimo a las ENEMDU
-	merge m:m anio using "`tmp2'", keep(3) nogen
-
+	merge m:1 anio using "`tmp2'", keep(3) nogen
+	
+	
     *capture confirm variable area 
 	*if !_rc keep if area == 1
 	

@@ -3,8 +3,16 @@
 * Permite reestilizar sin volver a leer las bases.
 *==============================================================================*
 clear all
+
+* Raíz del Google Drive: Windows (H:) o macOS. La respeta si ya viene
+* definida por el master.
+if "$gd" == "" {
+    if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
+    else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+}
+
 set more off
-local out "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Íconos/outputs/educ_ingrl"
+local out "$gd/Papers/Íconos/outputs/educ_ingrl"
 use "`out'/hora_coef_educ_ingrl.dta", clear
 
 *==============================================================================*
