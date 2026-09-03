@@ -40,11 +40,14 @@ replace anio = "2024_" if anio == ""    // completar años faltantes
 rename condact condact_2024
 
 * ============================================================
-* 2. FILTRO AREA
+* 2. FILTROS 
 * ============================================================
 
-*keep if area == 1 
+keep if area == 1 
 drop area
+
+drop if p10a == . & anio != "2001_"
+drop if p10a_2001 == . & anio == "2001_"
 
 * ============================================================
 * 2. VARIABLES CLAVES: EMPLEO PLENO Y NIVEL EDUCATIVO
@@ -59,16 +62,18 @@ replace empleo_pleno = . if inlist(condact_2010, 7, 8)
 replace empleo_pleno = . if inlist(condact_2011, 7, 8)
 replace empleo_pleno = . if inlist(condact_2024, 0, 9)
 
+foreach y of numlist 2001 2010 2011 2024 {
+replace empleo_pleno = . if missing(condact_`y') & anio == "`y'_"
+}
 
 
 * Universitario
-gen universitario = inlist(p10a, 9, 10)
-replace universitario = 1 if p10a_2001 == 6 | p10a_2001 == 7
+gen universitario = inlist(p10a, 9, 10) 
+replace universitario = 1 if p10a_2001 == 6 | p10a_2001 == 7 
 drop p10a
 
 * Conservar solo variables necesarias
 keep rama1 universitario empleo_pleno anio fexp 
-
 
 * ============================================================
 * 3. GENERACIÓN DE N Y PONDERACIÓN
@@ -179,7 +184,7 @@ graph bar (mean) uni_crecimiento nouni_crecimiento, ///
 
 restore
 
-s
+
 
 * ============================================================
 * 8. GRÁFICOS CRECIMIENTO Y EDUCACIÓN
@@ -461,7 +466,7 @@ keep if inlist(rama1, 1, 3, 6, 7, 9)
 graph bar (mean) uni_crecimiento nouni_crecimiento, ///
     over(rama1, label(angle(45) labsize(small))) ///
     legend(order(1 "Universitarios" 2 "No universitarios")) ///
-	name(crec_01_10, replace)
+	name(crec_01_24, replace)
 
 restore
 
