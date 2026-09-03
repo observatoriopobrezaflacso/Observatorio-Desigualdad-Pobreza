@@ -1,0 +1,894 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       SE—Standard Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user network, expiring 15 Aug 2028
+Serial number: 401909300808
+  Licensed to: Santiago Valdivieso
+               MIT
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do analisis_concentracion_familia.do 
+
+. *****************************************************************************
+> ***
+. *  analisis_concentracion_familia.do
+. *  --------------------------------------------------------------------------
+> -
+. *  Concentration of income / wealth BY FAMILY, using the identifiers built by
+. *  build_familias.do.  This is the family-level counterpart of the
+. *  individual-level analysis at the end of
+. *      construccion_ingreso_DINA.do
+. *  where the distribution is taken over CEDULA_PK.  Here the unit of
+. *  distribution is the family, and the same DINA convention is applied:
+. *  the family's income is the SUM of its members' incomes, and the family is
+. *  then counted ONCE (its total) or its income is EQUAL-SPLIT across members,
+. *  which are the two conventions that give different answers and are both
+. *  reported below.
+. *
+. *  --------------------------------------------------------------------------
+> -
+. *  HOW TO PLUG THE REAL SRI DATA IN
+. *  --------------------------------------------------------------------------
+> -
+. *  Set FUENTE to "sri" and point $dir_merged at the ingreso_dina_YYYY.dta fil
+> es
+. *  written by construccion_ingreso_DINA.do.  The only thing needed is a
+. *  crosswalk from CEDULA_PK (the SRI anonymised key) to cod_inec_ci_actual (t
+> he
+. *  INEC key); name it in $xwalk with those two variables.  Everything else ru
+> ns
+. *  unchanged.
+. *
+. *  With FUENTE = "sim" (the default here, because the synthetic cedulados fil
+> e
+. *  carries no income) a wealth variable is simulated with a Pareto upper tail
+. *  AND a deliberate WITHIN-FAMILY CORRELATION, which is the whole point: if
+. *  wealth were independent across kin, family-level concentration would be
+. *  mechanically LOWER than individual-level concentration, and the exercise
+. *  would say nothing.  The parameter RHO_FAM below controls how much of the
+. *  variance is a family effect.
+. *
+. *  --------------------------------------------------------------------------
+> -
+. *  OUTPUT
+. *  --------------------------------------------------------------------------
+> -
+. *    $out/concentracion_por_unidad.dta   top shares and Gini for every unit o
+> f
+. *                                        analysis (individual, nuclear family
+> ,
+. *                                        extended family, dynasty) and both
+. *                                        weighting conventions
+. *    $out/top_familias.dta               the richest families, with the size
+. *                                        and composition of each
+. *    $out/kin_share_top.dta              how much of the wealth of the top
+. *                                        1 / 0.1% sits inside their own
+. *                                        second-degree kin network
+. *****************************************************************************
+> ***
+. 
+. clear all
+
+. set more off
+
+. set type double
+
+. 
+. global fake "G:/Mi unidad/Trabajos/Predoc/data/fake_data"
+
+. global ced  "$fake/Bases/Bases INEC/Cedulados/dta"
+
+. global out  "$fake/Investigadores/Santiago/Outputs/familias"
+
+. cap mkdir "$fake/Investigadores"
+
+. cap mkdir "$fake/Investigadores/Santiago"
+
+. cap mkdir "$fake/Investigadores/Santiago/Outputs"
+
+. cap mkdir "$out"
+
+. 
+. *------------------------------- parameters ---------------------------------
+> --
+. * "sim" = simulate the wealth variable; "sri" = merge the DINA income files
+. global FUENTE   "sim"
+
+. * share of the log-wealth variance that is a family effect (FUENTE = sim only
+> )
+. global RHO_FAM  0.45
+
+. * only adults are counted as potential holders
+. global EDAD_MIN 18
+
+. * reference year
+. global ANIO_REF 2023
+
+. * for FUENTE = "sri"
+. global dir_merged ""
+
+. global xwalk      ""
+
+. 
+. set seed 20260903
+
+. 
+. 
+. *****************************************************************************
+> ***
+. * HELPER: top shares and Gini of a variable over the rows in memory
+. *****************************************************************************
+> ***
+. * Deliberately written with no external ado dependency, so the same code runs
+. * inside the SRI enclave.  Rows must already be one per unit of analysis.
+. * w = the number of people the row represents (1 for a unit-weighted
+. * distribution, the family size for an equal-split distribution).
+. 
+. * Like the reference script, the distribution is taken over POSITIVE values
+. * only (construccion_ingreso_DINA.do does `xtile decil = PreTaxHHI if
+. * PreTaxHHI > 0`).  Including the zeros would raise every top share and lower
+. * the bottom-50 share; the comparison across units of analysis is unaffected,
+. * because the same rule is applied to all of them.
+. 
+. capture program drop _conc
+
+. program define _conc, rclass
+  1.     syntax varname [if] [in], PESO(varname) UNIDAD(string) PONDERA(string)
+  2. 
+.     marksample touse
+  3.     qui replace `touse' = 0 if mi(`varlist') | `varlist' <= 0 | mi(`peso')
+>  | `peso' <= 0
+  4. 
+.     preserve
+  5.         qui keep if `touse'
+  6.         qui count
+  7.         local N = r(N)
+  8.         if `N' < 20 {
+  9.             di as err "  `unidad' / `pondera': fewer than 20 usable rows, 
+> skipped"
+ 10.             exit 2000
+ 11.         }
+ 12. 
+.         * for an equal-split distribution one row stands for `peso' identical
+.         * people, so the ranking has to be on income PER PERSON
+.         gen double y = `varlist'/`peso'
+ 13.         sort y
+ 14.         gen double cw = sum(`peso')
+ 15.         qui sum `peso', meanonly
+ 16.         local W = r(sum)
+ 17.         qui sum `varlist', meanonly
+ 18.         local Y = r(sum)
+ 19. 
+.         * Gini, Brown/trapezoid form on the weighted distribution of y
+.         gen double lag_cw = cw[_n-1]
+ 20.         qui replace lag_cw = 0 in 1
+ 21.         gen double area = `peso' * (cw + lag_cw) * y
+ 22.         qui sum area, meanonly
+ 23.         local gini = r(sum)/(`W' * `Y') - 1
+ 24. 
+.         * top shares: share of total Y held by the top p% of the population
+.         foreach p in 10 5 1 0.1 {
+ 25.             local tag = subinstr("`p'", ".", "_", .)
+ 26.             qui sum `varlist' if cw > (1 - `p'/100)*`W', meanonly
+ 27.             local top_`tag' = r(sum)/`Y'
+ 28.         }
+ 29.         qui sum `varlist' if cw <= 0.5*`W', meanonly
+ 30.         local bot50 = r(sum)/`Y'
+ 31.     restore
+ 32. 
+.     * locals survive the restore; r() is only posted when the program exits,
+.     * so the display below has to use the locals, not r()
+.     di as txt "  " %-22s "`unidad'" %-14s "`pondera'" as res %10.0fc `N' ///
+>        as txt "   Gini " as res %6.4f `gini' as txt "   top1 " as res %6.4f `
+> top_1'
+ 33. 
+.     return scalar n     = `N'
+ 34.     return scalar w     = `W'
+ 35.     return scalar total = `Y'
+ 36.     return scalar gini  = `gini'
+ 37.     return scalar top10 = `top_10'
+ 38.     return scalar top5  = `top_5'
+ 39.     return scalar top1  = `top_1'
+ 40.     return scalar top01 = `top_0_1'
+ 41.     return scalar bot50 = `bot50'
+ 42. end
+
+. 
+. * one row of results, built from r() straight after a _conc call
+. capture program drop _fila
+
+. program define _fila
+  1.     args unidad pondera archivo
+  2.     preserve
+  3.         foreach s in n w total gini top10 top5 top1 top01 bot50 {
+  4.             local v_`s' = r(`s')
+  5.         }
+  6.         clear
+  7.         qui set obs 1
+  8.         gen str24 unidad  = "`unidad'"
+  9.         gen str14 pondera = "`pondera'"
+ 10.         foreach s in n w total gini top10 top5 top1 top01 bot50 {
+ 11.             gen double `s' = `v_`s''
+ 12.         }
+ 13.         qui append using "`archivo'"
+ 14.         qui save "`archivo'", replace
+ 15.     restore
+ 16. end
+
+. 
+. 
+. *****************************************************************************
+> ***
+. * 1. THE PERSON FILE, WITH THE FAMILY IDENTIFIERS AND A WEALTH VARIABLE
+. *****************************************************************************
+> ***
+. 
+. use "$ced/cedulados_familias.dta", clear
+
+. keep cod_inec_ci_actual id_fam_nuclear id_fam_nuclear2 rol_nuclear ///
+>      id_fam_extendida id_fam_extendida2 id_dinastia nf_tam nf_n_hijos nf_bipa
+> rental  ///
+>      fe_tam fe_n_fam din_tam female yob yod age2023 vivo_ref       ///
+>      n_g2_total n_g2_cons n_g2_afin k_herm k_hijos
+
+. 
+. qui count
+
+. di as res _n "persons: " %12.0fc r(N)
+
+persons:      282,824
+
+. 
+. if "$FUENTE" == "sri" {
+.     *------------------------------------------------------------------------
+> -
+.     * real data: PreTaxHHI per declarant, mapped onto the INEC key
+.     *------------------------------------------------------------------------
+> -
+.     if "$dir_merged" == "" | "$xwalk" == "" {
+.         di as err "FUENTE = sri requires \$dir_merged and \$xwalk to be set"
+.         exit 198
+.     }
+.     preserve
+.         use "$dir_merged/ingreso_dina_$ANIO_REF.dta", clear
+.         keep CEDULA_PK PreTaxHHI PostTaxHHI capital
+.         qui merge m:1 CEDULA_PK using "$xwalk", keep(match) nogen
+.         collapse (sum) PreTaxHHI PostTaxHHI capital, by(cod_inec_ci_actual)
+.         tempfile ing
+.         qui save `ing'
+.     restore
+.     qui merge 1:1 cod_inec_ci_actual using `ing', keep(master match) nogen
+.     gen double riqueza = PreTaxHHI
+.     qui replace riqueza = 0 if mi(riqueza)
+.     label var riqueza "PreTaxHHI, $ANIO_REF (0 = no declara)"
+. }
+
+. else {
+.     *------------------------------------------------------------------------
+> -
+.     * simulated: log-normal body, Pareto tail, WITH a family effect
+.     *------------------------------------------------------------------------
+> -
+.     * The family effect is attached to the EXTENDED family, so that it shows
+.     * up at every level of aggregation (nuclear families sit inside extended
+.     * ones), which is what a real inheritance process would do.
+.     bysort id_fam_extendida: gen byte _ff = _n == 1
+.     gen double _fe = rnormal(0, sqrt($RHO_FAM)) if _ff
+(194,688 missing values generated)
+.     bysort id_fam_extendida (_ff): replace _fe = _fe[_N]
+(194,688 real changes made)
+.     drop _ff
+. 
+.     gen double riqueza = .
+(282,824 missing values generated)
+.     qui replace riqueza = exp(9.2 + _fe + rnormal(0, sqrt(1 - $RHO_FAM))*1.35
+>  ///
+>                               + 0.012*(age2023 - 40) - 0.15*female) ///
+>         if age2023 >= $EDAD_MIN & vivo_ref
+.     * a Pareto upper tail: 0.6% of adults draw from a Pareto(alpha = 1.6)
+.     qui replace riqueza = riqueza * (runiform())^(-1/1.6) ///
+>         if !mi(riqueza) & runiform() < 0.006
+.     * only 55% of adults hold anything measurable at all (as in tax records)
+.     qui replace riqueza = 0 if !mi(riqueza) & runiform() < 0.45
+.     qui replace riqueza = 0 if mi(riqueza)
+.     drop _fe
+.     label var riqueza "riqueza simulada (family effect = $RHO_FAM)"
+. }
+
+. 
+. qui sum riqueza if riqueza > 0
+
+. di as txt "holders with positive wealth: " as res %12.0fc r(N) ///
+>    as txt "   mean " as res %14.0fc r(mean) as txt "   max " as res %16.0fc r
+> (max)
+holders with positive wealth:      105,564   mean         20,490   max        2
+> ,000,838
+
+. 
+. qui save "$fake/Bases/bases_temp/_rq.dta", replace
+
+. 
+. 
+. *****************************************************************************
+> ***
+. * 2. CONCENTRATION BY UNIT OF ANALYSIS
+. *****************************************************************************
+> ***
+. * Two conventions, both reported, because they answer different questions.
+. *
+. *   "unidad"      one row per family, weight 1.  The distribution is over
+. *                 families: "the richest 1% of families hold x% of wealth".
+. *                 This is the natural family-level statement, and it is the
+. *                 one that is NOT comparable with the individual-level number
+> ,
+. *                 because a rich family is usually a big family.
+. *
+. *   "equal-split" one row per family, weight = number of members, income
+. *                 divided equally among them.  The distribution is over
+. *                 PEOPLE, and it IS directly comparable with the
+. *                 individual-level number, because the population is the same
+. *                 in both.  This is the DINA convention.
+. 
+. global res "$fake/Bases/bases_temp/_res.dta"
+
+. clear
+
+. set obs 1
+Number of observations (_N) was 0, now 1.
+
+. gen str24 unidad = ""
+(1 missing value generated)
+
+. gen str14 pondera = ""
+(1 missing value generated)
+
+. gen double n = .
+(1 missing value generated)
+
+. gen double w = .
+(1 missing value generated)
+
+. gen double total = .
+(1 missing value generated)
+
+. gen double gini = .
+(1 missing value generated)
+
+. gen double top10 = .
+(1 missing value generated)
+
+. gen double top5 = .
+(1 missing value generated)
+
+. gen double top1 = .
+(1 missing value generated)
+
+. gen double top01 = .
+(1 missing value generated)
+
+. gen double bot50 = .
+(1 missing value generated)
+
+. drop in 1
+(1 observation deleted)
+
+. qui save "$res", replace
+
+. 
+. di as txt _n "{hline 78}"
+
+------------------------------------------------------------------------------
+
+. di as txt "CONCENTRATION BY UNIT OF ANALYSIS"
+CONCENTRATION BY UNIT OF ANALYSIS
+
+. di as txt "{hline 78}"
+------------------------------------------------------------------------------
+
+. di as txt "  unit                  weighting        rows"
+  unit                  weighting        rows
+
+. 
+. *--- 2.1 individuals (the benchmark: exactly what the DINA script does) -----
+> ---
+. use "$fake/Bases/bases_temp/_rq.dta", clear
+
+. gen double peso = 1
+
+. _conc riqueza if age2023 >= $EDAD_MIN & vivo_ref, peso(peso) ///
+>     unidad("individuo") pondera("por persona")
+(1 missing value generated)
+  individuo             por persona      105,564   Gini 0.6166   top1 0.1400
+
+. _fila "individuo" "por persona" "$res"
+
+. 
+. *--- 2.2 the family units ---------------------------------------------------
+> -
+. foreach u in id_fam_nuclear id_fam_nuclear2 id_fam_extendida id_fam_extendida
+> 2 id_dinastia {
+  2. 
+.     if "`u'" == "id_fam_nuclear"    local etq "familia nuclear"
+  3.     if "`u'" == "id_fam_nuclear2"   local etq "fam. nuclear (r2)"
+  4.     if "`u'" == "id_fam_extendida"  local etq "familia extendida"
+  5.     if "`u'" == "id_fam_extendida2" local etq "fam. ext. (2 gen)"
+  6.     if "`u'" == "id_dinastia"       local etq "dinastia"
+  7. 
+.     use "$fake/Bases/bases_temp/_rq.dta", clear
+  8.     * A family's wealth is the sum over its members.  For the equal-split
+.     * convention the denominator is the number of LIVING ADULTS, so that the
+.     * population behind the family rows is the same population as behind the
+.     * individual row above and the two are directly comparable.  A family wit
+> h
+.     * no living adult gets a floor of 1 (its wealth is zero anyway).
+.     gen byte adulto_vivo = age2023 >= $EDAD_MIN & vivo_ref
+  9.     collapse (sum) riqueza (sum) n_adultos = adulto_vivo (sum) n_vivos = v
+> ivo_ref ///
+>              (count) n_pers = riqueza, by(`u')
+ 10.     qui replace n_adultos = 1 if n_adultos == 0
+ 11.     gen double peso1 = 1
+ 12. 
+.     foreach pw in peso1 n_adultos {
+ 13.         if "`pw'" == "peso1" local pe "por familia"
+ 14.         else                 local pe "equal-split"
+ 15.         capture _conc riqueza, peso(`pw') unidad("`etq'") pondera("`pe'")
+ 16.         if _rc == 0 _fila "`etq'" "`pe'" "$res"
+ 17.     }
+ 18. }
+
+. 
+. use "$res", clear
+
+. gen byte ord = .
+(11 missing values generated)
+
+. qui replace ord = 1 if unidad == "individuo"
+
+. qui replace ord = 2 if unidad == "familia nuclear"
+
+. qui replace ord = 3 if unidad == "fam. nuclear (r2)"
+
+. qui replace ord = 4 if unidad == "familia extendida"
+
+. qui replace ord = 5 if unidad == "fam. ext. (2 gen)"
+
+. qui replace ord = 6 if unidad == "dinastia"
+
+. sort ord pondera
+
+. drop ord
+
+. label var gini  "Gini"
+
+. label var top10 "share of the top 10%"
+
+. label var top1  "share of the top 1%"
+
+. label var top01 "share of the top 0.1%"
+
+. label var bot50 "share of the bottom 50%"
+
+. format gini top10 top5 top1 top01 bot50 %7.4f
+
+. compress
+  variable n was double now long
+  variable w was double now long
+  variable unidad was str24 now str17
+  variable pondera was str14 now str11
+  (198 bytes saved)
+
+. save "$out/concentracion_por_unidad.dta", replace
+file G:/Mi
+    unidad/Trabajos/Predoc/data/fake_data/Investigadores/Santiago/Outputs/fam
+    > ilias/concentracion_por_unidad.dta saved
+
+. 
+. di as txt _n "{hline 78}"
+
+------------------------------------------------------------------------------
+
+. di as txt "TOP SHARES AND GINI"
+TOP SHARES AND GINI
+
+. di as txt "{hline 78}"
+------------------------------------------------------------------------------
+
+. di as txt "unidad             ponderacion       n     Gini   top10    top1   
+> top0.1  bot50"
+unidad             ponderacion       n     Gini   top10    top1   top0.1  bot50
+
+. di as txt "{hline 78}"
+------------------------------------------------------------------------------
+
+. forvalues i = 1/`=_N' {
+  2.     di as txt %-18s unidad[`i'] " " %-12s pondera[`i'] ///
+>        as res %8.0fc n[`i'] " " %7.4f gini[`i'] " " %7.4f top10[`i'] ///
+>        " " %7.4f top1[`i'] " " %7.4f top01[`i'] " " %7.4f bot50[`i']
+  3. }
+individuo          por persona  105,564  0.6166  0.4813  0.1400  0.0343  0.1093
+familia nuclear    equal-split   71,506  0.5976  0.4597  0.1330  0.0322  0.1179
+familia nuclear    por familia   71,506  0.6111  0.4661  0.1270  0.0294  0.1078
+fam. nuclear (r2)  equal-split   75,107  0.6014  0.4628  0.1349  0.0332  0.1157
+fam. nuclear (r2)  por familia   75,107  0.6109  0.4671  0.1281  0.0299  0.1084
+familia extendida  equal-split   57,553  0.5648  0.4273  0.1171  0.0270  0.1349
+familia extendida  por familia   57,553  0.6421  0.5034  0.1470  0.0331  0.0947
+fam. ext. (2 gen)  equal-split   58,560  0.5620  0.4284  0.1223  0.0285  0.1379
+fam. ext. (2 gen)  por familia   58,560  0.6196  0.4698  0.1231  0.0272  0.1011
+dinastia           equal-split   25,178  0.2758  0.2670  0.0843  0.0215  0.1328
+dinastia           por familia   25,178  0.8529  0.7953  0.6358  0.5825  0.0380
+
+. di as txt "{hline 78}"
+------------------------------------------------------------------------------
+
+. 
+. di as txt _n "Read it like this: comparing 'individuo / por persona' with"
+
+Read it like this: comparing 'individuo / por persona' with
+
+. di as txt "'familia * / equal-split' isolates how much of measured individual
+> "
+'familia * / equal-split' isolates how much of measured individual
+
+. di as txt "inequality is inequality BETWEEN families rather than within them.
+> "
+inequality is inequality BETWEEN families rather than within them.
+
+. di as txt "The 'por familia' rows are a different population (families, not"
+The 'por familia' rows are a different population (families, not
+
+. di as txt "people) and are not comparable with the individual row."
+people) and are not comparable with the individual row.
+
+. 
+. 
+. *****************************************************************************
+> ***
+. * 3. THE RICHEST FAMILIES
+. *****************************************************************************
+> ***
+. 
+. use "$fake/Bases/bases_temp/_rq.dta", clear
+
+. collapse (sum) riqueza_fam = riqueza (count) n_pers = riqueza    ///
+>          (sum) n_vivos = vivo_ref (sum) n_hijos = k_hijos        ///
+>          (first) id_fam_extendida id_dinastia                    ///
+>          (min) yob_min = yob (max) yob_max = yob, by(id_fam_nuclear)
+
+. gen double riqueza_pc = riqueza_fam/max(n_vivos, 1)
+
+. gsort -riqueza_fam
+
+. gen long rank_fam = _n
+
+. qui sum riqueza_fam, meanonly
+
+. gen double share_acum = sum(riqueza_fam)/r(sum)
+
+. label var riqueza_fam "riqueza total de la familia nuclear"
+
+. label var riqueza_pc  "riqueza por miembro vivo"
+
+. label var share_acum  "share acumulado de la riqueza total"
+
+. keep in 1/2000
+(113,390 observations deleted)
+
+. compress
+  variable n_pers was long now byte
+  variable rank_fam was long now int
+  variable n_vivos was double now byte
+  variable n_hijos was double now byte
+  (38,000 bytes saved)
+
+. save "$out/top_familias.dta", replace
+file G:/Mi
+    unidad/Trabajos/Predoc/data/fake_data/Investigadores/Santiago/Outputs/fam
+    > ilias/top_familias.dta saved
+
+. 
+. di as txt _n "{hline 78}"
+
+------------------------------------------------------------------------------
+
+. di as txt "THE 15 RICHEST NUCLEAR FAMILIES"
+THE 15 RICHEST NUCLEAR FAMILIES
+
+. di as txt "{hline 78}"
+------------------------------------------------------------------------------
+
+. format riqueza_fam riqueza_pc %14.0fc
+
+. format share_acum %7.4f
+
+. list rank_fam n_pers n_vivos riqueza_fam riqueza_pc share_acum in 1/15, noobs
+
+  +----------------------------------------------------------------+
+  | rank_fam   n_pers   n_vivos   riqueza~m   riqueza~c   share_~m |
+  |----------------------------------------------------------------|
+  |        1        1         1   2,000,838   2,000,838     0.0009 |
+  |        2        4         4   1,934,752     483,688     0.0018 |
+  |        3        3         3   1,763,187     587,729     0.0026 |
+  |        4        2         1   1,716,409   1,716,409     0.0034 |
+  |        5        2         2   1,491,845     745,922     0.0041 |
+  |----------------------------------------------------------------|
+  |        6        3         3   1,425,483     475,161     0.0048 |
+  |        7        6         5   1,374,646     274,929     0.0054 |
+  |        8        2         2   1,340,099     670,050     0.0060 |
+  |        9        3         3   1,270,336     423,445     0.0066 |
+  |       10        4         4   1,201,107     300,277     0.0072 |
+  |----------------------------------------------------------------|
+  |       11        3         3   1,190,071     396,690     0.0077 |
+  |       12        4         4   1,099,389     274,847     0.0082 |
+  |       13        5         5   1,083,246     216,649     0.0087 |
+  |       14        2         1   1,071,896   1,071,896     0.0092 |
+  |       15        2         1   1,067,442   1,067,442     0.0097 |
+  +----------------------------------------------------------------+
+
+. 
+. *--- how big are rich families? ---------------------------------------------
+> -
+. use "$fake/Bases/bases_temp/_rq.dta", clear
+
+. collapse (sum) riqueza_fam = riqueza (count) n_pers = riqueza (sum) n_vivos =
+>  vivo_ref, ///
+>     by(id_fam_nuclear)
+
+. qui replace n_vivos = 1 if n_vivos == 0
+
+. xtile decil_fam = riqueza_fam if riqueza_fam > 0, nq(10)
+
+. di as txt _n "family size by decile of family wealth"
+
+family size by decile of family wealth
+
+. di as txt "(if rich families are systematically bigger, the 'por familia' and
+> "
+(if rich families are systematically bigger, the 'por familia' and
+
+. di as txt " 'equal-split' rankings will disagree, which is exactly why both a
+> re"
+ 'equal-split' rankings will disagree, which is exactly why both are
+
+. di as txt " reported above)"
+ reported above)
+
+. tabstat n_pers n_vivos riqueza_fam, by(decil_fam) stat(n mean) format(%12.2f)
+
+Summary statistics: N, Mean
+Group variable: decil_fam (10 quantiles of riqueza_fam )
+
+decil_fam |       n_pers      n_vivos     riquez~m
+----------+---------------------------------------
+        1 |      7151.00      7151.00      7151.00
+          |         2.50         2.37      1619.71
+----------+---------------------------------------
+        2 |      7151.00      7151.00      7151.00
+          |         2.58         2.44      3747.77
+----------+---------------------------------------
+        3 |      7150.00      7150.00      7150.00
+          |         2.62         2.47      6054.80
+----------+---------------------------------------
+        4 |      7151.00      7151.00      7151.00
+          |         2.73         2.57      8820.76
+----------+---------------------------------------
+        5 |      7150.00      7150.00      7150.00
+          |         2.84         2.68     12356.53
+----------+---------------------------------------
+        6 |      7151.00      7151.00      7151.00
+          |         2.90         2.74     17104.96
+----------+---------------------------------------
+        7 |      7151.00      7151.00      7151.00
+          |         3.03         2.86     23871.78
+----------+---------------------------------------
+        8 |      7150.00      7150.00      7150.00
+          |         3.16         3.00     34377.63
+----------+---------------------------------------
+        9 |      7151.00      7151.00      7151.00
+          |         3.29         3.10     53565.18
+----------+---------------------------------------
+       10 |      7150.00      7150.00      7150.00
+          |         3.38         3.18    140983.82
+----------+---------------------------------------
+    Total |     71506.00     71506.00     71506.00
+          |         2.90         2.74     30249.28
+--------------------------------------------------
+
+. 
+. 
+. *****************************************************************************
+> ***
+. * 4. HOW MUCH OF THE WEALTH OF THE RICH SITS INSIDE THEIR OWN KIN NETWORK?
+. *****************************************************************************
+> ***
+. * This is the question the partition cannot answer and the second-degree edge
+. * list can: take each person in the top 1%, and add up the wealth of their
+. * parents, children, grandparents, grandchildren, siblings, spouse and
+. * in-laws.  Overlap between ego networks is fine here, because the statistic
+. * is an average over egos, not a decomposition of the total.
+. 
+. capture confirm file "$ced/red_parentesco_g2.dta"
+
+. if _rc == 0 {
+. 
+.     use "$fake/Bases/bases_temp/_rq.dta", clear
+.     keep cod_inec_ci_actual riqueza vivo_ref age2023
+.     qui keep if age2023 >= $EDAD_MIN & vivo_ref
+. 
+.     * percentile of the individual distribution
+.     qui sum riqueza if riqueza > 0
+.     xtile pctl = riqueza if riqueza > 0, nq(1000)
+.     gen byte top1  = pctl > 990 & !mi(pctl)
+.     gen byte top01 = pctl > 999 & !mi(pctl)
+.     gen byte top10 = pctl > 900 & !mi(pctl)
+. 
+.     rename cod_inec_ci_actual ci
+.     qui save "$fake/Bases/bases_temp/_ego.dta", replace
+. 
+.     * the wealth of each alter
+.     keep ci riqueza
+.     rename ci      alter
+.     rename riqueza riqueza_alter
+.     qui save "$fake/Bases/bases_temp/_alt.dta", replace
+. 
+.     use "$ced/red_parentesco_g2.dta", clear
+.     qui keep if primaria
+.     qui merge m:1 alter using "$fake/Bases/bases_temp/_alt.dta", keep(match) 
+> nogen
+.     gen double rq_cons = riqueza_alter * (via == 1)
+.     gen double rq_afin = riqueza_alter * (via == 2)
+.     gen double rq_g1   = riqueza_alter * (grado == 1)
+.     collapse (sum) rq_kin = riqueza_alter rq_cons rq_afin rq_g1 ///
+>              (count) n_kin = riqueza_alter, by(ci)
+.     qui save "$fake/Bases/bases_temp/_kin.dta", replace
+. 
+.     use "$fake/Bases/bases_temp/_ego.dta", clear
+.     qui merge 1:1 ci using "$fake/Bases/bases_temp/_kin.dta", keep(master mat
+> ch) nogen
+.     foreach v in rq_kin rq_cons rq_afin rq_g1 n_kin {
+  2.         qui replace `v' = 0 if mi(`v')
+  3.     }
+.     gen double rq_ego_kin = riqueza + rq_kin
+.     gen double ratio_kin  = rq_kin/riqueza if riqueza > 0
+(86,377 missing values generated)
+. 
+.     label var rq_kin      "riqueza de los parientes hasta 2do grado"
+.     label var rq_ego_kin  "riqueza del ego mas sus parientes hasta 2do grado"
+.     label var ratio_kin   "riqueza de los parientes / riqueza del ego"
+.     label var n_kin       "parientes hasta 2do grado con riqueza observada"
+. 
+.     di as txt _n "{hline 78}"
+
+------------------------------------------------------------------------------
+.     di as txt "KIN WEALTH OF THE RICH  (second-degree network, per ego)"
+KIN WEALTH OF THE RICH  (second-degree network, per ego)
+.     di as txt "{hline 78}"
+------------------------------------------------------------------------------
+.     di as txt _n "mean over egos, by position in the individual distribution"
+
+mean over egos, by position in the individual distribution
+.     gen byte grupo = 1
+.     qui replace grupo = 2 if top10
+.     qui replace grupo = 3 if top1
+.     qui replace grupo = 4 if top01
+.     label define grupo 1 "bottom 90" 2 "top 10-1" 3 "top 1-0.1" 4 "top 0.1", 
+> replace
+.     label values grupo grupo
+.     tabstat riqueza rq_kin rq_ego_kin n_kin ratio_kin, by(grupo) ///
+>         stat(n mean p50) format(%14.2f) longstub
+
+grupo        Stats |        riqueza         rq_kin       rq_ego~n
+-------------------+---------------------------------------------
+bottom 90        N |      181385.00      181385.00      181385.00
+              Mean |        6186.27      110531.73      116718.00
+               p50 |        1146.69       49442.77       56210.15
+-------------------+---------------------------------------------
+top 10-1         N |        9501.00        9501.00        9501.00
+              Mean |       77697.41      151014.89      228712.30
+               p50 |       68201.34       73682.11      155556.75
+-------------------+---------------------------------------------
+top 1-0.1        N |         950.00         950.00         950.00
+              Mean |      241042.85      190234.03      431276.88
+               p50 |      218207.98       93183.00      348094.39
+-------------------+---------------------------------------------
+top 0.1          N |         105.00         105.00         105.00
+              Mean |      702039.74      348967.47     1051007.21
+               p50 |      593143.55       98016.21      861671.04
+-------------------+---------------------------------------------
+Total            N |      191941.00      191941.00      191941.00
+              Mean |       11269.11      113060.55      124329.66
+               p50 |        1879.42       50671.81       62605.58
+-----------------------------------------------------------------
+
+grupo        Stats |          n_kin       ratio_~n
+-------------------+------------------------------
+bottom 90        N |      181385.00       95008.00
+              Mean |           9.26          23.05
+               p50 |           6.00           5.55
+-------------------+------------------------------
+top 10-1         N |        9501.00        9501.00
+              Mean |          10.28           2.14
+               p50 |           7.00           1.00
+-------------------+------------------------------
+top 1-0.1        N |         950.00         950.00
+              Mean |          11.40           0.82
+               p50 |           7.00           0.40
+-------------------+------------------------------
+top 0.1          N |         105.00         105.00
+              Mean |          12.87           0.55
+               p50 |           9.00           0.16
+-------------------+------------------------------
+Total            N |      191941.00      105564.00
+              Mean |           9.32          20.94
+               p50 |           6.00           4.41
+--------------------------------------------------
+. 
+.     di as txt _n "share of total wealth reachable within two degrees of the t
+> op 1%"
+
+share of total wealth reachable within two degrees of the top 1%
+.     qui sum riqueza
+.     local TOT = r(sum)
+.     preserve
+.         qui keep if top1
+.         * a relative can be reachable from several egos: count each person on
+> ce
+.         keep ci
+.         qui save "$fake/Bases/bases_temp/_t1.dta", replace
+.         use "$ced/red_parentesco_g2.dta", clear
+.         qui keep if primaria
+.         qui merge m:1 ci using "$fake/Bases/bases_temp/_t1.dta", keep(match) 
+> nogen
+.         keep alter
+.         qui duplicates drop
+.         rename alter ci
+.         qui append using "$fake/Bases/bases_temp/_t1.dta"
+.         qui duplicates drop
+.         qui merge 1:1 ci using "$fake/Bases/bases_temp/_ego.dta", keep(match)
+>  nogen
+.         qui sum riqueza
+.         di as res "  " %6.2f 100*r(sum)/`TOT' "% of total wealth, held by " /
+> //
+>            %10.0fc r(N) " people (top 1% and their second-degree kin)"
+   20.18% of total wealth, held by     11,927 people (top 1% and their second-d
+> egree kin)
+.     restore
+. 
+.     keep ci riqueza rq_kin rq_cons rq_afin rq_g1 n_kin rq_ego_kin ratio_kin g
+> rupo
+.     rename ci cod_inec_ci_actual
+.     compress
+  variable n_kin was long now int
+  (383,882 bytes saved)
+.     save "$out/kin_share_top.dta", replace
+file G:/Mi
+    unidad/Trabajos/Predoc/data/fake_data/Investigadores/Santiago/Outputs/fam
+    > ilias/kin_share_top.dta saved
+. }
+
+. else {
+.     di as err _n "red_parentesco_g2.dta not found - section 4 skipped."
+.     di as err "Run build_familias.do with HACER_RED = 1."
+. }
+
+. 
+. di as res _n "outputs written to $out"
+
+outputs written to G:/Mi unidad/Trabajos/Predoc/data/fake_data/Investigadores/S
+> antiago/Outputs/familias
+
+. 
+end of do-file
