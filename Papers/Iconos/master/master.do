@@ -46,6 +46,7 @@ global run_ginipalma 1     // gini y palma   (Gráficos 1, 2, 3)
 global run_brechas   1     // brechas        (Gráficos 12, 13)
 global run_gic       0     // GIC (Gráficos 5, 6, 7) — ver nota en la sección 4
 global run_sri       0     // ineq_SRI (Gráfico 3) — ver nota en la sección 4
+global run_consolid  1     // junta todos los Excel en un solo libro (sección 4b)
 
 * Si un bloque falla, el master sigue con el siguiente y lo reporta al final.
 global fallos ""
@@ -67,8 +68,6 @@ local hoy = subinstr("`c(current_date)'", " ", "_", .)
 * 3.0 Serie del Gini y del Palma -> hojas gini y palma (Gráficos 1, 2 y 3)
 *     Salida: $out/desigualdad/gini_palma_serie.dta
 *             $out/desigualdad/gini_palma_tablas.xlsx
-*     El Gini reproduce los valores del libro. El Palma NO: el pie del
-*     Gráfico 3 cita CEPALSTAT, así que esa serie no sale de la ENEMDU.
 *     El do-file imprime la comparación al final.
 *------------------------------------------------------------------------------
 if $run_ginipalma {
@@ -174,6 +173,21 @@ if $run_sri {
     di as res _n "=== [extra] Percentiles de ingreso, SRI ==="
     capture noisily do "$repo/SRI/Procesamiento/Codigos/Renta/renta_percentiles.do"
     if _rc global fallos "$fallos renta_percentiles(_rc=`=_rc')"
+}
+
+*==============================================================================*
+* 4b. LIBRO ÚNICO CON TODAS LAS TABLAS
+*
+* Cada do-file escribe su propio .xlsx en su carpeta. Este bloque junta todas
+* esas hojas en un solo libro, con una hoja de índice que dice de dónde viene
+* cada tabla:
+*     $out/Iconos_resultados.xlsx
+*==============================================================================*
+
+if $run_consolid {
+    di as res _n "=== [final] Libro consolidado ==="
+    capture noisily do "$cod/master/consolidar_excel.do"
+    if _rc global fallos "$fallos consolidar_excel(_rc=`=_rc')"
 }
 
 *==============================================================================*
