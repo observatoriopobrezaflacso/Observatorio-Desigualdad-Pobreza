@@ -67,7 +67,11 @@ global root     "$gd/Papers/Íconos"
 local anios  1992 1999 2001 2010 2011 2024
 local pares  1992-1999 2001-2010 2011-2024 2001-2024
 
-local ntop   8                        // ramas mostradas en los gráficos de barras
+* Ramas mostradas en los gráficos de barras de crecimiento, por código CIIU 4.0:
+* 1 agricultura y pesca, 3 manufactura, 6 construcción, 7 comercio,
+* 9 alojamiento/comida. Son las cinco ramas de empleo masivo con presencia en
+* todo el período, así que las barras son comparables entre pares de años.
+global ramas_bar 1 3 6 7 9
 local filtro 0                        // 0 = nacional, 1 = urbano, 2 = rural
 global minobs 50                      // mínimo de casos por rama-año en las regresiones
 
@@ -708,17 +712,18 @@ foreach par of local pares {
     gen double g_nouni_`y0'_`y1' = 100 * (emp_nouni`y1' / emp_nouni`y0' - 1)
     gen double g_tot_`y0'_`y1'   = 100 * (emp`y1'       / emp`y0'       - 1)
 
-    * Ramas con muestra suficiente en ambos años, y las `ntop' de mayor empleo.
-    * El orden se construye sobre una copia con las ramas inválidas al fondo:
-    * -gsort -x- pone los missing PRIMERO y se llevaría los primeros puestos.
+    * -ok- marca las ramas con muestra suficiente en ambos años (la usan las
+    * dispersiones); -top- son las ramas fijas del gráfico de barras, sujetas
+    * a esa misma condición de muestra.
     cap drop ok
     cap drop top
     gen byte ok = obs`y0' >= $minobs & obs`y1' >= $minobs & !missing(obs`y0', obs`y1')
-    tempvar orden
-    gen double `orden' = cond(ok & !missing(emp`y1'), emp`y1', -1)
-    gsort -`orden'
-    gen byte top = (_n <= `ntop') & ok
-    drop `orden'
+    gen byte top = 0
+    foreach r of global ramas_bar {
+        replace top = 1 if rama1 == `r' & ok
+        qui count if rama1 == `r' & !ok
+        if r(N) di as error "  `par': la rama `r' no cumple el mínimo de casos y queda fuera de las barras."
+    }
 
     * (a) Barras: crecimiento del empleo por rama y nivel educativo
     graph hbar (asis) g_uni_`y0'_`y1' g_nouni_`y0'_`y1' if top, ///
@@ -727,7 +732,7 @@ foreach par of local pares {
         yline(0, lcolor(gs9)) ///
         ytitle("Variación del empleo `y0'-`y1' (%)", size(small)) ///
         title("Crecimiento del empleo por rama y nivel educativo", size(medium)) ///
-        subtitle("Ecuador `ambito', `y0'-`y1'. Las `ntop' ramas de mayor empleo en `y1'", size(small)) ///
+        subtitle("Ecuador `ambito', `y0'-`y1'. Ramas seleccionadas, ordenadas por empleo en `y1'", size(small)) ///
         legend(order(1 "Con educación superior" 2 "Sin educación superior") ///
                rows(1) size(small) region(lstyle(none))) ///
         note("${fuente}" "${defs}" "`cav'" "`c90'" "${cavamb}", size(vsmall)) ///
