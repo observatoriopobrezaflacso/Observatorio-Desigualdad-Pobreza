@@ -6,6 +6,11 @@
 * 1) Construir IPC promedio anual a partir de la serie histórica mensual del    *
 *    INEC (hoja "1. ÍNDICE", base empalmada 2014=100).                          *
 * 2) Calcular factor de deflactación: f_t = IPC_t / IPC_2025                    *
+* 2b) Llevar el umbral simulado a la moneda de cada año (sucres hasta 1999) con *
+*    el factor fijo de la dolarización, 25.000 S/$. Los ingresos NO se          *
+*    convierten: quedan como los levantó la encuesta. El IPC es un índice y no  *
+*    cambia la unidad monetaria, así que el cruce de moneda necesita ese factor *
+*    y tiene que ser uno solo para toda la serie.                               *
 * 3) Salario mínimo simulado en cada año: smin_sim_t = SBU_2025 * f_t           *
 * 4) Reconstruir el indicador de empleo adecuado replicando exactamente la      *
 *    lógica original, pero sustituyendo el umbral salarial vigente por el       *
@@ -20,16 +25,23 @@ capture log close
 *------------------------------------------------------------------------------*
 * 0. RUTAS
 *------------------------------------------------------------------------------*
-global user_root_drive "H:\Mi unidad"
+global user_root_drive "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 global bases     "$user_root_drive/Bases"
 global raw       "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios  "$bases/Salarios"
 global ipc       "$bases/IPC"
 global out       "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global out_plot  "$out"
+global excel     "$out/serie_adec_pea_1991_2025.xlsx"
 
 * SBU vigente en 2025 (USD). Ajustar si corresponde.
 scalar sbu_2025 = 470
+
+* Equivalencia sucre/dólar de la dolarización: el 13 de marzo de 2000 todos los
+* precios, sueldos y contratos en sucres se convirtieron a 25.000 por dólar. Es
+* el ÚNICO factor con que se cruza la frontera de moneda en este script, y va
+* sobre el umbral simulado, no sobre los ingresos (ver sección 1c).
+scalar tc_dolarizacion = 25000
 
 
 *==============================================================================*
@@ -76,7 +88,7 @@ gen ipc_base2025 = ipc_anual / ipc_2025
 gen salario_min_sim = sbu_2025 * ipc_base2025
 
 label variable ipc_anual       "IPC general nacional, promedio Oct-Dic (base 2014=100)"
-label variable ipc_base2025    "IPC Q4 reescalado a base 2025 Q4=1"
+label variable ipc_base2025    "IPC diciembre reescalado a base 2025"
 label variable salario_min_sim "SBU 2025 ($`=sbu_2025') a precios Q4 del año t"
 
 tempfile ipc_tmp
@@ -113,17 +125,85 @@ append using `sbu_post2000'
 tempfile sbu_hist
 save `sbu_hist', replace
 
-* Combinar IPC + histórico salarial
+*------------------------------------------------------------------------------*
+* 1c. TIPO DE CAMBIO SUCRE / DÓLAR (REFERENCIA)                                *
+*------------------------------------------------------------------------------*
+* Hasta 1999 la ENEMDU levanta los ingresos en sucres y desde 2000 en dólares.
+* Se carga el tipo de cambio de VENTA del MERCADO LIBRE DE CAMBIOS a FIN DE
+* PERIODO, que es el que corresponde a una encuesta levantada en diciembre.
+*
+* OJO: tc NO se usa para construir el indicador. Queda en la base como columna
+* descriptiva, para poder expresar ingresos de los 90s en dólares corrientes de
+* la época si hace falta. El cruce de moneda del umbral simulado se hace con
+* tc_dolarizacion (25.000), un factor único; ver más abajo.
+*
+* Hoja "anual", encabezados en tres filas:
+*   fila 4 = mercado (oficial / intervención / libre)
+*   fila 5 = promedio / fin de periodo
+*   fila 6 = compra / venta
+* De ahí, la columna N es "mercado libre - fin de periodo - venta".
+
+import excel "$ipc/tipo_cambio_sucre_dolar.xls", sheet("anual") allstring clear
+
+* control: la columna N debe seguir siendo la que se cree que es
+if strtrim(K[4]) != "MERCADO LIBRE DE CAMBIOS" | strtrim(M[5]) != "FIN DE PERIODO" ///
+ | strtrim(N[6]) != "Venta" {
+    di as error "Cambió el formato de tipo_cambio_sucre_dolar.xls: la columna N ya no es"
+    di as error "'mercado libre / fin de periodo / venta'. Revisar el archivo."
+    exit 459
+}
+
+gen int    anio = real(strtrim(A))
+gen double tc   = real(strtrim(N))
+keep anio tc
+keep if inrange(anio, 1990, 1999) & tc < .
+
+label variable tc "Sucres por dólar: venta, fin de periodo, mercado libre"
+
+tempfile tipo_cambio
+save `tipo_cambio'
+
+
+* Combinar IPC + histórico salarial + tipo de cambio
 use `ipc_tmp', clear
 merge 1:1 anio using `sbu_hist', nogen
+merge 1:1 anio using `tipo_cambio', nogen
 
-label variable salario_min "SBU vigente del año (histórico)"
+* De 2000 en adelante la economía ya está dolarizada: el factor es 1
+replace tc = 1 if anio >= 2000
 
-list anio ipc_anual ipc_base2025 salario_min salario_min_sim, sep(0) noobs
+* control: ningún año en sucres puede quedarse sin tipo de cambio
+qui count if inrange(anio, 1991, 1999) & missing(tc)
+if r(N) > 0 {
+    di as error "Hay `r(N)' año(s) de los 90s sin tipo de cambio."
+    exit 459
+}
+
+* Los ingresos de la ENEMDU y el SBU vigente se dejan en la moneda de cada año:
+* sucres hasta 1999, dólares desde 2000. Ninguno de los dos se convierte, así que
+* la serie oficial (adec) no depende de ningún supuesto cambiario.
+*
+* El que sí tiene que cruzar la frontera de moneda es el umbral SIMULADO: está
+* definido como el SBU de 2025 (USD) deflactado, y el IPC no cambia la unidad
+* monetaria, sólo la época. Se lo lleva a sucres del año con el factor fijo de
+* la dolarización.
+*
+* El factor tiene que ser uno solo para toda la serie. Usar el tipo de cambio de
+* MERCADO de cada año descuenta dos veces la depreciación del sucre: el IPC ya
+* la recoge como inflación interna (los precios en sucres se multiplican por
+* 11,9 entre 1991 y 1999). Con tipo de mercado el SBU de 1990 salía valiendo
+* unas 15 veces el de 2024, que es imposible.
+recast double salario_min_sim
+replace salario_min_sim = salario_min_sim * tc_dolarizacion if anio <= 1999
+
+label variable salario_min     "SBU vigente del año, en la moneda del año"
+label variable salario_min_sim "SBU 2025 deflactado, en la moneda del año"
+
+list anio ipc_anual ipc_base2025 tc salario_min salario_min_sim, sep(0) noobs
 
 tempfile deflactor
 save `deflactor', replace
-
+s
 
 *==============================================================================*
 * 2. RECONSTRUIR EMPLEO ADECUADO CON UMBRAL SIMULADO                            
@@ -206,7 +286,13 @@ foreach y of numlist 1991(1)2025 {
             replace pean = 1 if petn == 1 & p20 == 2 & p21 <= 11
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 1
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 1
-            replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 2 & p34 >= 7 & p35 == 1
+            * "p34 < ." es imprescindible: en Stata el missing es mayor que
+            * cualquier número, así que sin ese tope "p34 >= 7" también es cierto
+            * para quien no tiene dato de motivo de no búsqueda, y esa gente
+            * entraría al desempleo oculto (PEA) en vez de quedar en la PEI.
+            * Sólo pasa en esta rama: en 2000-2006 y 2007+ la condición es
+            * "p34 <= 7", que con missing es falsa.
+            replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 2 & p34 >= 7 & p34 < . & p35 == 1
         }
         label variable pean "Población Económicamente Activa"
 
@@ -228,10 +314,49 @@ foreach y of numlist 1991(1)2025 {
         label variable empleo "Población con Empleo"
 
         *--------- 1. INGRESO LABORAL ---------*
-        gen ila = ingrl
-        replace ila = . if inlist(ila, -1, 999999)
-        if inrange(anio, 1990, 1999) replace ila = . if ila >= 900000
-        else                         replace ila = . if ila >= 90000
+        * En doble precisión: en float, el redondeo del umbral simulado (que en
+        * los 90s es un número grande, en sucres) desplaza el corte para quien
+        * gana justo el umbral.
+        gen double ila = ingrl
+
+        * Códigos de no respuesta / valor atípico, año por año. Cada lista
+        * reproduce exactamente la rama de ese año en
+        *   "Boletín 1/Procesamiento/Codigos/Ingresos/ingresos_anios_all_fn.do",
+        * tomando sólo los componentes que entran en el ingreso LABORAL: los
+        * códigos de rentas, remesas y bono no se aplican aquí. No hay una lista
+        * transversal: el juego de códigos cambia con el cuestionario.
+        *
+        *   1991       ingpat
+        *   1992-1999  ingpat ingasg ingepv ingdom
+        *   2000       ingpat retpat ingasa ingasa1 ingasa2 ingsec
+        *   2001-2009  recode ingrl (-1 = .) (999999 = .)
+        *   2006       pe61 pe62b pe63 pe64 pe65b pe66 pe67b
+        *   2010-2025  p63 p64b p65 p66 p67 p68b p69 p70b, y recode ingrl 999999
+        *
+        * 2002 y 2004 no tienen rama propia en ese script; se les aplica la de
+        * los años vecinos (2001/2003/2005), que es idéntica entre sí.
+        *
+        * Sustituye a los topes nominales fijos "ila >= 900000" (90s) y
+        * "ila >= 90000" (2000+). En sucres un tope fijo no es neutro: el SBU de
+        * diciembre pasa de 94.333 (1991) a 596.667 (1999), así que 900.000 cae
+        * de 9,5 a 1,5 veces el umbral y llegaba a anular al 47 % de los
+        * ocupados en 1999. Como los no clasificables cuentan como no adecuados,
+        * eso hundía artificialmente la serie de los 90s.
+        *
+        * Se decide con el local `y' y no con la variable anio: en un comando if
+        * Stata evalúa sólo la primera observación.
+        local invalidos ""
+        if `y' == 1991                  local invalidos "9999998"
+        if inrange(`y', 1992, 1999)     local invalidos "9999998 9999999 99999999"
+        if `y' == 2000                  local invalidos "9999 10000 99999 999999 9999999 39999999 89999999 99999999"
+        if inrange(`y', 2001, 2005)     local invalidos "-1 999999"
+        if `y' == 2006                  local invalidos "999 9999 22150 99999 999999"
+        if inrange(`y', 2007, 2009)     local invalidos "-1 999999"
+        if `y' >= 2010                  local invalidos "999999"
+
+        foreach c of local invalidos {
+            replace ila = . if ila == `c'
+        }
 
         gen ineg = .
         replace ineg = 1 if ingrl == -1
@@ -246,6 +371,11 @@ foreach y of numlist 1991(1)2025 {
         label values w_sim w_lbl
 
         *--------- 2. TIEMPO DE TRABAJO ---------*
+        * 999 = no responde también en p24 (hortrasa), no sólo en p51a-p51c.
+        * Hay que limpiarlo ANTES de volcarlo en horas: si no, esas personas
+        * quedan con 999 horas y por tanto con t = 1 (jornada completa).
+        replace p24 = . if p24 == 999
+
         gen horas = .
         replace horas = 0 if empleo == 1
         replace horas = p24 if pean == 1 & p20 == 1
@@ -340,7 +470,7 @@ foreach y of numlist 1991(1)2025 {
     else local area_var
 
     * Conservamos ambas series (oficial y simulada) y ambos umbrales salariales
-    keep id_persona anio `area_var' ila salario_min salario_min_sim adec adec_sim fexp
+    keep id_persona anio `area_var' ila tc salario_min salario_min_sim adec adec_sim fexp
 
     append using `adec_acumulado'
     save `adec_acumulado', replace
@@ -348,15 +478,13 @@ foreach y of numlist 1991(1)2025 {
     sum adec adec_sim
 }
 
-save "$out/historico_adec_sim.dta", replace
+*save "$out/historico_adec_sim.dta", replace
 
 
 use "$out/historico_adec_sim.dta", clear
 
 tab anio adec [iw = fexp], nofreq row
 
-/*
-s
 *==============================================================================*
 * 3. COMPARACIÓN: SERIE OFICIAL vs SIMULADA                                     
 *==============================================================================*
@@ -383,16 +511,80 @@ list anio adec_urb adec_sim_urb adec_nac adec_sim_nac, sep(0) noobs
 
 
 * Gráfico comparativo
-twoway (line adec_nac     anio if anio >= 2000, lcolor(navy)   lpattern(dash)) ///
-       (line adec_sim_nac anio if anio >= 2000, lcolor(maroon)), ///
+twoway (line adec_nac     anio , lcolor(navy)   lpattern(dash)) ///
+       (line adec_sim_nac anio , lcolor(maroon)), ///
     legend(order(1 "Oficial - Nacional" 2 "Simulado SBU 2025 - Nacional") ///
            rows(2) size(small)) ///
     yscale(range(0 1)) ylabel(0(0.1)1, format(%9.1f)) ///
     ytitle("Tasa de empleo adecuado") xtitle("") ///
     title("Empleo adecuado: oficial vs. simulado con SBU 2025 deflactado") ///
     note("Umbral simulado = SBU 2025 (USD `=sbu_2025') deflactado por IPC promedio Oct-Dic, nacional (base 2014=100).")
-
+s
 graph export "$out_plot/historico_adec_sim_vs_oficial.pdf", replace
 
 
-*/
+*==============================================================================*
+* 4. SERIE AGREGADA Y EXPORTACIÓN A EXCEL
+*==============================================================================*
+* Una fila por año con las dos tasas (vigente y simulada) para el total nacional
+* y para el área urbana. El denominador es la PEA: adec vale 0 para todo el que
+* está en la PEA y no cumple las condiciones, así que los desempleados cuentan
+* como no adecuados. Es otro denominador que el de "3. Analisis/analisis_
+* descriptivo.do", que pone adec = . para desocupados e inactivos y por tanto
+* calcula la tasa sobre OCUPADOS (sale entre 1 y 3 pp más alta).
+*
+* Hasta 1999 la ENEMDU de diciembre es urbana y no trae la variable area: en
+* esos años la columna Nacional queda vacía en vez de repetir el dato urbano.
+
+use "$out/historico_adec_sim.dta", clear
+
+gen byte _nac = !missing(area)
+gen byte _urb = (area == 1) if !missing(area)
+replace  _urb = 1 if missing(area) & anio <= 1999
+
+foreach a in nac urb {
+
+    preserve
+        qui keep if _`a' == 1
+
+        * el número de observaciones va sin ponderar; con [iw=] la opción
+        * (count) de collapse devuelve la suma de pesos, no el conteo
+        tempfile n_`a'
+        qui collapse (count) n_pea_`a' = adec, by(anio)
+        qui save `n_`a''
+    restore
+
+    preserve
+        qui keep if _`a' == 1
+        qui collapse (mean) adec_`a' = adec (mean) adec_sim_`a' = adec_sim [iw = fexp], by(anio)
+        qui replace adec_`a'     = 100 * adec_`a'
+        qui replace adec_sim_`a' = 100 * adec_sim_`a'
+        qui merge 1:1 anio using `n_`a'', nogen
+        tempfile serie_`a'
+        qui save `serie_`a''
+    restore
+}
+
+use `serie_nac', clear
+merge 1:1 anio using `serie_urb', nogen
+sort anio
+
+order anio adec_nac adec_urb adec_sim_nac adec_sim_urb n_pea_nac n_pea_urb
+
+label variable anio         "Año"
+label variable adec_nac     "Empleo adecuado, nacional (% PEA)"
+label variable adec_urb     "Empleo adecuado, urbano (% PEA)"
+label variable adec_sim_nac "Empleo adecuado simulado, nacional (% PEA)"
+label variable adec_sim_urb "Empleo adecuado simulado, urbano (% PEA)"
+label variable n_pea_nac    "Observaciones en la PEA, nacional"
+label variable n_pea_urb    "Observaciones en la PEA, urbano"
+
+format adec_nac adec_urb adec_sim_nac adec_sim_urb %8.2f
+
+di as txt _n "{hline 72}"
+di as txt "EMPLEO ADECUADO SOBRE LA PEA"
+di as txt "{hline 72}"
+list anio adec_nac adec_urb adec_sim_nac adec_sim_urb, sep(0) noobs
+
+export excel using "$excel", sheet("Serie") firstrow(varlabels) replace
+di as txt _n "Serie exportada a: $excel"

@@ -5,11 +5,14 @@ clear
 * ============================================================
 
 * Ruta global para facilitar portabilidad del código
-global limpias "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brechas educacion/bases limpias"
+
+global bases "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
+
+
 
 * Cargar base 2001 con variables relevantes
 use rama1 nivinst condact fexp using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2001.dta", clear
+    "$bases/empleo2001_isic4.dta", clear
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2001             // diferenciación por año
@@ -19,7 +22,7 @@ gen anio = "2001_"                      // marca de año para reshape futuro
 
 * Cargar base 2010 con variables relevantes
 append using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2010.dta", keep(rama1 p10a CONDACT fexp ) 
+    "$bases/empleo2010_isic4.dta", keep(rama1 p10a condact fexp ) 
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2010             // diferenciación por año
@@ -27,7 +30,7 @@ replace anio = "2010_" if anio == ""    // completar años faltantes
 
 * Cargar base 2011 con variables relevantes
 append using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2011.dta", keep(rama1 p10a CONDACT fexp) 
+    "$bases/empleo2011_isic4.dta", keep(rama1 p10a condact fexp) 
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2011             // diferenciación por año
@@ -35,7 +38,7 @@ replace anio = "2011_" if anio == ""    // completar años faltantes
 	
 * Añadir base 2024
 append using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2024.dta", keep(condact fexp rama1 p10a) force
+    "$bases/empleo2024_isic4.dta", keep(condact fexp rama1 p10a) force
 
 replace anio = "2024_" if anio == ""    // completar años faltantes
 rename condact condact_2024
@@ -174,7 +177,7 @@ graph bar (mean) uni_crecimiento nouni_crecimiento, ///
 
 restore
 
-s
+
 * ============================================================
 * 8. GRÁFICOS CRECIMIENTO Y EDUCACIÓN
 * ============================================================
@@ -358,7 +361,7 @@ twoway ///
     (lfit    rowper_2024_uni rowper_2024_pleno [aweight = rowtot_2024]) ///
     , text(`midy' `midx' "Slope = `slope'", place(c)) ///
 	name(edu_emp_2024, replace)
-s
+
 * ============================================================
 * 8. GRÁFICOS CRECIMIENTO Y EDUCACIÓN
 * ============================================================
@@ -378,7 +381,110 @@ twoway ///
     if rama1 != 18, text(`midy' `midx' "Slope = `slope'", place(c)) ///
 	name(edu_crec_2011_2024, replace) 
 
-s
+
+	
+
+* ============================================================
+* 2001-2024
+* ============================================================
+
+drop *crecimiento
+
+* ============================================================
+* CRECIMIENTO
+* ============================================================
+
+gen uni_crecimiento = ((n2024_uni/n2001_uni)-1)*100
+gen nouni_crecimiento = ((n2024_nouni/n2001_nouni)-1)*100
+
+gen rowtot_crecimiento = ((rowtot_2024/rowtot_2001)-1)*100
+
+preserve
+
+gsort - rowtot_2024
+keep uni_crecimiento nouni_crecimiento rama1 rowtot_2024
+keep if inlist(rama1, 1, 3, 6, 7, 9)
+graph bar (mean) uni_crecimiento nouni_crecimiento, ///
+    over(rama1, label(angle(45) labsize(small))) ///
+    legend(order(1 "Universitarios" 2 "No universitarios")) ///
+	name(crec_rama_2001_2024, replace)
+
+restore
+
+
+* ============================================================
+* 8. GRÁFICOS CRECIMIENTO Y EDUCACIÓN
+* ============================================================
+
+reg rowtot_crecimiento rowper_2001_uni [aweight = rowtot_2001] if rama1 != 18
+local slope : display %6.3f _b[rowper_2001_uni]
+
+summ rowper_2001_uni  
+local midx = r(mean)
+
+summ rowtot_crecimiento
+local midy = r(mean) + 0.05*(r(max)-r(min))
+
+twoway ///
+    (scatter rowtot_crecimiento rowper_2001_uni [aweight = rowtot_2001]) ///
+    (lfit    rowtot_crecimiento rowper_2001_uni [aweight = rowtot_2001]) ///
+    if rama1 != 18, text(`midy' `midx' "Slope = `slope'", place(c)) ///
+	name(edu_crec_2001_2024, replace) 
+
+
+
+* ============================================================
+* 9. AGRUPACIÓN: EMPLEO PLENO vs NO PLENO
+* ============================================================
+
+egen n2001_pleno    = rowtotal(n2001_uni_pleno n2001_nouni_pleno)
+egen n2001_nopleno  = rowtotal(n2001_uni_nopleno n2001_nouni_nopleno)
+
+egen n2024_pleno    = rowtotal(n2024_uni_pleno n2024_nouni_pleno)
+egen n2024_nopleno  = rowtotal(n2024_uni_nopleno n2024_nouni_nopleno)
+
+gen rowper_2001_pleno = n2001_pleno / rowtot_2001
+gen rowper_2024_pleno = n2024_pleno / rowtot_2024
+
+
+* ============================================================
+* 10. GRÁFICOS CON RECTAS DE REGRESIÓN Y ETIQUETA DE PENDIENTE
+* ============================================================
+
+* ===== Gráfico 2001 =====
+reg rowper_2001_uni rowper_2001_pleno [aweight = rowtot_2001]
+local slope : display %6.3f _b[rowper_2001_pleno]
+
+summ rowper_2001_pleno
+local midx = r(mean)
+
+summ rowper_2001_uni
+local midy = r(mean) + 0.05*(r(max)-r(min))
+
+twoway ///
+    (scatter rowper_2001_uni rowper_2001_pleno [aweight = rowtot_2001] ) ///
+    (lfit    rowper_2001_uni rowper_2001_pleno [aweight = rowtot_2001] ) ///
+    , text(`midy' `midx' "Slope = `slope'", place(c)) ///
+	name(edu_emp_2001, replace)
+
+
+* ===== Gráfico 2024 =====
+reg rowper_2024_uni rowper_2024_pleno [aweight = rowtot_2024]
+local slope : display %6.3f _b[rowper_2024_pleno]
+
+summ rowper_2024_pleno
+local midx = r(mean)
+
+summ rowper_2024_uni
+local midy = r(mean) + 0.05*(r(max)-r(min))
+
+twoway ///
+    (scatter rowper_2024_uni rowper_2024_pleno [aweight = rowtot_2024]) ///
+    (lfit    rowper_2024_uni rowper_2024_pleno [aweight = rowtot_2024]) ///
+    , text(`midy' `midx' "Slope = `slope'", place(c)) ///
+	name(edu_emp_2024, replace)
+
+	
 
 	
 * ============================================================

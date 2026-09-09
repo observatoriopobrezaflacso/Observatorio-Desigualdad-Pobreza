@@ -4,12 +4,14 @@ clear
 * 1. RUTAS Y CARGA DE BASES
 * ============================================================
 
+set graphics on
+
 * Ruta global para facilitar portabilidad del código
-global limpias "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brechas educacion/bases limpias"
+global bases "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 * Cargar base 2001 con variables relevantes
-use rama1 nivinst condact fexp using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2001.dta", clear
+use rama1 nivinst condact fexp area using ///
+    "$bases/empleo2001_isic4.dta", clear
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2001             // diferenciación por año
@@ -19,7 +21,7 @@ gen anio = "2001_"                      // marca de año para reshape futuro
 
 * Cargar base 2010 con variables relevantes
 append using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2010.dta", keep(rama1 p10a CONDACT fexp ) 
+    "$bases/empleo2010_isic4.dta", keep(rama1 p10a condact fexp area) 
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2010             // diferenciación por año
@@ -27,7 +29,7 @@ replace anio = "2010_" if anio == ""    // completar años faltantes
 
 * Cargar base 2011 con variables relevantes
 append using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2011.dta", keep(rama1 p10a CONDACT fexp) 
+    "$bases/empleo2011_isic4.dta", keep(rama1 p10a condact fexp area) 
 
 rename *, lower                         // uniformidad en minúsculas
 rename condact condact_2011             // diferenciación por año
@@ -35,11 +37,13 @@ replace anio = "2011_" if anio == ""    // completar años faltantes
 	
 * Añadir base 2024
 append using ///
-    "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Brecha educacion/Bases/bases limpias/empleo2024.dta", keep(condact fexp rama1 p10a) force
+    "$bases/empleo2024_isic4.dta", keep(condact fexp rama1 p10a area) force
 
 replace anio = "2024_" if anio == ""    // completar años faltantes
 rename condact condact_2024
 
+
+*keep if area == 1
 
 * ============================================================
 * 2. VARIABLES CLAVES: EMPLEO PLENO Y NIVEL EDUCATIVO
