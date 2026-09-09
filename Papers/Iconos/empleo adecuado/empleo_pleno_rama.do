@@ -82,9 +82,10 @@ global ajuste_condact 1   // 1 = ajuste residual por "otro empleo no pleno/inade
 scalar edadmin = 15
 
 local ambito : word `=`filtro'+1' of nacional urbano rural
-global out "$root/outputs/rama_educ/`ambito'"
+global outbase "$root/outputs/rama_educ"
+global out     "$outbase/`ambito'"
 cap mkdir "$root/outputs"
-cap mkdir "$root/outputs/rama_educ"
+cap mkdir "$outbase"
 cap mkdir "$out"
 
 * Estilo común y notas al pie reutilizadas por todos los gráficos.
@@ -814,6 +815,79 @@ graph combine `paneles_a', cols(`cols') imargin(small) ///
     xsize(`xs') ysize(7) $gopts name(fig_educ_adec_panel, replace)
 savefig "fig_educ_adec_panel"
 
+*------------------ 7b. Datos de los paneles, en formato largo ------------------
+* Una fila por círculo de cada panel, con sus coordenadas y su peso. El libro
+* vive un nivel arriba de $out —lleva el ámbito como columna— porque
+* "master/consolidar_excel.do" lo lee de ahí y por el nombre de las hojas:
+* -panel_crecimiento- y -panel_educ_pleno- no se pueden renombrar sin tocar
+* también ese archivo.
+
+* Google Drive no deja releer un .xlsx recién escrito, así que -sheetmodify-
+* aborta con r(603) si el libro se arma directamente sobre la carpeta de
+* salida. Se arma en un temporal local y se copia entero al final.
+tempfile largo_c largo_a tmp_pan
+local wb_pan "`tmp_pan'.xlsx"
+local hay_c = 0
+local hay_a = 0
+
+foreach par of local pares {
+    local y0 = substr("`par'", 1, 4)
+    local y1 = substr("`par'", 6, 4)
+    preserve
+        keep if obs`y0' >= $minobs & obs`y1' >= $minobs & !missing(obs`y0', obs`y1')
+        gen str16  ambito   = "`ambito'"
+        gen str9   periodo  = "`y0'-`y1'"
+        gen int    rama_cod = rama1
+        clonevar   rama     = rama_txt
+        gen double eje_x_pct_super_inicial = p_uni`y0'
+        gen double eje_y_var_pct_empleo    = g_tot_`y0'_`y1'
+        gen double peso_ocupados_inicial   = emp`y0'
+        keep  ambito periodo rama_cod rama eje_x_pct_super_inicial ///
+              eje_y_var_pct_empleo peso_ocupados_inicial
+        order ambito periodo rama_cod rama eje_x_pct_super_inicial ///
+              eje_y_var_pct_empleo peso_ocupados_inicial
+        if `hay_c' append using `largo_c'
+        qui save `largo_c', replace
+        local hay_c = 1
+    restore
+}
+
+foreach y of local anios {
+    preserve
+        keep if obs`y' >= $minobs & !missing(obs`y')
+        gen str16  ambito   = "`ambito'"
+        gen int    anio     = `y'
+        gen int    rama_cod = rama1
+        clonevar   rama     = rama_txt
+        gen double eje_x_pct_adec   = p_adec`y'
+        gen double eje_y_pct_super  = p_uni`y'
+        gen double peso_ocupados    = emp`y'
+        keep  ambito anio rama_cod rama eje_x_pct_adec eje_y_pct_super peso_ocupados
+        order ambito anio rama_cod rama eje_x_pct_adec eje_y_pct_super peso_ocupados
+        if `hay_a' append using `largo_a'
+        qui save `largo_a', replace
+        local hay_a = 1
+    restore
+}
+
+preserve
+    use `largo_c', clear
+    gsort periodo -peso_ocupados_inicial
+    export excel using "`wb_pan'", ///
+        sheet("panel_crecimiento") firstrow(variables) replace nolabel
+
+    use `largo_a', clear
+    gsort anio -peso_ocupados
+    export excel using "`wb_pan'", ///
+        sheet("panel_educ_pleno") firstrow(variables) sheetmodify nolabel
+restore
+
+copy "`wb_pan'" "$outbase/datos_paneles.xlsx", replace
+erase "`wb_pan'"
+
+di as txt "Datos de los paneles: $outbase/datos_paneles.xlsx"
+
+
 *--------------------------------------------------------------- 7. Salidas ---
 cap drop ok
 cap drop top
@@ -878,7 +952,6 @@ list rama pct_sup_`y_ini' pct_sup_`y_fin' pct_adec_`y_ini' pct_adec_`y_fin' ///
 *--- diagnóstico: tasas sobre la PEA, para cotejar con empleo_adecuado_serie.do
 preserve
     use `diag', clear
-    label var anio          "Año"
     label var smin          "SBU vigente de diciembre (moneda del año)"
     label var adec_pea      "Empleo adecuado armonizado (% de la PEA 15+)"
     label var adec_of_pea   "Empleo adecuado oficial de la base (% de la PEA 15+)"
@@ -898,5 +971,51 @@ preserve
     save "$out/diagnostico_rama_educ.dta", replace
     export delimited using "$out/diagnostico_rama_educ.csv", replace datafmt
 restore
+
+
+*--- libro con una hoja por figura, en el formato ancho de la base. Los
+*    encabezados son las etiquetas de variable, así que dicen exactamente qué
+*    es cada columna; -nolabel- deja rama_cod como código numérico.
+* Google Drive no deja releer un .xlsx recién escrito, así que -sheetmodify-
+* aborta con r(603) si el libro se arma directamente sobre la carpeta de
+* salida. Se arma en un temporal local y se copia entero al final.
+tempfile tmp_tab
+local xls "`tmp_tab'.xlsx"
+
+export excel using "`xls'", sheet("base_completa") firstrow(varlabels) replace nolabel
+
+foreach y of local anios {
+    preserve
+        keep if casos_`y' >= $minobs & !missing(casos_`y')
+        keep  rama_cod rama pct_adec_`y' pct_sup_`y' ocupados_`y' ///
+              ocupados_sup_`y' ocupados_adec_`y' casos_`y'
+        order rama_cod rama pct_adec_`y' pct_sup_`y' ocupados_`y' ///
+              ocupados_sup_`y' ocupados_adec_`y' casos_`y'
+        export excel using "`xls'", sheet("educ_pleno_`y'") ///
+            firstrow(varlabels) sheetmodify nolabel
+    restore
+}
+
+foreach par of local pares {
+    local y0 = substr("`par'", 1, 4)
+    local y1 = substr("`par'", 6, 4)
+    preserve
+        keep if casos_`y0' >= $minobs & casos_`y1' >= $minobs ///
+              & !missing(casos_`y0', casos_`y1')
+        keep  rama_cod rama ocupados_`y0' ocupados_`y1' pct_sup_`y0' ///
+              var_pct_ocup_sup_`y0'_`y1' var_pct_ocup_nosup_`y0'_`y1' ///
+              var_pct_ocup_`y0'_`y1' casos_`y0' casos_`y1'
+        order rama_cod rama ocupados_`y0' ocupados_`y1' pct_sup_`y0' ///
+              var_pct_ocup_sup_`y0'_`y1' var_pct_ocup_nosup_`y0'_`y1' ///
+              var_pct_ocup_`y0'_`y1' casos_`y0' casos_`y1'
+        export excel using "`xls'", sheet("crecimiento_`y0'_`y1'") ///
+            firstrow(varlabels) sheetmodify nolabel
+    restore
+}
+
+copy "`xls'" "$out/tablas_rama_educ.xlsx", replace
+erase "`xls'"
+
+di as txt "Tablas por figura: $out/tablas_rama_educ.xlsx"
 
 di as txt _n "Listo. Salidas en: $out"
