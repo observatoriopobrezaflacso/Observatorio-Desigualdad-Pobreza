@@ -1,16 +1,30 @@
 *==============================================================================*
 * PRIMA SALARIAL DE LA EDUCACIÓN UNIVERSITARIA O MÁS — INGRESO POR HORA
 *
-* Variable dependiente: ln(ingreso laboral real por hora)
-*   ingreso por hora = ing_lab_deflated / (horas semanales * 4.33)
+* Variable dependiente: ln(ingreso laboral por hora)
+*   ingreso por hora = ingrl / (horas semanales * 4.33)
 *   horas = suma de horas de TODOS los trabajos (principal + secundario + otros)
 *
 * Ámbitos: Urbano y Nacional.  Años: 1990-93-96-99-02-05-08-11-14-17-21-25
 *   (1990 y 2002 no existen como base; se usan 1991 y 2003 en su lugar)
 *
-* Fuente: .../ENEMDU/Procesadas/ingresos_pc/{Urbano,Nacional}
+* Fuente: .../ENEMDU/Procesadas/ramas homogeneizadas/empleo<año>_isic4.dta
+*   Son las ENEMDU completas con la rama homogeneizada añadida, así que traen
+*   todo lo necesario (educación, sexo, edad, horas, ingrl, fexp, area) y no
+*   hace falta emparejarlas con nada.
+*   rama1 = sección CIIU 4, códigos 1-21 = A..U, homogénea 1991-2025.
+*   Un solo archivo por año: NO están separadas en urbano/nacional. El archivo
+*   se lee una vez por ámbito y el recorte lo hace `area` (urbano = area 1;
+*   nacional = area 1 y 2). Los años anteriores a 2000 son sólo urbanos.
+*
+* Ingreso: ingrl (ingreso laboral corriente de la ENEMDU). Al estimarse un
+*   modelo por año, el deflactor es un factor constante dentro de cada
+*   regresión y no altera los coeficientes; en el modelo agrupado lo absorben
+*   los efectos fijos de año. Los niveles reportados (w_no, w_si) sí quedan en
+*   valores corrientes.
 * Educación: armonización replicada de armonizacion_educacion.do
-* Controles: edad y edad2 únicamente. Muestra sin restricción de edad.
+* Controles: edad, edad2 y efectos fijos de rama de actividad (i.rama_h).
+*            Muestra sin restricción de edad.
 *==============================================================================*
 
 clear all
@@ -25,8 +39,7 @@ if "$gd" == "" {
 set more off
 
 
-local urb  "$gd/Bases/ENEMDU/Procesadas/ingresos_pc/Urbano"
-local nac  "$gd/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+local ram  "$gd/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 local root "$gd/Papers/Íconos"
 local out  "`root'/outputs/educ_ingrl"
 cap mkdir "`root'/outputs"
@@ -39,8 +52,12 @@ cap mkdir "`out'"
 local anios_urb "1991 1993 1996 1999 2001 2003 2005 2008 2011 2014 2017 2021 2025"
 local anios_nac "2001 2003 2005 2008 2011 2014 2017 2021 2025"
 
+* Para probar rápido, descomentar:
+* local anios_urb "2025"
+* local anios_nac "2025"
+
 * tope de horas semanales plausibles (16 h/día x 7 días)
-local maxhoras = 112
+local maxhoras = 140
 * semanas por mes (el ingreso es mensual y las horas semanales).
 * Es un factor constante: no altera los coeficientes, sólo los niveles.
 local semanas = 4.33
@@ -58,39 +75,36 @@ save `acum', emptyok replace
 foreach amb of numlist 1 2 {
 
     if (`amb' == 1) {
-        local dir "`nac'"
         local pat "nac"
         local anios "`anios_nac'"
     }
     else {
-        local dir "`urb'"
         local pat "urb"
         local anios "`anios_urb'"
     }
 
     foreach y of local anios {
 
-        local f "ing_perca_`y'_`pat'_precios2000.dta"
-        capture confirm file "`dir'/`f'"
+        * Mismo archivo para los dos ámbitos: la ENEMDU completa del año con la
+        * rama homogeneizada. El recorte urbano/nacional se hace más abajo con
+        * `area'.
+        local f "empleo`y'_isic4.dta"
+        capture confirm file "`ram'/`f'"
         if _rc {
             di as error "FALTA: `f'"
             continue
         }
 
-        qui describe using "`dir'/`f'", varlist
+        qui describe using "`ram'/`f'", varlist
         local vl = r(varlist)
 
-        * nombres de variables según el formulario del año
+        * nombres de variables según el formulario del año. sexo y edad ya
+        * vienen con nombre homogéneo en todos los años.
         local hasp10a : list posof "p10a" in vl
-        local hasp02  : list posof "p02"  in vl
         local hasarea : list posof "area" in vl
 
         if (`hasp10a') local educvar p10a
         else           local educvar nivinst
-        if (`hasp02')  local sexvar p02
-        else           local sexvar sexo
-        if (`hasp02')  local edadvar p03
-        else           local edadvar edad
         local areavar
         if (`hasarea') local areavar area
 
@@ -100,8 +114,9 @@ foreach amb of numlist 1 2 {
         *   desde 2007: p51a / p51b / p51c
         * Se suman las tres (principal + secundario + otros).
         *----------------------------------------------------------------------
-        if (`y' <= 2006) local hvars "hortrahp hortrahs hortraho"
-        else             local hvars "p51a p51b p51c"
+        local hasho : list posof "hortrahp" in vl
+        if (`hasho') local hvars "hortrahp hortrahs hortraho"
+        else         local hvars "p51a p51b p51c"
 
         * conservar sólo las que existan realmente en ese año
         local hkeep
@@ -114,8 +129,10 @@ foreach amb of numlist 1 2 {
             continue
         }
 
-        qui use `educvar' `sexvar' `edadvar' `hkeep' ing_lab_deflated fexp ///
-            `areavar' using "`dir'/`f'", clear
+        qui use `educvar' sexo edad `hkeep' ingrl fexp rama1 `areavar' ///
+            using "`ram'/`f'", clear
+
+        rename rama1 rama_h
 
         *----------------------------------------------------------------------
         * Armonización de educación universitaria (idéntica a
@@ -143,14 +160,35 @@ foreach amb of numlist 1 2 {
         }
         replace horas = . if horas_n == 0
 
-        * homogeneizar nombres
-        rename `sexvar'  sexo_h
-        rename `edadvar' edad_h
+        *----------------------------------------------------------------------
+        * CÓDIGOS DE NO RESPUESTA DE ingrl. Se replican los de
+        * Boletín 1/.../Ingresos/ingresos_anios_all_fn.do:
+        *   - su PASO 4 corre para todos los años: 999999, 0 y -1;
+        *   - bloque 1991: 9999998 (lo anula en ingpat, el componente de ingrl);
+        *   - bloque 1992-1999: 99999999, 9999999 y 9999998;
+        *   - bloques 2001-2009: recode ingrl (-1=.) (999999=.) (0=.);
+        *   - bloque 2010-2025: recode ingrl (999999=.).
+        * ÚNICA DIFERENCIA: en los años en sucres 999999 NO se trata como código
+        * de no respuesta, sino como un monto válido (999999 sucres son unos
+        * USD 40 al mes al tipo de fijación, un sueldo perfectamente posible).
+        * Los ceros y los negativos no hace falta anularlos aquí: los descarta
+        * el filtro ingrl > 0 de la sección de muestra.
+        *----------------------------------------------------------------------
+        local invalidos "999999"
+        if (`y' == 1991)              local invalidos "9999998"
+        if (inrange(`y', 1992, 1999)) local invalidos "9999998 9999999 99999999"
+
+        foreach v of local invalidos {
+            qui count if ingrl == `v'
+            if (r(N) > 0) di as txt "  `y': `r(N)' casos de ingrl==`v' anulados"
+            qui replace ingrl = . if ingrl == `v'
+        }
+
         gen int  anio   = `y'
         gen byte ambito = `amb'
         if ("`areavar'" == "") gen byte area = 1
 
-        keep ambito anio educ_univ sexo_h edad_h area horas ing_lab_deflated fexp
+        keep ambito anio educ_univ sexo edad area horas ingrl fexp rama_h
         destring area, replace force
 
         if (`amb' == 1) keep if inlist(area, 1, 2)
@@ -163,9 +201,6 @@ foreach amb of numlist 1 2 {
 }
 
 use `acum', clear
-rename sexo_h sexo
-rename edad_h edad
-rename ing_lab_deflated ingrl_real
 
 label define lbl_amb 1 "Nacional" 2 "Urbano", replace
 label values ambito lbl_amb
@@ -173,35 +208,55 @@ label define lbl_sexo 1 "Hombre" 2 "Mujer", replace
 label values sexo lbl_sexo
 label define lbl_educ2 0 "Hasta secundaria" 1 "Universitaria o más", replace
 label values educ_univ lbl_educ2
+label var rama_h "Rama de actividad (CIIU 4, secciones A-U)"
+
+gen byte tiene_rama = !missing(rama_h)
 
 *------------------------------------------------------------------ muestra ---
 * Sin restricción de edad: entran todos los perceptores de ingreso laboral.
-keep if ingrl_real > 0 & !missing(ingrl_real)
+keep if ingrl > 0 & !missing(ingrl)
 keep if !missing(educ_univ)
 keep if inlist(sexo, 1, 2)
 keep if !missing(fexp) & fexp > 0
 keep if inrange(horas, 1, `maxhoras')
 
+*--------------------------------------------------------------- rama ---------
+* La rama sólo está definida para la población ocupada. Antes de recortar se
+* reporta la cobertura dentro de la muestra de perceptores, para que quede
+* claro cuánto cuesta el control.
+
+
+di as res "=== cobertura de rama en la muestra de perceptores (% no faltante) ==="
+foreach a of numlist 2 1 {
+    di as txt "--- ámbito `a' (2=Urbano, 1=Nacional)"
+    tabstat tiene_rama if ambito==`a', by(anio) stat(mean n) format(%6.3f)
+}
+keep if !missing(rama_h)
+
 *------------------------------------------------------- pre-dolarización -----
-* Antes de 2000 el ingreso deflactado de estas bases está en sucres; se pasa a
-* dólares al tipo de fijación de enero de 2000. No altera los coeficientes.
-replace ingrl_real = ingrl_real/25000 if anio <= 1999
+* Antes de 2000 el ingreso de estas bases está en sucres; se pasa a dólares al
+* tipo de fijación de enero de 2000. No altera los coeficientes: sólo hace
+* legibles los niveles de w_no y w_si junto a los de los años dolarizados.
+replace ingrl = ingrl/25000 if anio <= 1999
 
 *-------------------------------------------------------- ingreso por hora ----
-gen double ingrl_hora = ingrl_real / (horas * `semanas')
-label var ingrl_hora "Ingreso laboral real por hora (precios constantes)"
+gen double ingrl_hora = ingrl / (horas * `semanas')
+label var ingrl_hora "Ingreso laboral por hora (valores corrientes)"
 label var horas      "Horas semanales trabajadas (todos los trabajos)"
 
 gen double lnw   = ln(ingrl_hora)
 gen double edad2 = edad^2
 
-di as res "=== horas semanales medias (ponderadas) ==="
-table anio ambito [aw=fexp], c(mean horas mean ingrl_hora) format(%6.2f)
-di as res "=== observaciones ==="
-table anio ambito, c(freq)
+di as res "=== horas semanales medias y observaciones ==="
+foreach a of numlist 2 1 {
+    di as txt "--- ámbito `a' (2=Urbano, 1=Nacional)"
+    tabstat horas ingrl_hora [aw=fexp] if ambito==`a', by(anio) stat(mean) format(%6.2f)
+    tabstat lnw if ambito==`a', by(anio) stat(n) format(%9.0f)
+}
 
 compress
 save "`out'/microdatos_hora.dta", replace
+
 
 *==============================================================================*
 * 2. REGRESIONES POR ÁMBITO x SEXO x AÑO
@@ -210,7 +265,8 @@ save "`out'/microdatos_hora.dta", replace
 tempname pf
 tempfile res
 postfile `pf' byte ambito byte grupo int anio ///
-    double(b_raw se_raw b_adj se_adj N share_univ w_no w_si h_no h_si) using "`res'", replace
+    double(b_raw se_raw b_edad se_edad b_adj se_adj N share_univ w_no w_si h_no h_si) ///
+    using "`res'", replace
 
 foreach amb of numlist 1 2 {
     levelsof anio if ambito==`amb', local(anios)
@@ -220,8 +276,8 @@ foreach amb of numlist 1 2 {
             if (`g' == 0) local cond "ambito==`amb' & anio==`y'"
             else          local cond "ambito==`amb' & anio==`y' & sexo==`g'"
 
-            * controles: sólo edad y edad2 en todos los modelos
-            local ctrl "c.edad c.edad2"
+            * controles: edad, edad2 y efectos fijos de rama de actividad
+            local ctrl "c.edad c.edad2 i.rama_h"
 
             qui count if `cond'
             if (r(N) < 100) continue
@@ -231,10 +287,15 @@ foreach amb of numlist 1 2 {
             local se_raw = _se[1.educ_univ]
             local N      = e(N)
 
+            * especificación anterior (sólo edad), para poder comparar cuánto
+            * de la prima se explica por la composición sectorial
+            qui reg lnw i.educ_univ c.edad c.edad2 [pw=fexp] if `cond', vce(robust)
+            local b_edad  = _b[1.educ_univ]
+            local se_edad = _se[1.educ_univ]
+
             qui reg lnw i.educ_univ `ctrl' [pw=fexp] if `cond', vce(robust)
             local b_adj  = _b[1.educ_univ]
             local se_adj = _se[1.educ_univ]
-
             qui sum educ_univ [aw=fexp] if `cond'
             local sh = r(mean)
             qui sum ingrl_hora [aw=fexp] if `cond' & educ_univ==0
@@ -246,8 +307,9 @@ foreach amb of numlist 1 2 {
             qui sum horas [aw=fexp] if `cond' & educ_univ==1
             local h1 = r(mean)
 
-            post `pf' (`amb') (`g') (`y') (`b_raw') (`se_raw') (`b_adj') ///
-                (`se_adj') (`N') (`sh') (`w0') (`w1') (`h0') (`h1')
+            post `pf' (`amb') (`g') (`y') (`b_raw') (`se_raw') ///
+                (`b_edad') (`se_edad') (`b_adj') (`se_adj') ///
+                (`N') (`sh') (`w0') (`w1') (`h0') (`h1')
         }
     }
 }
@@ -270,9 +332,9 @@ foreach amb of numlist 2 1 {
         local ++i
         if (`g' == 0) local cond "ambito==`amb'"
         else          local cond "ambito==`amb' & sexo==`g'"
-        * sólo edad y edad2; i.anio se mantiene porque define la comparación
+        * edad, edad2 y rama; i.anio se mantiene porque define la comparación
         * dentro de cada año en el modelo agrupado
-        local ctrl "c.edad c.edad2 i.anio"
+        local ctrl "c.edad c.edad2 i.rama_h i.anio"
         eststo m`i': qui reg lnw i.educ_univ `ctrl' [pw=fexp] if `cond', vce(cluster anio)
         post `pf2' (`amb') (`g') (_b[1.educ_univ]) (_se[1.educ_univ]) ///
             (e(N)) (e(r2))
@@ -285,8 +347,8 @@ esttab m1 m2 m3 m4 m5 m6 using "`out'/hora_tabla_pooled.rtf", replace ///
     stats(N r2, fmt(%12.0fc %9.3f) labels("Observaciones" "R2")) ///
     mtitles("Urb Total" "Urb Hombres" "Urb Mujeres" "Nac Total" "Nac Hombres" "Nac Mujeres") ///
     varlabels(1.educ_univ "Universitaria o más") ///
-    title("Prima salarial de la educación universitaria o más sobre ln(ingreso laboral real por hora)") ///
-    addnotes("MCO ponderado por fexp, EE agrupados por año. Controles: edad y edad2. Horas = suma de todos los trabajos.")
+    title("Prima salarial de la educación universitaria o más sobre ln(ingreso laboral por hora)") ///
+    addnotes("MCO ponderado por fexp, EE agrupados por año. Controles: edad, edad2 y efectos fijos de rama (CIIU 4). Horas = suma de todos los trabajos.")
 
 esttab m1 m2 m3 m4 m5 m6 using "`out'/hora_tabla_pooled.csv", replace ///
     keep(1.educ_univ) b(4) se(4) star(* 0.10 ** 0.05 *** 0.01) ///
@@ -309,15 +371,17 @@ label values ambito lbl_amb
 label define lbl_grupo 0 "Total" 1 "Hombres" 2 "Mujeres", replace
 label values grupo lbl_grupo
 
-gen double pct_raw = 100*(exp(b_raw)-1)
-gen double pct_adj = 100*(exp(b_adj)-1)
+gen double pct_raw  = 100*(exp(b_raw)-1)
+gen double pct_edad = 100*(exp(b_edad)-1)
+gen double pct_adj  = 100*(exp(b_adj)-1)
 gen double t_adj   = b_adj/se_adj
 gen double p_adj   = 2*normal(-abs(t_adj))
 
 label var b_raw      "Coef. sin controles"
-label var b_adj      "Coef. con controles"
-label var w_no       "Ingreso/hora medio: hasta secundaria"
-label var w_si       "Ingreso/hora medio: universitaria o más"
+label var b_edad     "Coef. con edad y edad2"
+label var b_adj      "Coef. con edad, edad2 y rama"
+label var w_no       "Ingreso/hora medio corriente: hasta secundaria"
+label var w_si       "Ingreso/hora medio corriente: universitaria o más"
 label var h_no       "Horas semanales: hasta secundaria"
 label var h_si       "Horas semanales: universitaria o más"
 label var share_univ "Proporción universitaria o más"
@@ -327,8 +391,8 @@ format pct_* h_* %7.1f
 format share_univ %5.3f
 
 sort ambito grupo anio
-list ambito grupo anio b_raw b_adj pct_adj h_no h_si N if ambito==2, sepby(grupo) noobs
-list ambito grupo anio b_raw b_adj pct_adj h_no h_si N if ambito==1, sepby(grupo) noobs
+list ambito grupo anio b_raw b_edad b_adj pct_adj h_no h_si N if ambito==2, sepby(grupo) noobs
+list ambito grupo anio b_raw b_edad b_adj pct_adj h_no h_si N if ambito==1, sepby(grupo) noobs
 
 save "`out'/hora_coef_educ_ingrl.dta", replace
 export delimited using "`out'/hora_coef_educ_ingrl.csv", replace
@@ -337,9 +401,9 @@ export delimited using "`out'/hora_coef_educ_ingrl.csv", replace
 * 5. GRÁFICOS (sin intervalos de confianza)
 *==============================================================================*
 
-local nota  "MCO por año sobre ln(ingreso laboral real por hora). Ponderado por fexp. Controles: edad y edad{sup:2}."
+local nota  "MCO por año sobre ln(ingreso laboral por hora). Ponderado por fexp. Controles: edad, edad{sup:2} y rama de actividad (CIIU 4)."
 local nota2 "Horas = suma de horas semanales de todos los trabajos (principal + secundario + otros)."
-local nota3 "Muestra: perceptores de ingreso laboral con horas > 0, sin restricción de edad."
+local nota3 "Muestra: perceptores de ingreso laboral con horas > 0 y rama declarada, sin restricción de edad."
 local nota4 "1990 y 2002 no tienen base: se usan 1991 y 2003."
 
 local xlab "xlabel(1991 1993 1996 1999 2003 2005 2008 2011 2014 2017 2021 2025, angle(45) labsize(small))"
@@ -419,8 +483,8 @@ label var ambito "Ámbito"
 label var grupo  "Grupo"
 label var anio   "Año"
 label var N      "Observaciones"
-order ambito grupo anio b_raw se_raw b_adj se_adj pct_adj t_adj p_adj ///
-    share_univ w_no w_si h_no h_si N
+order ambito grupo anio b_raw se_raw b_edad se_edad b_adj se_adj ///
+    pct_adj t_adj p_adj share_univ w_no w_si h_no h_si N
 sort ambito grupo anio
 export excel using "`xls'", sheet("coeficientes") firstrow(varlabels) replace
 
@@ -483,16 +547,18 @@ export excel using "`xls'", sheet("modelo_agrupado") firstrow(varlabels) sheetre
 
 *--- 6.5 Notas metodológicas ---------------------------------------------------
 clear
-set obs 8
+set obs 10
 gen str244 nota = ""
 replace nota = "Prima salarial por hora de la educación universitaria o más." in 1
-replace nota = "Variable dependiente: ln(ingreso laboral real por hora)." in 2
-replace nota = "Ingreso por hora = ingreso laboral / (horas semanales x 4.33)." in 3
+replace nota = "Variable dependiente: ln(ingreso laboral por hora)." in 2
+replace nota = "Ingreso por hora = ingrl / (horas semanales x 4.33), en valores corrientes." in 3
 replace nota = "Horas = suma del trabajo principal + secundario + otros trabajos." in 4
 replace nota = "MCO por año, ponderado por fexp, errores estándar robustos." in 5
-replace nota = "b_raw = sin controles. b_adj = con edad y edad^2 (es la serie del gráfico)." in 6
-replace nota = "Muestra: perceptores de ingreso laboral con horas > 0, sin restricción de edad." in 7
-replace nota = "1990 y 2002 no tienen base: se usan 1991 y 2003. Generado por educ_ingrl_hora.do." in 8
+replace nota = "b_raw = sin controles. b_edad = con edad y edad^2 (especificación anterior)." in 6
+replace nota = "b_adj = con edad, edad^2 y efectos fijos de rama CIIU 4 (es la serie del gráfico)." in 7
+replace nota = "Fuente única: ENEMDU/Procesadas/ramas homogeneizadas/empleo<año>_isic4.dta (rama = rama1)." in 8
+replace nota = "Muestra: perceptores de ingreso laboral con horas > 0 y rama declarada, sin restricción de edad." in 9
+replace nota = "1990 y 2002 no tienen base: se usan 1991 y 2003. Generado por educ_ingrl_hora.do." in 10
 label var nota "Notas"
 export excel using "`xls'", sheet("notas") firstrow(varlabels) sheetreplace
 

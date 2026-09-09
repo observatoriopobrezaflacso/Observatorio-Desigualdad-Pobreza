@@ -19,69 +19,137 @@
 * un dato necesario para leer la serie (el criterio de suficiencia de ingresos
 * se vuelve más exigente en términos reales a lo largo del período).
 *==============================================================================*
+
+*==============================================================================*
+* DOCUMENTACIÓN DE CAMBIOS: ADAPTACIÓN ENEMDU MULTI-AÑO                        *
+*==============================================================================*
+*
+* RENOMBRADO DE VARIABLES (nombres originales → nombres estándar):
+*   edad     → p03      (edad)
+*   trabajo  → p20      (trabajó la semana pasada)
+*   actayuda → p21      (actividad que realizó para ayudar en su hogar)
+*   aunotra  → p22      (aunque no trabajó, ¿tiene trabajo?)
+*   hortrasa → p24      (horas trabajadas la semana anterior)
+*   ratmeh   → p25      (razón por la que trabajó menos de 40 horas)
+*   hormas   → p27      (desea trabajar más horas) [solo 2000+]
+*   bustrama → p32      (buscó trabajo el mes anterior)
+*   motnobus → p34      (razón por la que no buscó trabajo)
+*   deseatra → p35      (desea trabajar) - SUSTITUTO de p28
+*   hortrahp → p51a     (horas trabajo principal)
+*   hortrahs → p51b     (horas trabajo secundario)
+*   hortraho → p51c     (horas otros trabajos)
 *
 *------------------------------------------------------------------------------*
-* CORRECCIONES RESPECTO DE main/componentes/adec.do                            *
+* CAMBIOS EN CODIFICACIÓN DE VARIABLES:
 *------------------------------------------------------------------------------*
 *
-* C1. rename año -> el CSV de salarios trae la columna como "anio" (ASCII), no
-*     como "año": el rename original aborta con r(111) y el script no llega a
-*     correr. Aquí se detectan ambas formas.
+* p21 - ACTIVIDAD QUE REALIZÓ PARA AYUDAR EN SU HOGAR:
+*   1991/1995: 10 categorías (3-12) → 12 = "no realizó ninguna actividad"
+*   2005:      11 categorías (1-11) → 11 = "no realizó ninguna actividad"
+*   2015:      12 categorías (1-12) → 12 = "no realizó ninguna actividad"
+*   AJUSTE:
+*     - 2000-2006: realizó actividad = p21 <= 10; no realizó = p21 == 11
+*     - 1990s/2007+: realizó actividad = p21 <= 11; no realizó = p21 == 12
 *
-* C2. EL AJUSTE POR condact ES NECESARIO Y HAY QUE CUBRIR LAS DOS ETIQUETAS.
-*     "replace adec = 0 if condact_str == 'Otro empleo no pleno'" es el ajuste
-*     residual que hace que la serie armonizada reproduzca exactamente la
-*     clasificación oficial en 2022-2025. Antes de 2022 no afecta a ningún caso,
-*     porque la construcción ya clasifica a esas personas como no adecuadas.
-*     El problema del original es que la etiqueta cambia de nombre entre años:
-*       - 1991-2006: la codificación es "ocupados plenos"/"subempleo visible"/...
-*                    y la categoría no existe;
-*       - 2007-2015: condactn dice "Otro empleo Inadecuado";
-*       - 2016-2025: dice "Otro empleo no pleno".
-*     Aquí se reconocen ambas variantes. Verificado: con este ajuste la serie
-*     coincide con adec_of hasta el cuarto decimal en todo 2007-2025.
+* p25 - RAZÓN POR LA QUE TRABAJÓ MENOS DE 40 HORAS:
+*   1991:      2 categorías → 2 = "no desea trabajar más horas"
+*   1993-1999: 3 categorías → 3 = "no desea trabajar más horas"
+*   2005:      8 categorías → NO existe "no desea"
+*   2015:      9 categorías → 9 = "no desea o no necesita"
+*   AJUSTE en d_d:
+*     - 1991-1992: d_d = 0 si p25 == 2
+*     - 1993-1999: d_d = 0 si p25 == 3
+*     - 2007+: d_d = 0 si p25 == 9
 *
-* C3. merge m:m anio using <salarios>, keep(3) -> eliminado. Verificado que NO
-*     truncaba la base (el using tiene una fila por año y Stata difunde el
-*     valor), pero es innecesario: los umbrales se pasan como locales.
+* p27 - DESEA TRABAJAR MÁS HORAS:
+*   1990-1999: Variable no existe directamente. Se construye:
+*              p27 = 2 (no) por defecto para empleados
+*              p27 = 1 (sí) si ratmeh1 != . o hormas != .
+*   2000-2006: 2 categorías → 1 = "sí", 2 = "no"
+*   2015:      4 categorías → 1-3 = opciones de sí, 4 = "no desea"
+*   AJUSTE:
+*     - 1990-1999: p27 == 1 (sí), p27 == 2 (no)
+*     - 2000-2006: p27 == 1 (sí), p27 == 2 (no)
+*     - 2007+: p27 <= 3 (sí), p27 == 4 (no)
 *
-* C4. CÓDIGOS 999 EN HORAS. El original sólo limpiaba p51a/p51b/p51c. p24
-*     (hortrasa) también trae 999 = no responde en 1991-2007 (hasta 13 casos en
-*     1993). Sin limpiar, esas personas quedaban con horas = 999 -> t = 1.
+* p28 - DISPONIBILIDAD PARA TRABAJAR MÁS HORAS:
+*   1990-2006: NO EXISTE esta variable
+*   2007+:     Existe p28 = 1 (sí disponible)
+*   AJUSTE: Para 1990-2006 se asume disponibilidad si desea trabajar más
 *
-* C5. MISSING EN COMPARACIONES ABIERTAS. En Stata . > cualquier número:
-*       - "p34 >= 7" (rama PEA de los 90s) era verdadero con p34 missing;
-*       - "horas >= 30" (jornada de 12-17 años) era verdadero con horas missing.
-*     Se acotan ambas con "< .".
+* p32 - BUSCÓ TRABAJO EL MES ANTERIOR:
+*   1991-2006: 2 categorías → 1 = "sí", 2 = "no"
+*   2007+:     11 categorías → 1-10 = formas de búsqueda, 11 = "no buscó"
+*   AJUSTE:
+*     - 1991-2006: buscó = p32 == 1; no buscó = p32 == 2
+*     - 2007+: buscó = p32 <= 10; no buscó = p32 == 11
 *
-* C6. RAMIFICACIÓN POR PERÍODO. El original mezclaba if inrange(`y', ...) con
-*     if inrange(anio, ...). anio es una VARIABLE y en un comando if Stata
-*     evalúa sólo la primera observación. Aquí todo se decide con el local `y'.
-*
-* C7. HORAS DESCONOCIDAS. "replace horas = 0 if empleo == 1" hacía que quien no
-*     tenía dato de horas terminara con t = 0 y, si w == 1 y d_d == 0, fuera
-*     clasificado como ADECUADO. Por defecto quedan en missing (no adecuado);
-*     $horas_legacy = 1 reproduce el comportamiento anterior. Sólo afecta a
-*     1991-2006 y como mucho a un 0,6 % de los ocupados (columna p_sin_horas);
-*     de 2007 en adelante no hay ningún caso, así que no altera el empate con
-*     la serie oficial.
-*
-* C8. El acumulador se inicializaba con "use empleo1990 in 1" + "drop in 1" y el
-*     append arrastraba las 94 variables de esa base al archivo final (99
-*     variables en vez de 8). Aquí la serie se arma con postfile.
-*
-* C9. keep in 12/21 sobre "SMV + bonificaciones.csv" es indexación posicional.
-*     Verificado que hoy devuelve el bloque "A DICIEMBRE" 1990-1999, que es el
-*     correcto, pero aquí el bloque se localiza por contenido.
+* p34 - RAZÓN POR LA QUE NO BUSCÓ TRABAJO:
+*   1991/1995: 8 categorías
+*              1 = "no tiene necesidad o deseos de trabajar"
+*              2 = "no tiene tiempo"
+*              3 = "está enfermo"
+*              4 = "no está en edad de trabajar"
+*              5 = "piensa que no le darán trabajo"
+*              6 = "no cree poder encontrar"
+*              7 = "espera respuesta a una gestión"
+*              8 = "espera respuesta de un empleador"
+*   2005:      11 categorías
+*              1-7 = razones de desempleo oculto (excluyendo 4="cónyuge no permite")
+*              4 = "su cónyuge o familia no le permite" → PEI
+*              8-10 = otras razones → PEI
+*              11 = "no tiene edad de trabajar"
+*   2015:      12 categorías
+*              1-7 = razones de desempleo oculto
+*              8-11 = otras razones → PEI
+*              12 = "no está en edad de trabajar"
+*   AJUSTE para PEAN (desempleo oculto):
+*     - 1990-1999: pean = 1 si p34 >= 7 & p35 == 1 (espera respuesta)
+*     - 2000-2006: pean = 1 si p34 <= 7 & p34 != 4 & p35 == 1
+*     - 2007+: pean = 1 si p34 <= 7 & p35 == 1
 *
 *------------------------------------------------------------------------------*
-* VERIFICADO Y CONSERVADO (no eran errores)                                    *
+* NOTAS METODOLÓGICAS:
 *------------------------------------------------------------------------------*
-* - cellrange(A6:M62) de la hoja "1. ÍNDICE" = 1969-2025 completos. Correcto.
-* - componente == 6 = "Remuneraciones unificadas". Correcto.
-* - rename edad edad no genera error (Stata lo acepta como no-op).
-* - Denominador = PEA y los no clasificables cuentan como no adecuados: es la
-*   convención de la tasa oficial. Se reporta cuánto pesan (hoja Sensibilidad).
+* 
+* 1. En la década de los 90s, la pregunta sobre la disponibilidad para trabajar 
+*    más horas se realizaba solo a las personas que trabajaron menos de 40h la 
+*    semana pasada. Del 2000 en adelante se realiza también a quienes trabajaron
+*    más de 40h. Esto no afecta el empleo adecuado porque la disponibilidad solo
+*    es relevante cuando la persona trabajó menos de 40h.
+*
+* 2. Para 1990-1999, la variable p27 se construye a partir de ratmeh1 (razón
+*    por la que desea trabajar más horas) o hormas. Si estas variables tienen
+*    valor no missing, se interpreta como deseo de trabajar más horas.
+*
+* 3. La categoría "cónyuge/familia no le permite" (p34==4 en 2005) se excluye
+*    del desempleo oculto y se asigna a la PEI.
+*
+*------------------------------------------------------------------------------*
+* RESUMEN DE AJUSTES EN CONDICIONES LÓGICAS POR PERÍODO:
+*------------------------------------------------------------------------------*
+*
+* PERÍODO 2007+:
+*   - p21: realizó actividad = p21 <= 11; no realizó = p21 == 12
+*   - p27: sí desea = p27 <= 3; no desea = p27 == 4
+*   - p32: sí buscó = p32 <= 10; no buscó = p32 == 11
+*   - p34: desempleo oculto = p34 <= 7
+*   - p28: disponible = p28 == 1
+*
+* PERÍODO 2000-2006:
+*   - p21: realizó actividad = p21 <= 10; no realizó = p21 == 11
+*   - p27: sí desea = p27 == 1; no desea = p27 == 2
+*   - p32: sí buscó = p32 == 1; no buscó = p32 == 2
+*   - p34: desempleo oculto = p34 <= 7 & p34 != 4
+*   - p28: no existe (se asume disponibilidad si p35 == 1)
+*
+* PERÍODO 1990-1999:
+*   - p21: realizó actividad = p21 <= 11; no realizó = p21 == 12
+*   - p27: construido de ratmeh1/hormas; sí = 1, no = 2
+*   - p32: sí buscó = p32 == 1; no buscó = p32 == 2
+*   - p34: desempleo oculto = p34 >= 7 (categorías 7-8)
+*   - p25: no desea más horas = p25 == 2 (1991) o p25 == 3 (1993-1999)
+*
 *==============================================================================*
 
 clear all
@@ -95,7 +163,6 @@ capture log close
 
 * Raíz del Google Drive: Windows (H:) o macOS.
 if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
-else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 
 global bases    "$gd/Bases"
 global raw      "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
@@ -407,9 +474,35 @@ foreach y of numlist $anio_ini/$anio_fin {
         *----------------------------------------------------------------------*
         capture drop ila
         gen double ila = ingrl
-        replace ila = . if inlist(ila, -1, 999999)
-        if `y' <= 1999 replace ila = . if ila >= 900000
-        else           replace ila = . if ila >=  90000
+
+        * Códigos de no respuesta / valor atípico, año por año (C10). Cada lista
+        * reproduce exactamente la rama de ese año en
+        *   "Boletín 1/Procesamiento/Codigos/Ingresos/ingresos_anios_all_fn.do",
+        * tomando sólo los componentes que entran en el ingreso LABORAL: los
+        * códigos de rentas, remesas y bono no se aplican aquí. No hay una lista
+        * transversal: el juego de códigos cambia con el cuestionario.
+        *
+        *   1991       ingpat
+        *   1992-1999  ingpat ingasg ingepv ingdom
+        *   2000       ingpat retpat ingasa ingasa1 ingasa2 ingsec
+        *   2001-2009  recode ingrl (-1 = .) (999999 = .)
+        *   2006       pe61 pe62b pe63 pe64 pe65b pe66 pe67b
+        *   2010-2025  p63 p64b p65 p66 p67 p68b p69 p70b, y recode ingrl 999999
+        *
+        * 2002 y 2004 no tienen rama propia en ese script; se les aplica la de
+        * los años vecinos (2001/2003/2005), que es idéntica entre sí.
+        local invalidos ""
+        if `y' == 1991                  local invalidos "9999998"
+        if inrange(`y', 1992, 1999)     local invalidos "9999998 9999999 99999999"
+        if `y' == 2000                  local invalidos "9999 10000 99999 999999 9999999 39999999 89999999 99999999"
+        if inrange(`y', 2001, 2005)     local invalidos "-1 999999"
+        if `y' == 2006                  local invalidos "999 9999 22150 99999 999999"
+        if inrange(`y', 2007, 2009)     local invalidos "-1 999999"
+        if `y' >= 2010                  local invalidos "999999"
+
+        foreach c of local invalidos {
+            replace ila = . if ila == `c'
+        }
 
         local smin = ${smin_`y'}
 

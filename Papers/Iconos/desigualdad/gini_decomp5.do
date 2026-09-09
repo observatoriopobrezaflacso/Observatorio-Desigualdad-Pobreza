@@ -5,14 +5,6 @@
 *===============================================================
 
 clear all
-
-* Raíz del Google Drive: Windows (H:) o macOS. La respeta si ya viene
-* definida por el master.
-if "$gd" == "" {
-    if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
-    else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
-}
-
 set more off
 set graphics off
 
@@ -21,8 +13,6 @@ set graphics off
 *---------------------------------------------------------------
 
 global user_root "$gd"
-
-global gh_root "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza"
 
 global procesado      "$user_root/Bases/ENEMDU/Procesadas"          // Processed data directory
 global out            "$user_root/Papers/Íconos/outputs/Gini decomposition"  // Output directory

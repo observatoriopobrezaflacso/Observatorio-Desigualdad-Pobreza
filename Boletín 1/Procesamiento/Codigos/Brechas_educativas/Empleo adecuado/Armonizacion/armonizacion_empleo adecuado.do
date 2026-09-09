@@ -132,13 +132,20 @@
 
 
 
+*OJO -> EN ESTE CÓDIGO HAY UN ERROR: NO SE LIMPIA BIEN LA VARIABLE DE INGRESO DE 
+* LOS 90s NI LA DE HORAS (QUE A VECES TIENE UN VALOR DE 999). PARA LA ARMONIZACIÓN
+* CORRECTA, VER EL CÓDIGO DEL PAPER DE ÍCONOS. 
+
+
+* Raíz del Google Drive: Windows (H:) o macOS.
+if "`c(os)'" == "Windows" global root "H:/Mi unidad"
+else global root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+
 
 * Definición de rutas globales para facilitar la portabilidad del código
-global bases "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Procesamiento/Bases"
-global raw "$bases/enemdu_diciembres"
-global procesado "$bases/Procesadas"
-global out "G:/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Boletín 1/Outcomes/Curvas de crecimiento"
-global salarios "H:/Mi unidad/Bases/Salarios"
+global bases "$root/Bases"
+global procesado "$bases/ENEMDU/Procesadas/ingresos_pc"
+global salarios "$bases/Salarios"
 
 
 
@@ -149,7 +156,7 @@ import delimited "$salarios/Salario unificado y componentes salariales.csv", cle
 encode componentesalarial, gen(componente)
 drop componentesalarial 
 keep if componente == 6 & mes == "Diciembre"
-rename (anio valor) (anio salario_min)
+rename (anio valorsalariocomponenteendolares) (anio salario_min)
 replace salario_min = subinstr(salario_min, ",", ".", .)
 destring salario_min, replace
 keep anio salario_min
@@ -173,7 +180,17 @@ save `tmp2'
 
 list 
 
-foreach y of numlist 2001(2)2023 2024 {
+foreach y of numlist 1992 {
+	
+	if inrange(`y', 1990, 1999) {
+	local area "Urbano"
+	local suffix "urb"
+	}
+	if `y' >= 2000 {
+	local area "Nacional"
+	local suffix "nac"
+	}
+	local procesado2 "$procesado/`area'"
 
 di "*****************   `y'   ************************"
 
@@ -190,7 +207,8 @@ quietly {
 	* PROCESAMIENTO 
 	*==============================================================================*
 	
-	use "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta", clear
+	use "`procesado2'/ing_perca_`y'_`suffix'_precios2000.dta", clear
+	
 	
 	* Añade la variable salario mínimo a las ENEMDU
 	merge m:1 anio using "`tmp2'", keep(3) nogen
@@ -305,6 +323,7 @@ quietly {
 	* Umbral normativo (Salario básico unificado)
 	gen ila = ingrl
 	replace ila = . if inlist(ila, -1, 999999)
+	
 
 	gen ineg = .
 	replace ineg = 1 if ingrl == -1
@@ -405,7 +424,7 @@ quietly {
 	*mean w [iw = fexp]
 	*mean t [iw = fexp]
 	
-    save "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta", replace
+    *save "$procesado/ingresos_pc/ing_perca_`y'_nac_precios2000.dta", replace
 
 }
 

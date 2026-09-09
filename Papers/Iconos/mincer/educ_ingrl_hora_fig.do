@@ -19,9 +19,9 @@ use "`out'/hora_coef_educ_ingrl.dta", clear
 * 5. GRÁFICOS (sin intervalos de confianza)
 *==============================================================================*
 
-local nota  "MCO por año sobre ln(ingreso laboral real por hora). Ponderado por fexp. Controles: edad y edad{sup:2}."
+local nota  "MCO por año sobre ln(ingreso laboral por hora). Ponderado por fexp. Controles: edad, edad{sup:2} y rama de actividad (CIIU 4)."
 local nota2 "Horas = suma de horas semanales de todos los trabajos (principal + secundario + otros)."
-local nota3 "Muestra: perceptores de ingreso laboral con horas > 0, sin restricción de edad."
+local nota3 "Muestra: perceptores de ingreso laboral con horas > 0 y rama declarada, sin restricción de edad."
 local nota4 "1990 y 2002 no tienen base: se usan 1991 y 2003."
 
 local xlab "xlabel(1991 1993 1996 1999 2003 2005 2008 2011 2014 2017 2021 2025, angle(45) labsize(small))"
