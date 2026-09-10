@@ -20,6 +20,7 @@
 * Dos quiebres de cuestionario que no coinciden con los cortes obvios:          *
 * - hormas (deseo de trabajar más horas) recién es un sí/no desde 2001; en      *
 *   1990-2000 es el motivo (códigos 4-8), así que 2000 se arma como año noventa.*
+*   En 1991-1992 el motivo está en ratmeh1, y en 1992 hormas es el sí/no.       *
 * - los códigos de motnobus se reordenan en 1999: el bloque de desaliento pasa  *
 *   de 5-8 a 1-4. Las etiquetas del .dta de 1999-2000 conservan el orden viejo. *
 *==============================================================================*
@@ -193,11 +194,15 @@ foreach y of numlist 1991(1)2025 {
             if `y' >= 2001 rename hormas p27
         }
 
-        if inrange(anio, 1990, 2000) {
+        * Hasta 2000 no hay sí/no de "desea más horas": se infiere de tener
+        * motivo anotado. 1991-1992: ratmeh1, sin los códigos 7-8 (personales,
+        * enfermedad), que desde 1993 van a p25 == 2. 1993-2000: hormas. En
+        * 1992 hormas es el sí/no, no el motivo, y no sirve para inferir.
+        if inrange(`y', 1990, 2000) {
             cap drop p27
             cap gen p27 = 2 if p20 == 1 | p22 == 1
-            capture replace p27 = 1 if ratmeh1 != .
-            capture replace p27 = 1 if hormas  != .
+            if `y' <= 1992 replace p27 = 1 if inlist(ratmeh1, 3, 4, 5, 6, 9)
+            else           replace p27 = 1 if hormas != .
         }
 
 	
