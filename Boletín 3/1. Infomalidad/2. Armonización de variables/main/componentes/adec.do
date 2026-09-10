@@ -16,6 +16,12 @@
 *    lógica original, pero sustituyendo el umbral salarial vigente por el       *
 *    SBU 2025 deflactado a precios del año t.                                   *
 * 5) Comparar serie histórica oficial (adec) vs. serie simulada (adec_sim).     *
+*                                                                                *
+* Dos quiebres de cuestionario que no coinciden con los cortes obvios:          *
+* - hormas (deseo de trabajar más horas) recién es un sí/no desde 2001; en      *
+*   1990-2000 es el motivo (códigos 4-8), así que 2000 se arma como año noventa.*
+* - los códigos de motnobus se reordenan en 1999: el bloque de desaliento pasa  *
+*   de 5-8 a 1-4. Las etiquetas del .dta de 1999-2000 conservan el orden viejo. *
 *==============================================================================*
 
 clear all
@@ -226,7 +232,18 @@ foreach y of numlist 1991(1)2025 {
             replace pean = 1 if petn == 1 & p20 == 2 & p21 <= 11
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 1
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 1
-            replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 2 & p34 >= 7 & p34 < . & p35 == 1
+            * Desempleo oculto: ocasionales, esperas y desalentados dentro de la
+            * PEA; fuera los que no pueden participar (sin tiempo, familia,
+            * enfermedad, edad). El bloque de desaliento de motnobus son los
+            * códigos 5-8 hasta 1998 y los 1-4 desde 1999: la lista se reordena
+            * y las etiquetas del .dta de 1999-2000 se quedaron con el orden
+            * viejo. El orden real se verifica con condact (5/6 = desocupados) y
+            * con el universo al que se preguntó deseatra, que es ese bloque.
+            * inrange() ya excluye el missing, que con ">=" entraría a la PEA.
+            if `y' <= 1998 local desalent "inrange(p34, 5, 8)"
+            else           local desalent "inrange(p34, 1, 4)"
+            replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & ///
+                                p32 == 2 & `desalent' & p35 == 1
         }
         label variable pean "Población Económicamente Activa"
 
