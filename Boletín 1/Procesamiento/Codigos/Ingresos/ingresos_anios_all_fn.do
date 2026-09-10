@@ -18,7 +18,7 @@
 * SECCIÓN 1: CONFIGURACIÓN DE RUTAS Y DIRECTORIOS
 *-------------------------------------------------------------
 * Definición de rutas globales para facilitar la portabilidad del código
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
+global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global enemdu_diciembres "$user_root/Bases/ENEMDU/Originales/Diciembres/"
 global bases "$user_root/Bases"
 global bases_90s "$enemdu_diciembres/1990-1999"
@@ -26,7 +26,7 @@ global bases_2000_2006 "$enemdu_diciembres/2000-2006"
 global bases_2007_2017 "$enemdu_diciembres/2007-2017"
 global bases_2018_presente "$enemdu_diciembres/2018-presente/Mensuales"
 
-global procesado "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc"
+global procesado "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc"
 
 
 * Creación de directorios de salida (capture ignora errores si ya existen)
@@ -895,7 +895,7 @@ end
 
 **# Usage
 
-foreach y of numlist 2025(1)2025 {
+foreach y of numlist 2025 {
     mk_ingtot, year(`y')
 }
 

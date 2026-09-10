@@ -30,9 +30,12 @@ global bases     "$user_root_drive/Bases"
 global raw       "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios  "$bases/Salarios"
 global ipc       "$bases/IPC"
-global out       "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
+global out       "$user_root/Papers/Íconos/outputs/empleo adecuado"
 global out_plot  "$out"
-global excel     "$out/serie_adec_pea_1991_2025.xlsx"
+global excel     "$out/serie_empleo_adecuado_1991_2025.xlsx"
+global temp      "$out/temp"
+
+cap mkdir "$temp"
 
 * SBU vigente en 2025 (USD). Ajustar si corresponde.
 scalar sbu_2025 = 470
@@ -193,6 +196,7 @@ if r(N) > 0 {
 * la recoge como inflación interna (los precios en sucres se multiplican por
 * 11,9 entre 1991 y 1999). Con tipo de mercado el SBU de 1990 salía valiendo
 * unas 15 veces el de 2024, que es imposible.
+
 recast double salario_min_sim
 replace salario_min_sim = salario_min_sim * tc_dolarizacion if anio <= 1999
 
@@ -202,8 +206,9 @@ label variable salario_min_sim "SBU 2025 deflactado, en la moneda del año"
 list anio ipc_anual ipc_base2025 tc salario_min salario_min_sim, sep(0) noobs
 
 tempfile deflactor
-save `deflactor', replace
 
+save "$temp/deflactor.dta", replace
+s
 
 *==============================================================================*
 * 2. RECONSTRUIR EMPLEO ADECUADO CON UMBRAL SIMULADO                            
@@ -460,6 +465,7 @@ foreach y of numlist 1991(1)2025 {
 	decode `condact_var', gen(condact_str)
 
 	replace adec = 0 if condact_str == "Otro empleo no pleno"
+	replace adec_sim = 0 if condact_str == "Otro empleo no pleno"
 
 	
     capture confirm variable area
@@ -478,18 +484,17 @@ foreach y of numlist 1991(1)2025 {
     sum adec adec_sim
 }
 
+
 save "$out/historico_adec_sim.dta", replace
 
 
-use "$out/historico_adec_sim.dta", clear
 
-tab anio adec [iw = fexp], nofreq row
 
 *==============================================================================*
 * 3. COMPARACIÓN: SERIE OFICIAL vs SIMULADA                                     
 *==============================================================================*
-
 use "$out/historico_adec_sim.dta", clear
+
 replace area = 1 if area == .
 
 * Promedios nacionales y urbanos
@@ -585,6 +590,13 @@ di as txt _n "{hline 72}"
 di as txt "EMPLEO ADECUADO SOBRE LA PEA"
 di as txt "{hline 72}"
 list anio adec_nac adec_urb adec_sim_nac adec_sim_urb, sep(0) noobs
+
+
+merge 1:1 anio using "$temp/deflactor", keepusing(salario_min salario_min_sim) keep(1 3)
+drop _merge
+label variable salario_min "Salario mínimo"
+label variable salario_min_sim "Salario mínimo simulado"
+
 
 export excel using "$excel", sheet("Serie") firstrow(varlabels) replace
 di as txt _n "Serie exportada a: $excel"

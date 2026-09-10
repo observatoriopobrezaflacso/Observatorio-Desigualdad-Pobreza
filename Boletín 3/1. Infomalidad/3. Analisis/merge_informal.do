@@ -5,7 +5,7 @@
 clear all
 set more off
 
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 global bases "$user_root/Bases"
 global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
@@ -63,7 +63,7 @@ drop m_*
 	
 
 	
-forval y = 2001/2025 {
+forval y = 1991/2025 {
 	
 	di "**************`y'*******************"
 	
@@ -84,9 +84,6 @@ forval y = 2001/2025 {
 		}
 	else                          local svyvars `svyvars'
 	
-	if `y' == 2009 local ingrl_var ing_lab
-	else           local ingrl_var ingrl
-
 	
     merge 1:1 id_persona anio using "$raw/empleo`y'.dta", ///
         keepusing(fexp sexo edad provincia `ingrl_var' condact* `svyvars') ///

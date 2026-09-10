@@ -10,7 +10,7 @@ clear all
 set more off
 
 * Definición de rutas globales para acceder a las bases de datos
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 global bases "$user_root/Bases"
 global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
@@ -207,7 +207,7 @@ preserve
         ylabel(0(20)100, angle(0) grid labsize(small)) ///
         xlabel(1991(2)2025, angle(90) labsize(small)) ///
         xscale(range(1990 2025)) ///
-		legend(order(2 "No adecuado" 3 "No remunerado" 1 "No IESS" 4 "No RUC") ///
+		legend(order(1 "No adecuado" 2 "No remunerado" 3 "No IESS" 4 "No RUC") ///
                rows(1) size(small) position(6)) ///
         graphregion(color(white)) plotregion(color(white)) scheme(s2color)
     graph save "$out_results/Graficos/panel_componentes.gph", replace
@@ -225,7 +225,7 @@ preserve
     graph export "$out_results/Graficos/Informalidad_y_componentes.pdf", replace
 restore
 
-
+s
 
 * ===============================================================
 **# INFORMALIDAD  Y SUS COMPONENTES POR SEXO

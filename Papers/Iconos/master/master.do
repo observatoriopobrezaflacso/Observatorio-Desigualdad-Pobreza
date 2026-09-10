@@ -23,7 +23,10 @@ set varabbrev off
 
 * Raíz del Google Drive: Windows (H:) o macOS.
 if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
-else global gd "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+else global gd "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+
+global gh_root "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza"
+
 
 * Raíz del repositorio (donde vive este archivo).
 if "`c(os)'" == "Windows" global repo "C:/Users/santy/Documents/GitHub/Observatorio-Desigualdad-Pobreza"
@@ -41,10 +44,11 @@ global run_decomp    1     // gini_decomp     (Gráficos 8, 9, 10, 11)
 global run_prima     1     // prima_salarial  (Gráficos 16, 17)
 global run_adecuado  1     // empleo_adec     (Gráfico 15)
 global run_rama      1     // panel_educ_pleno(Gráficos 21, 22)
-global run_calif     1     // panel_crecimiento (Gráficos 17-20)
+global run_calif     1     // empleo_calificados (ya no alimenta el libro)
+global run_rama_of   0     // empleo_pleno_rama_condact: definición oficial
 global run_ginipalma 1     // gini y palma   (Gráficos 1, 2, 3)
 global run_brechas   1     // brechas        (Gráficos 12, 13)
-global run_gic       0     // GIC (Gráficos 5, 6, 7) — ver nota en la sección 4
+global run_gic       1     // gic_paper      (Gráficos 6 y 7)
 global run_sri       0     // ineq_SRI (Gráfico 3) — ver nota en la sección 4
 global run_consolid  1     // junta todos los Excel en un solo libro (sección 4b)
 
@@ -79,9 +83,6 @@ if $run_ginipalma {
 *------------------------------------------------------------------------------
 * 3.0b Brechas salariales -> hoja brechas (Gráficos 12 y 13)
 *      Salida: $out/brechas/brechas_salariales.dta / .xlsx
-*      Las cuatro razones reproducen el libro. Los NIVELES de ingreso no,
-*      porque el libro se deflactó con un factor desalineado por fila; este
-*      do-file aplica a cada año el suyo. Ver la nota al final del do-file.
 *------------------------------------------------------------------------------
 if $run_brechas {
     di as res _n "=== [0b/7] Brechas salariales ==="
@@ -94,6 +95,9 @@ if $run_brechas {
 *     Salida: $out/Gini decomposition/gini_decomposition_cuartiles.xlsx
 *             (la sección 7 del do-file es la que produce los cuartiles)
 *------------------------------------------------------------------------------
+
+* ssc install sgini // uncomment to install
+
 if $run_decomp {
     di as res _n "=== [1/5] Descomposición del Gini ==="
     capture noisily do "$cod/desigualdad/gini_decomp5.do"
@@ -105,6 +109,9 @@ if $run_decomp {
 *     Salida: $out/educ_ingrl/hora_coef_educ_ingrl.dta
 *             $out/educ_ingrl/prima_hora_tablas.xlsx
 *------------------------------------------------------------------------------
+
+* ssc install estout // uncomment to install
+
 if $run_prima {
     di as res _n "=== [2/5] Prima salarial por hora ==="
     capture noisily do "$cod/mincer/educ_ingrl_hora.do"
@@ -124,6 +131,9 @@ if $run_adecuado {
 *------------------------------------------------------------------------------
 * 3.4 Empleo pleno y educación por rama -> hoja panel_educ_pleno (G. 21 y 22)
 *     Salida: $out/empleo adecuado/base_rama_educ.dta / .csv
+*             $out/rama_educ/nacional/tablas_rama_educ.xlsx  (hojas
+*             crecimiento_<par>, que alimentan los Gráficos 14, 15 y 16)
+*             $out/rama_educ/datos_paneles.xlsx
 *------------------------------------------------------------------------------
 if $run_rama {
     di as res _n "=== [4/5] Empleo pleno por rama ==="
@@ -132,14 +142,58 @@ if $run_rama {
 }
 
 *------------------------------------------------------------------------------
+* 3.4b El mismo cálculo con la definición OFICIAL de empleo pleno (condact == 1)
+*      Salida: $out/rama_educ_condact/nacional/tablas_rama_educ.xlsx
+*
+*      Es el gemelo de 3.4 y escribe en su propia carpeta. Sirve para cotejar
+*      los dos criterios, no para los gráficos: la etiqueta oficial cambia de
+*      metodología en 2007 y en 2014, así que sus niveles no son comparables a
+*      lo largo del período. Los Gráficos 14, 15 y 16 se arman con la versión
+*      armonizada del bloque 3.4. Apagado por defecto porque vuelve a procesar
+*      los microdatos y no alimenta el libro; poner run_rama_of 1 para correrlo.
+*------------------------------------------------------------------------------
+if $run_rama_of {
+    di as res _n "=== [4b/5] Empleo pleno por rama, definición oficial ==="
+    capture noisily do "$cod/empleo adecuado/empleo_pleno_rama_condact.do"
+    if _rc global fallos "$fallos empleo_pleno_rama_condact(_rc=`=_rc')"
+}
+
+*------------------------------------------------------------------------------
 * 3.5 Crecimiento del empleo por rama -> hoja panel_crecimiento (G. 17 a 20)
 *     Salida: $out/rama_educ/base_crecimiento.dta
 *             $out/rama_educ/crecimiento_empleo.xlsx
+*     Ojo: sus hojas crec_* ya NO van al libro consolidado. Parten a los
+*     ocupados por "universitaria" y no por "superior", así que no empataban
+*     con el período 1992-1999. Los cuatro períodos de los Gráficos 14, 15 y 16
+*     salen ahora de tablas_rama_educ.xlsx, del bloque 3.4.
 *------------------------------------------------------------------------------
 if $run_calif {
     di as res _n "=== [5/5] Crecimiento del empleo por calificación ==="
     capture noisily do "$cod/calificados_vs_no_calificados/empleo_calificados.do"
     if _rc global fallos "$fallos empleo_calificados(_rc=`=_rc')"
+}
+
+
+*------------------------------------------------------------------------------
+* 3.6 Curvas de incidencia del crecimiento -> hoja GIC (Gráficos 6 y 7)
+*     Versión del paper: sólo las cinco curvas que se grafican
+*       urbano   1991-1998 y 2001-2025
+*       nacional 2001-2010, 2011-2025 y 2001-2025
+*     Salida: $out/GIC/gic_paper.xlsx  (hojas GIC_urbano, GIC_nacional,
+*             GIC_ref y GIC_largo) y $out/GIC/gic_paper.dta
+*     Requiere: gicurve (no está en SSC):
+*       net install gicurve, from("https://raw.githubusercontent.com/vavalomi/stata_tools/master/")
+*     Requiere antes: Boletín 1/Procesamiento/Codigos/Ingresos/
+*                     ingresos_anios_all_fn.do (arma ingresos_pc y necesita IPC)
+*     La versión completa (todos los pares de años) sigue en
+*     Dashboards/codigo/gic_curves.do; el paper no la necesita.
+*     Los gráficos se dibujan dentro del Excel con la macro
+*     $cod/master/graficos_iconos.bas (ver su encabezado).
+*------------------------------------------------------------------------------
+if $run_gic {
+    di as res _n "=== [extra] Curvas de incidencia del crecimiento ==="
+    capture noisily do "$cod/GIC/gic_paper.do"
+    if _rc global fallos "$fallos gic_paper(_rc=`=_rc')"
 }
 
 *==============================================================================*
@@ -150,22 +204,9 @@ if $run_calif {
 * generadas. Prender la bandera correspondiente en la sección 1 para correrlos.
 *==============================================================================*
 
-*------------------------------------------------------------------------------
-* 4.1 Curvas de incidencia del crecimiento -> hoja GIC (Gráficos 5, 6 y 7)
-*     Código: Dashboards/codigo/gic_curves.do
-*     Salida: Boletín 1/Outcomes/Curvas de crecimiento/GIC_exports/tables/xlsx/
-*             gic_{nac,urb}_<año base>_<año final>.xlsx
-*     Requiere antes: Boletín 1/Procesamiento/Codigos/Ingresos/
-*                     ingresos_anios_all_fn.do (arma ingresos_pc y necesita IPC)
-*------------------------------------------------------------------------------
-if $run_gic {
-    di as res _n "=== [extra] Curvas de incidencia del crecimiento ==="
-    capture noisily do "$repo/Dashboards/codigo/gic_curves.do"
-    if _rc global fallos "$fallos gic_curves(_rc=`=_rc')"
-}
 
 *------------------------------------------------------------------------------
-* 4.2 Participación en el ingreso, registros del SRI -> hoja ineq_SRI (G. 3)
+* 4.1 Participación en el ingreso, registros del SRI -> hoja ineq_SRI (G. 3)
 *     Código: SRI/Procesamiento/Codigos/Renta/renta_percentiles.do
 *     Nota: corre sobre microdatos tributarios, no sobre ENEMDU.
 *------------------------------------------------------------------------------
@@ -176,7 +217,7 @@ if $run_sri {
 }
 
 *==============================================================================*
-* 4b. LIBRO ÚNICO CON TODAS LAS TABLAS
+* 5. LIBRO ÚNICO CON TODAS LAS TABLAS
 *
 * Cada do-file escribe su propio .xlsx en su carpeta. Este bloque junta todas
 * esas hojas en un solo libro, con una hoja de índice que dice de dónde viene
@@ -188,10 +229,13 @@ if $run_consolid {
     di as res _n "=== [final] Libro consolidado ==="
     capture noisily do "$cod/master/consolidar_excel.do"
     if _rc global fallos "$fallos consolidar_excel(_rc=`=_rc')"
+    di as txt "Los gráficos del paper se dibujan sobre ese libro con la macro"
+    di as txt "$cod/master/graficos_iconos.bas (importarla en Excel y correr"
+    di as txt "CrearGraficosIconos)."
 }
 
 *==============================================================================*
-* 5. CÓDIGOS FALTANTES
+* 6. CÓDIGOS FALTANTES
 *
 * Hojas del libro de gráficos que HOY no tienen do-file que las genere.
 * Sus valores están tecleados a mano o copiados de otros archivos.
