@@ -17,7 +17,9 @@ global salarios "$bases/Salarios"
 global variables_base "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global bases_armonizadas "$user_root/Bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
 global out_results/Graficos "$user_root/Boletín 3/2. Armonización de variables/Gráficos de control"
-global out_results "$user_root/Boletín 3/4. Resultados/informalidad"
+global out_results "$user_root/Boletín 3/4. Resultados/informalidad2"
+
+cap mkdir "$out_results"
 
 * Definición de variables importantes para análisis
 global important_variable informal1
@@ -36,7 +38,7 @@ replace area = 1 if area == .
 
 
 * Definir lista de variables relevantes para análisis de informalidad
-local vars affiliated adec tiene_ruc no_remunerado
+local vars affiliated adec institucion_formal no_remunerado
 
 * Generar tabulaciones de cada variable por año para control
 foreach var of local vars {
@@ -49,7 +51,7 @@ foreach var of local vars {
 
 keep if edad >= 15
 
-foreach var of varlist affiliated adec* no_remunerado tiene_ruc {
+foreach var of varlist affiliated adec* no_remunerado institucion_formal {
 *	cap gen `var'_a = `var'
 *	replace `var'_a = . if inrange(condact, 5, 8) & anio <= 2006
 *	replace `var'_a = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2007
@@ -83,8 +85,10 @@ replace informal1_sim = . if inlist(., affiliated, adec_sim, no_remunerado)
 gen informal2 =  affiliated    == 0 | ///
 				 adec               == 0 | ///
 				 no_remunerado      == 1 | ///
-				 (tiene_ruc == 0) 
-replace informal2 = . if inlist(., affiliated, adec,  tiene_ruc, no_remunerado)
+				 (institucion_formal == 0) 
+replace informal2 = . if inlist(., affiliated, adec,  institucion_formal, no_remunerado)
+
+
 
 * ============================================================
 **#  INFORMALIDAD 2 SIM
@@ -93,8 +97,8 @@ gen informal2_sim =  ///
 				 affiliated        == 0 | ///
 				 adec_sim               == 0 | ///
 				 no_remunerado          == 1 | ///
-				 (tiene_ruc == 0) 
-replace informal2_sim = . if inlist(., affiliated, adec_sim,  tiene_ruc, no_remunerado)
+				 (institucion_formal == 0) 
+replace informal2_sim = . if inlist(., affiliated, adec_sim,  institucion_formal, no_remunerado)
 
 * ===============================================================
 **# INFORMALIDAD CON Y SIN RUC 
@@ -146,7 +150,7 @@ restore
 gen     comp_no_iess     = (affiliated == 0) * 100 if !missing(affiliated)
 gen     comp_no_adec     = (adec == 0)             * 100 if !missing(adec)
 gen     comp_no_remun    = (no_remunerado == 1)    * 100 if !missing(no_remunerado)
-gen     comp_no_ruc      = (tiene_ruc == 0)        * 100 if !missing(tiene_ruc)
+gen     comp_no_ruc      = (institucion_formal == 0)        * 100 if !missing(institucion_formal)
 
 label var comp_no_iess  "No afiliado al IESS"
 label var comp_no_adec  "No tiene condiciones adecuadas (adec=0)"
@@ -225,7 +229,6 @@ preserve
     graph export "$out_results/Graficos/Informalidad_y_componentes.pdf", replace
 restore
 
-s
 
 * ===============================================================
 **# INFORMALIDAD  Y SUS COMPONENTES POR SEXO
@@ -449,15 +452,15 @@ preserve
 restore
 
 
-s
+
 
 *------------------------------------------------------------------*
 * Gráfico: Número de condiciones de informalidad cumplidas over time
 *------------------------------------------------------------------*
 * Contar cuántas condiciones de informalidad cumple cada persona
 * Condiciones: (1) no afiliado IESS, (2) no adec, (3) no remunerado, (4) no tiene RUC
-gen n_cond = (affiliated == 0) + (adec == 0) + (no_remunerado == 1) + (tiene_ruc == 0) ///
-             if !missing(affiliated) & !missing(adec) & !missing(no_remunerado) & !missing(tiene_ruc)
+gen n_cond = (affiliated == 0) + (adec == 0) + (no_remunerado == 1) + (institucion_formal == 0) ///
+             if !missing(affiliated) & !missing(adec) & !missing(no_remunerado) & !missing(institucion_formal)
 * Generar dummies para cada número de condiciones (1, 2, 3, 4)
 forvalues i = 1/4 {
     gen cond_`i' = (n_cond == `i') * 100 if !missing(n_cond)
@@ -1225,7 +1228,7 @@ preserve
         name(informal2_etnia, replace)
     *graph export "$out_results/informal2_etnia_nac_IC.png", replace 
 restore 
-s
+
 /*
 
 * Urbano — desde 2003
