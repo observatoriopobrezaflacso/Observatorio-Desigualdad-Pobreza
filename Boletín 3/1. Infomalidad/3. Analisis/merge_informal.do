@@ -56,6 +56,18 @@ merge 1:1 id_persona anio using "$bases_armonizadas/historico_educacion.dta", //
 *--- Merge rama ---*
 merge 1:1 id_persona anio using "$bases_armonizadas/historico_rama.dta", ///
     generate(m_rama)
+
+*--- Merge diseño muestral (estrato y UPM para errores estándar) ---*
+* Lo construye: 2. Armonización de variables/main/componentes/diseno_muestral.do
+capture confirm file "$bases_armonizadas/historico_diseno_muestral.dta"
+if _rc {
+    di as error "Falta historico_diseno_muestral.dta."
+    di as error "Corra antes componentes/diseno_muestral.do"
+    exit 601
+}
+merge 1:1 id_persona anio using "$bases_armonizadas/historico_diseno_muestral.dta", ///
+    keepusing(estrato_svy upm_svy estrato_str upm_str diseno_fuente) ///
+    generate(m_diseno)
 		
 	
 drop m_*
@@ -124,7 +136,8 @@ local vars affiliated adec adec_sim no_remunerado  tiene_ruc  tiene_ruc2 institu
 
 
 keep `vars' fexp sexo edad provincia educ_univ etnia_arm anio area ingrl rama1 ///
-	  ciudad zona sector plan_muestreo 
+	  ciudad zona sector plan_muestreo ///
+	  estrato_svy upm_svy estrato_str upm_str diseno_fuente 
 	  
 	  *estrato upm
 	  
