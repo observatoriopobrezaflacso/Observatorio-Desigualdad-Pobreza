@@ -16,6 +16,13 @@
 *    lógica original, pero sustituyendo el umbral salarial vigente por el       *
 *    SBU 2025 deflactado a precios del año t.                                   *
 * 5) Comparar serie histórica oficial (adec) vs. serie simulada (adec_sim).     *
+*                                                                                *
+* Dos quiebres de cuestionario que no coinciden con los cortes obvios:          *
+* - hormas (deseo de trabajar más horas) recién es un sí/no desde 2001; en      *
+*   1990-2000 es el motivo (códigos 4-8), así que 2000 se arma como año noventa.*
+*   En 1991-1992 el motivo está en ratmeh1, y en 1992 hormas es el sí/no.       *
+* - los códigos de motnobus se reordenan en 1999: el bloque de desaliento pasa  *
+*   de 5-8 a 1-4. Las etiquetas del .dta de 1999-2000 conservan el orden viejo. *
 *==============================================================================*
 
 clear all
@@ -125,81 +132,18 @@ append using `sbu_post2000'
 tempfile sbu_hist
 save `sbu_hist', replace
 
-*------------------------------------------------------------------------------*
-* 1c. TIPO DE CAMBIO SUCRE / DÓLAR (REFERENCIA)                                *
-*------------------------------------------------------------------------------*
-* Hasta 1999 la ENEMDU levanta los ingresos en sucres y desde 2000 en dólares.
-* Se carga el tipo de cambio de VENTA del MERCADO LIBRE DE CAMBIOS a FIN DE
-* PERIODO, que es el que corresponde a una encuesta levantada en diciembre.
-*
-* OJO: tc NO se usa para construir el indicador. Queda en la base como columna
-* descriptiva, para poder expresar ingresos de los 90s en dólares corrientes de
-* la época si hace falta. El cruce de moneda del umbral simulado se hace con
-* tc_dolarizacion (25.000), un factor único; ver más abajo.
-*
-* Hoja "anual", encabezados en tres filas:
-*   fila 4 = mercado (oficial / intervención / libre)
-*   fila 5 = promedio / fin de periodo
-*   fila 6 = compra / venta
-* De ahí, la columna N es "mercado libre - fin de periodo - venta".
-
-import excel "$ipc/tipo_cambio_sucre_dolar.xls", sheet("anual") allstring clear
-
-* control: la columna N debe seguir siendo la que se cree que es
-if strtrim(K[4]) != "MERCADO LIBRE DE CAMBIOS" | strtrim(M[5]) != "FIN DE PERIODO" ///
- | strtrim(N[6]) != "Venta" {
-    di as error "Cambió el formato de tipo_cambio_sucre_dolar.xls: la columna N ya no es"
-    di as error "'mercado libre / fin de periodo / venta'. Revisar el archivo."
-    exit 459
-}
-
-gen int    anio = real(strtrim(A))
-gen double tc   = real(strtrim(N))
-keep anio tc
-keep if inrange(anio, 1990, 1999) & tc < .
-
-label variable tc "Sucres por dólar: venta, fin de periodo, mercado libre"
-
-tempfile tipo_cambio
-save `tipo_cambio'
-
 
 * Combinar IPC + histórico salarial + tipo de cambio
 use `ipc_tmp', clear
 merge 1:1 anio using `sbu_hist', nogen
-merge 1:1 anio using `tipo_cambio', nogen
 
-* De 2000 en adelante la economía ya está dolarizada: el factor es 1
-replace tc = 1 if anio >= 2000
-
-* control: ningún año en sucres puede quedarse sin tipo de cambio
-qui count if inrange(anio, 1991, 1999) & missing(tc)
-if r(N) > 0 {
-    di as error "Hay `r(N)' año(s) de los 90s sin tipo de cambio."
-    exit 459
-}
-
-* Los ingresos de la ENEMDU y el SBU vigente se dejan en la moneda de cada año:
-* sucres hasta 1999, dólares desde 2000. Ninguno de los dos se convierte, así que
-* la serie oficial (adec) no depende de ningún supuesto cambiario.
-*
-* El que sí tiene que cruzar la frontera de moneda es el umbral SIMULADO: está
-* definido como el SBU de 2025 (USD) deflactado, y el IPC no cambia la unidad
-* monetaria, sólo la época. Se lo lleva a sucres del año con el factor fijo de
-* la dolarización.
-*
-* El factor tiene que ser uno solo para toda la serie. Usar el tipo de cambio de
-* MERCADO de cada año descuenta dos veces la depreciación del sucre: el IPC ya
-* la recoge como inflación interna (los precios en sucres se multiplican por
-* 11,9 entre 1991 y 1999). Con tipo de mercado el SBU de 1990 salía valiendo
-* unas 15 veces el de 2024, que es imposible.
 recast double salario_min_sim
 replace salario_min_sim = salario_min_sim * tc_dolarizacion if anio <= 1999
 
 label variable salario_min     "SBU vigente del año, en la moneda del año"
 label variable salario_min_sim "SBU 2025 deflactado, en la moneda del año"
 
-list anio ipc_anual ipc_base2025 tc salario_min salario_min_sim, sep(0) noobs
+list anio ipc_anual ipc_base2025 salario_min salario_min_sim, sep(0) noobs
 
 tempfile deflactor
 save `deflactor', replace
@@ -215,6 +159,8 @@ destring area, replace
 drop in 1
 tempfile adec_acumulado
 save `adec_acumulado', replace
+
+log using "$user_root", text replace
 
 foreach y of numlist 1991(1)2025 {
 
@@ -245,16 +191,21 @@ foreach y of numlist 1991(1)2025 {
             rename hortrahp p51a
             rename hortrahs p51b
             rename hortraho p51c
-            if `y' >= 2000 rename hormas p27
+            if `y' >= 2001 rename hormas p27
         }
 
-        if inrange(anio, 1990, 1999) {
+        * Hasta 2000 no hay sí/no de "desea más horas": se infiere de tener
+        * motivo anotado. 1991-1992: ratmeh1, sin los códigos 7-8 (personales,
+        * enfermedad), que desde 1993 van a p25 == 2. 1993-2000: hormas. En
+        * 1992 hormas es el sí/no, no el motivo, y no sirve para inferir.
+        if inrange(`y', 1990, 2000) {
             cap drop p27
             cap gen p27 = 2 if p20 == 1 | p22 == 1
-            capture replace p27 = 1 if ratmeh1 != .
-            capture replace p27 = 1 if hormas  != .
+            if `y' <= 1992 replace p27 = 1 if inlist(ratmeh1, 3, 4, 5, 6, 9)
+            else           replace p27 = 1 if hormas != .
         }
 
+	
         *--------- PET ---------*
         cap confirm variable petn
         if !_rc drop petn
@@ -276,7 +227,7 @@ foreach y of numlist 1991(1)2025 {
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 <= 10
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 11 & p34 <= 7 & p35 == 1
         }
-        else if inrange(anio, 2000, 2006) {
+        else if inrange(anio, 2001, 2006) {
             replace pean = 1 if petn == 1 & p20 == 2 & p21 <= 10
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 11 & p22 == 1
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 11 & p22 == 2 & p32 == 1
@@ -286,24 +237,30 @@ foreach y of numlist 1991(1)2025 {
             replace pean = 1 if petn == 1 & p20 == 2 & p21 <= 11
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 1
             replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 1
-            * "p34 < ." es imprescindible: en Stata el missing es mayor que
-            * cualquier número, así que sin ese tope "p34 >= 7" también es cierto
-            * para quien no tiene dato de motivo de no búsqueda, y esa gente
-            * entraría al desempleo oculto (PEA) en vez de quedar en la PEI.
-            * Sólo pasa en esta rama: en 2000-2006 y 2007+ la condición es
-            * "p34 <= 7", que con missing es falsa.
-            replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & p32 == 2 & p34 >= 7 & p34 < . & p35 == 1
+            * Desempleo oculto: ocasionales, esperas y desalentados dentro de la
+            * PEA; fuera los que no pueden participar (sin tiempo, familia,
+            * enfermedad, edad). El bloque de desaliento de motnobus son los
+            * códigos 5-8 hasta 1998 y los 1-4 desde 1999: la lista se reordena
+            * y las etiquetas del .dta de 1999-2000 se quedaron con el orden
+            * viejo. El orden real se verifica con condact (5/6 = desocupados) y
+            * con el universo al que se preguntó deseatra, que es ese bloque.
+            * inrange() ya excluye el missing, que con ">=" entraría a la PEA.
+            if `y' <= 1998 local desalent "inrange(p34, 5, 8)"
+            else           local desalent "inrange(p34, 1, 4)"
+            replace pean = 1 if petn == 1 & p20 == 2 & p21 == 12 & p22 == 2 & ///
+                                p32 == 2 & `desalent' & p35 == 1
         }
         label variable pean "Población Económicamente Activa"
 
         *--------- EMPLEO ---------*
         cap confirm variable empleo
         if !_rc drop empleo
+		
         gen empleo = .
         replace empleo = 0 if pean == 1
         replace empleo = 1 if pean == 1 & p20 == 1
 
-        if inrange(anio, 2000, 2006) {
+        if inrange(anio, 2001, 2006) {
             replace empleo = 1 if pean == 1 & p20 == 2 & p21 <= 10
             replace empleo = 1 if pean == 1 & p20 == 2 & p21 == 11 & p22 == 1
         }
@@ -348,11 +305,11 @@ foreach y of numlist 1991(1)2025 {
         local invalidos ""
         if `y' == 1991                  local invalidos "9999998"
         if inrange(`y', 1992, 1999)     local invalidos "9999998 9999999 99999999"
-        if `y' == 2000                  local invalidos "9999 10000 99999 999999 9999999 39999999 89999999 99999999"
+        if `y' == 2000                  local invalidos "-1 9999 10000 99999 999999 9999999 39999999 89999999 99999999"
         if inrange(`y', 2001, 2005)     local invalidos "-1 999999"
-        if `y' == 2006                  local invalidos "999 9999 22150 99999 999999"
+        if `y' == 2006                  local invalidos "-1 999 9999 22150 99999 999999"
         if inrange(`y', 2007, 2009)     local invalidos "-1 999999"
-        if `y' >= 2010                  local invalidos "999999"
+        if `y' >= 2010                  local invalidos "-1 999999"
 
         foreach c of local invalidos {
             replace ila = . if ila == `c'
@@ -379,7 +336,7 @@ foreach y of numlist 1991(1)2025 {
         gen horas = .
         replace horas = 0 if empleo == 1
         replace horas = p24 if pean == 1 & p20 == 1
-        if inrange(anio, 2000, 2006) replace horas = p24 if pean == 1 & p20 == 2 & p21 <= 10
+        if inrange(anio, 2001, 2006) replace horas = p24 if pean == 1 & p20 == 2 & p21 <= 10
         else                         replace horas = p24 if pean == 1 & p20 == 2 & p21 <= 11
 
         replace p51a = . if p51a == 999
@@ -389,7 +346,7 @@ foreach y of numlist 1991(1)2025 {
         egen hh = rowtotal(p51a p51b p51c), missing
         replace hh = . if hh < 0
 
-        if inrange(anio, 2000, 2006) {
+        if inrange(anio, 2001, 2006) {
             replace horas = hh if pean == 1 & p20 == 2 & p21 == 11 & p22 == 1
         }
         else {
@@ -413,11 +370,11 @@ foreach y of numlist 1991(1)2025 {
             replace d_d = 0 if empleo == 1 & (p25 == 9 | p27 == 4)
             replace d_d = 1 if empleo == 1 & p27 <= 3 & p28 == 1
         }
-        else if inrange(anio, 2000, 2006) {
+        else if inrange(anio, 2001, 2006) {
             replace d_d = 0 if empleo == 1 & p27 == 2
             replace d_d = 1 if empleo == 1 & p27 == 1
         }
-        else if inrange(anio, 1993, 1999) {
+        else if inrange(anio, 1993, 2000) {
             replace d_d = 0 if empleo == 1 & (p25 == 3 | p27 == 2)
             replace d_d = 1 if empleo == 1 & p27 == 1
         }
@@ -470,7 +427,7 @@ foreach y of numlist 1991(1)2025 {
     else local area_var
 
     * Conservamos ambas series (oficial y simulada) y ambos umbrales salariales
-    keep id_persona anio `area_var' ila tc salario_min salario_min_sim adec adec_sim fexp
+    keep id_persona anio `area_var' d_d t w_off ila  pean salario_min salario_min_sim adec adec_sim fexp
 
     append using `adec_acumulado'
     save `adec_acumulado', replace
@@ -479,11 +436,78 @@ foreach y of numlist 1991(1)2025 {
 }
 
 save "$out/historico_adec_sim.dta", replace
-
-
+s
 use "$out/historico_adec_sim.dta", clear
 
 tab anio adec [iw = fexp], nofreq row
+
+tab anio d_d [iw = fexp], nofreq row
+
+s
+
+tabstat adec adec_sim, by(anio) statistics(mean)
+
+
+
+*==============================================================================*
+* EMPLEO ADECUADO Y SUS COMPONENTES                                     
+*==============================================================================*
+
+
+* Colapsar los datos para obtener la media de cada variable por año
+preserve
+
+collapse (mean) mean_w_off=w_off mean_adec=adec mean_dd=d_d mean_t=t, by(anio)
+
+* Panel 1: w_off
+twoway (line mean_w_off anio, lcolor(navy) lwidth(medthick)), ///
+    ytitle("Proporción (media)") ///
+    xtitle("Año") ///
+    title("w_off") ///
+    ylabel(, format(%9.2f)) ///
+    graphregion(color(white)) ///
+    name(g_w_off, replace)
+
+* Panel 2: adec
+twoway (line mean_adec anio, lcolor(maroon) lwidth(medthick)), ///
+    ytitle("Proporción (media)") ///
+    xtitle("Año") ///
+    title("adec") ///
+    ylabel(, format(%9.2f)) ///
+    graphregion(color(white)) ///
+    name(g_adec, replace)
+
+* Panel 3: dd
+twoway (line mean_dd anio, lcolor(forest_green) lwidth(medthick)), ///
+    ytitle("Proporción (media)") ///
+    xtitle("Año") ///
+    title("dd") ///
+    ylabel(, format(%9.2f)) ///
+    graphregion(color(white)) ///
+    name(g_dd, replace)
+
+* Panel 4: t
+twoway (line mean_t anio, lcolor(orange) lwidth(medthick)), ///
+    ytitle("Proporción (media)") ///
+    xtitle("Año") ///
+    title("t") ///
+    ylabel(, format(%9.2f)) ///
+    graphregion(color(white)) ///
+    name(g_t, replace)
+
+* Combinar los cuatro paneles en una sola imagen (2x2)
+graph combine g_w_off g_adec g_dd g_t, ///
+    cols(2) ///
+    graphregion(color(white)) ///
+    title("Evolución de las variables en el tiempo")
+
+* Guardar el gráfico combinado
+graph export "C:\Users\santy\Videos\Respaldos\Desktop\Programas de trabajo\evolucion_variables_paneles.png", replace width(2000)
+
+restore
+
+
+
 
 *==============================================================================*
 * 3. COMPARACIÓN: SERIE OFICIAL vs SIMULADA                                     
