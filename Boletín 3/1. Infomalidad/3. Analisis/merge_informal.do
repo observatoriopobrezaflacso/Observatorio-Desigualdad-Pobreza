@@ -86,7 +86,7 @@ forval y = 1991/2025 {
 	
 	
     merge 1:1 id_persona anio using "$raw/empleo`y'.dta", ///
-        keepusing(fexp sexo edad provincia `ingrl_var' condact* `svyvars') ///
+        keepusing(fexp sexo edad provincia ingrl condact* `svyvars') ///
 		update replace nogen
 	
 }
@@ -96,7 +96,7 @@ replace condactn = condact if inrange(anio, 2018, 2025)
 *drop ing_lab
 
 merge 1:1 id_persona anio using "$raw/empleo2022.dta", ///
-	keepusing(fexp sexo edad provincia `ingrl_var' condact* `svyvars') ///
+	keepusing(fexp sexo edad provincia ingrl condact* `svyvars') ///
 	update replace nogen
 
 
@@ -120,7 +120,7 @@ forval y = 2001(2)2025 {
 
 *local vars affiliated adec adec_sim no_remunerado tamano_armonizado mi_pea tiene_ruc cuenta_propia cuenta_base condact*
 
-local vars affiliated adec adec_sim no_remunerado  tiene_ruc mi_pea   condact* id_persona
+local vars affiliated adec adec_sim no_remunerado  tiene_ruc  tiene_ruc2 institucion_formal mi_pea   condact* id_persona
 
 
 keep `vars' fexp sexo edad provincia educ_univ etnia_arm anio area ingrl rama1 ///
@@ -132,7 +132,7 @@ replace area = 1 if area == .
 
 save "$bases_armonizadas/base_trabajo.dta", replace
 
-
+s
 /*
 s
 
@@ -177,5 +177,15 @@ graph export "$out_plot/historico_{`var'}.pdf", replace
 }
 
 */
+
+
+
+forval y = 1990/2025 {
+	
+	di "********* `y' *****************"
+	 
+	describe ingrl* using "$raw/empleo`y'.dta"
+	
+}
 
 

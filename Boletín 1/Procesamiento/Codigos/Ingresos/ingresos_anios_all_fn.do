@@ -186,12 +186,18 @@ quietly {
     *=========================================================
     **# AÑOS 1992-1999: Estructura intermedia
     *=========================================================
-    else if inrange(`year',1992,1999) | `year' == 1998 {
+    else if inrange(`year', 1992, 1999) {
  
-     foreach x of varlist ingpat ingasg ingepv ingdom ingjub ingalq ingotr {	     
-		 replace `x' = . if inlist(`x', 99999999, 9999999, 9999999, 9999998)
-		 recode `x' . = 0
+     foreach x of varlist ingpat ingasg ingepv ingdom ingjub ingalq ingotr {
+	 
+		 if (inrange(`year', 1991, 1998)) {
+			replace `x' = . if inlist(`x', 9999998, 9999999)
 		 }
+		 
+		 if (`year' == 1999) replace `x' = . if inlist(`x', 99999999)
+		 
+		 recode `x' . = 0
+	  }
      
 		gen ing_sal = ingasg+ingepv+ingdom
 		gen ing_cta = ingpat
@@ -368,6 +374,7 @@ quietly {
 
 		gen x=1
 		egen n=sum(x), by(idhogar)
+
 				
 		foreach x of varlist ing_tot ing_lab ing_rent ing_rem ingbon {
 			if "`x'" == "ingbon" local x_new : subinstr local x "ingbon" "ingbo"
@@ -771,10 +778,6 @@ quietly {
         di as error "Programa sólo cubre 1991-2000, 2006 y 2010."
         exit 198
     }
-
-	
-		   		di "asd"
-
 	
     *---------------------------------------------------------
     * PASO 4: Deflactar variables de ingreso a precios del año base
@@ -783,7 +786,7 @@ quietly {
     foreach v in ing_sal ing_cta ing_rent ing_lab ing_tot ingtot_per inglab_per ingrl ing_rem ingbon ing_cap ing_pen {
         capture confirm variable `v'
         if !_rc {
-            recode `v' (0 = .) (999999 = .) (-1 = 0) 
+            recode `v' (0 = .) (-1 = 0) 
             gen `v'_deflated = `v' * deflator   // Crear versión deflactada
         }
     }
@@ -874,18 +877,18 @@ quietly {
     
 	capture confirm variable ingpc
 	if !_rc {
-	recode ingpc (0=.)
-	sum ingpc ingtot_per
+		recode ingpc (0=.)
+		sum ingpc ingtot_per
 	}
 	
     sum ingtot_per_deflated [w = fexp]
     tabstat ingtot_per_deflated [w = fexp], by(decile) stat(max)	
-
+	capture confirm variable ingrl
+	local has_ingrl = !_rc
 	capture confirm variable ing_lab
-	if !_rc {
-	recode ingpc (0=.)
-	sum ingrl if ingrl > 0 & ingrl != .
-	sum ing_lab 
+	if (!_rc & `has_ingrl') {
+		sum ingrl if ingrl > 0 & ingrl != .
+		sum ing_lab 
 	}
 	
 	sum ing_lab [w = fexp]
@@ -895,7 +898,12 @@ end
 
 **# Usage
 
-foreach y of numlist 2025 {
+foreach y of numlist  1991(1)2001 {
+    mk_ingtot, year(`y')
+}
+
+
+foreach y of numlist 1991(1)2001 2003(1)2025 {
     mk_ingtot, year(`y')
 }
 
@@ -904,8 +912,6 @@ s
 foreach y of numlist 2010(1)2025 {
     mk_ingtot, year(`y')
 }
-
-
 
 
 foreach y of numlist 1991(2)2023 {
@@ -919,16 +925,65 @@ egen ingtot_per2 = ing
 
 
 
-use "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Originales/Diciembres/2000-2006/empleo2006.dta", clear
+foreach y of numlist 1991(1)1999 {
+	di "`y'"
+	use "$bases_90s/empleo`y'", clear
+	sum ingrl
+	di r(max)
+}
 
-gen lningrl = ln(ingrl)
-hist lningrl if !inlist(ingrl, 99999), name(hist_2006, replace)
 
 
-use "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Originales/Diciembres/2007-2017/empleo2007.dta", clear
+foreach y of numlist 1991(1)1999 {
+	di "*******`y'*******"
+	use "$bases_90s/empleo`y'", clear
+	sum ingrl 
+	di r(max)
+	sum ingrl if ingrl != r(max) 
+}
 
-gen lningrl = ln(ingrl)
-hist lningrl if !inlist(ingrl, -1, 999999), name(hist2007, replace)
+foreach y of numlist 1991(1)1999 {
+	di "*******`y'*******"
+	use "$bases_90s/empleo`y'", clear
+	gen last2 = mod(ingrl, 100)
+	tab last2
+	sort last2
+	keep if !inlist(last2, 00, .)
+	duplicates drop ingrl, force 
+	list ingrl
+}
+
+
+use "$bases_90s/empleo1993", clear
+
+
+
+
+foreach y of numlist 1991 {
+	di "*******`y'*******"
+	use "$bases_90s/empleo`y'", clear
+	gen last3 = mod(ingrl, 1000)
+	tab last3
+}
+
+
+foreach y of numlist 1991(1)1999 {
+	di "*******`y'*******"
+	use "$bases_90s/empleo`y'", clear
+	sum ingrl
+}
+
+
+
+foreach y of numlist 2018(1)2025 {
+	di "*******`y'*******"
+	use "$bases_2018_presente/empleo`y'", clear
+	sum ingrl 
+	count if ingrl == -1
+	
+}
+
+
 
 
 
