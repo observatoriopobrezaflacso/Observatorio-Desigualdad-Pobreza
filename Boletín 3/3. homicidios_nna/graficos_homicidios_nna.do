@@ -6,8 +6,33 @@ set more off
 * Fuente: Ministerio del Interior (datos abiertos), INEC (proyecciones)
 * =============================================================================
 
-global root "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/3. homicidios_nna"
-global out  "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/homicidios infantiles"
+* Rutas segun el usuario de la maquina, en lugar de una ruta fija.
+local u = c(username)
+if "`u'" == "vero" {
+    global root "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/3. homicidios_nna"
+    global out  "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/homicidios infantiles"
+}
+else if "`u'" == "santiago" {
+    global root "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/Boletín 3/3. homicidios_nna"
+    global out  "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/homicidios infantiles"
+}
+else {
+    display as error "Usuario `u' no configurado: defina los globals root y out."
+    error 198
+}
+
+cap mkdir "$out"
+
+* Los .csv de insumo no estan versionados en el repositorio. Si faltan, se avisa
+* con el nombre exacto del archivo en lugar de fallar con un r(601) opaco.
+foreach f in datos_homicidios_nna datos_homicidios_jovenes {
+    capture confirm file "$root/`f'.csv"
+    if _rc {
+        display as error "Falta el archivo de datos: $root/`f'.csv"
+        display as error "Sin el, no se pueden regenerar los graficos de homicidios."
+        error 601
+    }
+}
 
 * --- Cargar datos ---
 import delimited using "$root/datos_homicidios_nna.csv", clear
@@ -59,6 +84,9 @@ twoway ///
 
 graph export "$out/tasa_homicidios_nna_etnia.pdf", replace
 graph export "$out/tasa_homicidios_nna_etnia.eps", replace
+* PNG para el boletin automatizado: sin width() Stata exporta a 720 px en modo
+* batch (117 dpi), muy por debajo del minimo del generador.
+graph export "$out/tasa_homicidios_nna_etnia.png", replace width(3000)
 
 di "Gráfico NNA exportado exitosamente."
 
@@ -101,5 +129,6 @@ twoway ///
 
 graph export "$out/tasa_homicidios_jovenes_etnia.pdf", replace
 graph export "$out/tasa_homicidios_jovenes_etnia.eps", replace
+graph export "$out/tasa_homicidios_jovenes_etnia.png", replace width(3000)
 
 di "Gráfico jóvenes exportado exitosamente."

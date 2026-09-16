@@ -1,16 +1,16 @@
 *==============================================================================*
-* ARMONIZACIÓN: ESTABLECIMIENTO TIENE RUC (1990-2024)                        *
+* ARMONIZACIÓN: ESTABLECIMIENTO TIENE RUC (2001-2025)                        *
 * tiene_ruc = 1 si el establecimiento tiene RUC, 0 en otro caso               *
 * "No sabe" se codifica como missing (.)                                      *
 *==============================================================================*
 
 * Definición de rutas globales para facilitar la portabilidad del código
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
+global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global bases "$user_root/Bases"
 global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global out "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
-global gh "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/"
+global gh "/Users/santiago/Documents/GH/Observatorio-Desigualdad-Pobreza/"
 global out_plot "$user_root/Boletín 3/2. Armonización de variables/Gráficos de control"
 
 global important_variable tiene_ruc
@@ -51,8 +51,7 @@ foreach y of numlist 2001(1)2025 {
             *replace tiene_ruc = 1 if pe51 == 1  // Sí
             *replace tiene_ruc = 0 if pe51 == 2  // No
             *replace tiene_ruc = . if missing(pe51)
-			
-			gen no_tiene_ruc = pe51 == 2
+			gen no_tiene_ruc = (pe51 == 2) if inlist(pe51, 1, 2)
 			replace no_tiene_ruc = . if inrange(condact, 5, 8)			
 			replace tiene_ruc = (no_tiene_ruc * - 1) + 1
 			gen institucion_formal = cond(catetrab == 1, 1, tiene_ruc)
@@ -66,7 +65,7 @@ foreach y of numlist 2001(1)2025 {
     * 1 si / 2 no / 9 no sabe
     *--------------------------------------------------------------------------*
     if (`y' == 2002) {
-		
+
         capture confirm variable pe49
         if !_rc {
            * replace tiene_ruc = 1 if pe49 == 1  // Sí
@@ -74,12 +73,11 @@ foreach y of numlist 2001(1)2025 {
            * replace tiene_ruc = . if pe49 == 9  // No sabe → missing
            * replace tiene_ruc = . if missing(pe49)
 		   
-		   	gen no_tiene_ruc = pe49 == 2
+		   	gen no_tiene_ruc = (pe49 == 2) if inlist(pe49, 1, 2)
 			replace no_tiene_ruc = . if inrange(condact, 5, 8) | pe49 == 9		
 			replace tiene_ruc = (no_tiene_ruc * - 1) + 1
 			gen institucion_formal = cond(catetrab == 1, 1, tiene_ruc)
 			replace institucion_formal = 1 if pertrabn == 2
-
 			
         }
     }
@@ -89,7 +87,7 @@ foreach y of numlist 2001(1)2025 {
     * 1 si / 2 no / 3 no sabe
     *--------------------------------------------------------------------------*
     if (inrange(`y', 2003, 2006)) {
-				
+			
         capture confirm variable pe49
         if !_rc {
 			
@@ -98,7 +96,7 @@ foreach y of numlist 2001(1)2025 {
             *replace tiene_ruc = . if pe49 == 3  // No sabe → missing
             *replace tiene_ruc = . if missing(pe49)
 		   	gen no_tiene_ruc = pe49 == 2
-			replace no_tiene_ruc = . if inrange(condact, 5, 8) | pe49 == 3		
+			replace no_tiene_ruc = . if inrange(condact, 5, 8) | pe49 == 3 | missing(pe49)		
 			replace tiene_ruc = (no_tiene_ruc * - 1) + 1
 			gen institucion_formal = cond(catetrab == 1, 1, tiene_ruc)
 			replace institucion_formal = 1 if pertrabn == 2
@@ -123,14 +121,12 @@ foreach y of numlist 2001(1)2025 {
 			if !_rc local condact_var condactn
 			else    local condact_var condact
 			
-			*if `y' == 2025 s
-
-			gen no_tiene_ruc = p49 == 2
-			replace no_tiene_ruc = . if inlist(`condact_var', 0, 7, 8, 9)
+			gen no_tiene_ruc = p49 == 2 if p49 != 3 & !missing(p49) & empleo == 1
 			replace tiene_ruc = (no_tiene_ruc * - 1) + 1
 
-			gen institucion_formal = cond(p42 == 1, 1, tiene_ruc)
-			replace institucion_formal = 1 if p47a == 2
+			gen institucion_formal = cond(p47a == 2, 1, tiene_ruc) ///
+			if empleo == 1
+			
         }
     }
     
@@ -177,111 +173,4 @@ use "$out/historico_ruc.dta", clear
 
 * Verificación
 tab anio tiene_ruc [iw = fexp], nofreq row
-
-/*
-
-preserve
-    collapse (mean) $important_variable if anio != 2002, by(anio area)
-    list
-    format $important_variable %9.2f
-    keep if area == 1
-    rename $important_variable ${important_variable}_urb
-    tempfile urb
-    save `urb'
-restore
-
-preserve
-    collapse (mean) $important_variable if anio != 2002, by(anio)
-    format $important_variable %9.2f
-    rename $important_variable ${important_variable}_nac
-    merge 1:1 anio using `urb', nogen
-    list
-    
-    twoway (line ${important_variable}_nac anio)  ///
-           (line ${important_variable}_urb anio), ///
-           legend(order(1 "Nacional" 2 "Urbano"))  ///
-           yscale(range(0 1)) ylabel(#5, format(%9.2f)) ///
-           ytitle("Proporción de establecimientos con RUC") xtitle("Año") ///
-           title("Personas con trabajo en institucion con RUC (2001-2024)") ///
-		   name(ruc, replace)
-restore
-
-graph export "$out_plot/historico_${important_variable}.pdf", replace
-
-
-
-* Verificación
-tab anio institucion_formal, row missing
-
-preserve
-    collapse (mean) institucion_formal if anio != 2002, by(anio area)
-    list
-    format institucion_formal %9.2f
-    keep if area == 1
-    rename institucion_formal institucion_formal_urb
-    tempfile urb
-    save `urb'
-restore
-
-preserve
-    collapse (mean) institucion_formal if anio != 2002, by(anio)
-    format institucion_formal %9.2f
-    rename institucion_formal institucion_formal_nac
-    merge 1:1 anio using `urb', nogen
-    list
-    
-    twoway (line institucion_formal_nac anio)  ///
-           (line institucion_formal_urb anio), ///
-           legend(order(1 "Nacional" 2 "Urbano"))  ///
-           yscale(range(0 1)) ylabel(#5, format(%9.2f)) ///
-           ytitle("Personas con trabajo en institucion formal") xtitle("Año") ///
-           title("Personas con trabajo en institucion formal") ///
-		   name(institucion_formal, replace)
-restore
-
-graph export "$out_plot/historico_${important_variable}.pdf", replace
-
-
-
-
-
-gen asked_p49 = 0
-label variable asked_p49 "Observation was asked Question 49"
-
-* OCUPADOS reach the establishment block
-replace asked_p49 = 1 if p20 == 1
-replace asked_p49 = 1 if !missing(p21) & p21 != 12
-replace asked_p49 = 1 if p22 == 1
-
-* But those with p47 == 2 (100+ workers) skip to P50, bypassing P49
-replace asked_p49 = 0 if p47a == 2
-
-tab asked_p49 if !missing(p49)
-
-
-
-
-
-
-* Final version
-gen asked_p49 = 0
-label variable asked_p49 "Observation was asked Question 49 (RUC)"
-
-* OCUPADOS reach this block
-replace asked_p49 = 1 if p20 == 1
-replace asked_p49 = 1 if !missing(p21) & p21 != 12
-replace asked_p49 = 1 if p22 == 1
-
-* Exclude per the universe header above P49:
-replace asked_p49 = 0 if p42 == 1     // Empleado de gobierno
-replace asked_p49 = 0 if p42 == 10    // Empleado(a) Doméstico(a)
-replace asked_p49 = 0 if p47a == 2    // Establecimiento de 100 y más
-
-tab asked_p49 if !missing(p49)
-tab asked_p49
-
-
-replace secemp =2 if pea==1 & empleo==1 & p47a==1 & p49==2 & secemp ==.
-
-
-*/
+tab anio institucion_formal [iw = fexp], nofreq row

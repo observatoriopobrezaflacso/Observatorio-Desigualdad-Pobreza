@@ -225,7 +225,7 @@ preserve
     graph export "$out_results/Graficos/Informalidad_y_componentes.pdf", replace
 restore
 
-s
+* s   // stop de depuración: cortaba el master antes de las figuras siguientes
 
 * ===============================================================
 **# INFORMALIDAD  Y SUS COMPONENTES POR SEXO
@@ -449,7 +449,7 @@ preserve
 restore
 
 
-s
+* s   // stop de depuración: cortaba el master antes de las figuras siguientes
 
 *------------------------------------------------------------------*
 * Gráfico: Número de condiciones de informalidad cumplidas over time
@@ -1225,7 +1225,7 @@ preserve
         name(informal2_etnia, replace)
     *graph export "$out_results/informal2_etnia_nac_IC.png", replace 
 restore 
-s
+* s   // stop de depuración: cortaba el master antes de las figuras siguientes
 /*
 
 * Urbano — desde 2003
