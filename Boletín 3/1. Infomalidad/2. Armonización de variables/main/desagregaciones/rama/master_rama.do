@@ -13,8 +13,9 @@ set more off
 version 16
 
 
-global rama "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/1. Infomalidad/2. Armonización de variables/main/desagregaciones/rama"
-
+* Carpeta del repositorio segun el usuario que corre el script.
+if "`c(username)'" == "vero" global rama "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pobreza/Boletín 3/1. Infomalidad/2. Armonización de variables/main/desagregaciones/rama"
+else                         global rama "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/Boletín 3/1. Infomalidad/2. Armonización de variables/main/desagregaciones/rama"
 di as text "================ STEP 1: Rev 2 -> Rev 3.1 (1990-1999) ================"
 do "$rama/isic2_31.do"
 

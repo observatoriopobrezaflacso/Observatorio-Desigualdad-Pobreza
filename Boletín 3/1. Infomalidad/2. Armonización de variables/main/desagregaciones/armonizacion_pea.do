@@ -6,7 +6,10 @@
 clear all
 set more off
 
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+* Raiz del Drive segun el usuario que corre el script: antes estaba fija en
+* la carpeta de vero, asi que el do-file no arrancaba en otras maquinas.
+if "`c(username)'" == "vero" global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+else                         global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 global bases "$user_root/Bases"
 global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global out "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"

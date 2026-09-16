@@ -8,7 +8,9 @@
 * Para saltar etapas, cambie los interruptores de abajo a 0.
 *
 * Etapas:
-*   armonizacion  diseno_muestral.do + merge_informal.do   -> bases armonizadas
+*   armonizacion  los 4 componentes (RUC, no remunerado, seguridad social y
+*                 empleo adecuado), el diseno muestral, las 4 desagregaciones
+*                 y merge_informal.do                      -> bases armonizadas
 *   informalidad  analisis_descriptivo.do                  -> Graficos 1-8, Tablas 1-2
 *   ic            analisis_descriptivo_ic.do               -> graficos con IC
 *   pobreza       2. Pobreza laboral/corregido/run_all.do  -> Graficos 9-11 y series
@@ -16,8 +18,11 @@
 *   word          generar_boletin.py                       -> el .docx
 *
 * Notas:
-*   - "armonizacion" no corre por omision: es la parte lenta y sus salidas
-*     cambian poco.
+*   - "armonizacion" reconstruye los historicos desde las bases de la ENEMDU.
+*     Es la parte lenta (decenas de minutos), pero tiene que correr cada vez que
+*     se corrige un componente: si no, el .do queda arreglado y el .dta viejo, y
+*     la correccion nunca llega a los resultados. Poner el interruptor en 0 solo
+*     para una corrida rapida cuando no se toco ningun armonizado.
 *   - "ic" tampoco: necesita estrato_svy y upm_svy, que crea la armonizacion, y
 *     no produce ninguna de las 12 figuras del boletin.
 *   - "homicidios" esta marcada como OPCIONAL: sus .csv de insumo no estan en el
@@ -31,7 +36,7 @@ version 15.1
 *------------------------------------------------------------------------------*
 * Interruptores
 *------------------------------------------------------------------------------*
-local hacer_armonizacion 0
+local hacer_armonizacion 1
 local hacer_informalidad 1
 local hacer_ic           0
 local hacer_pobreza      1
@@ -101,7 +106,15 @@ local etapa_rota ""
 * Las comillas van literales en el foreach: si la lista se guardara antes en un
 * local, Stata las descartaria y partiria las rutas que tienen espacios.
 foreach tarea in ///
+    "armonizacion|`armoniz'/componentes/armonizacion_institucion_formal.do" ///
+    "armonizacion|`armoniz'/componentes/familiar_no_remunerado.do" ///
+    "armonizacion|`armoniz'/componentes/iess_issfa_isspol.do" ///
+    "armonizacion|`armoniz'/componentes/adec.do" ///
     "armonizacion|`armoniz'/componentes/diseno_muestral.do" ///
+    "armonizacion|`armoniz'/desagregaciones/armonizacion_educacion.do" ///
+    "armonizacion|`armoniz'/desagregaciones/armonizacion_etnia.do" ///
+    "armonizacion|`armoniz'/desagregaciones/armonizacion_pea.do" ///
+    "armonizacion|`armoniz'/desagregaciones/rama/master_rama.do" ///
     "armonizacion|`analisis'/merge_informal.do" ///
     "informalidad|`analisis'/analisis_descriptivo.do" ///
     "ic|`analisis'/analisis_descriptivo_ic.do" ///

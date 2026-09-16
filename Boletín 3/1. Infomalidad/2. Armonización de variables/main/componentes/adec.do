@@ -125,7 +125,12 @@ save `ipc_tmp', replace
 * Replica el armado original: SBU diciembre (2000+) + SMV+bonificaciones (90s).
 
 * SBU 2000-2025 (diciembre)
-import delimited "$salarios/Salario unificado y componentes salariales.csv", clear
+* Delimitador y encoding explicitos: el archivo es ISO-8859-1 separado por ";".
+* Con la autodeteccion, Stata acierta en una sesion limpia pero se equivoca
+* cuando el master ya corrio otros do-files antes: lee 2 columnas en vez de 4 y
+* "componentesalarial" no existe, asi que el encode falla con r(111).
+import delimited "$salarios/Salario unificado y componentes salariales.csv", ///
+    clear delimiter(";") encoding("ISO-8859-1") varnames(1)
 encode componentesalarial, gen(componente)
 drop componentesalarial
 keep if componente == 6 & mes == "Diciembre"
@@ -137,7 +142,10 @@ tempfile sbu_post2000
 save `sbu_post2000'
 
 * SMV + bonificaciones (años 90s)
-import delimited "$salarios/SMV + bonificaciones.csv", clear
+* Este archivo si es separado por comas, tambien en ISO-8859-1. Se declara
+* explicito por el mismo motivo que el anterior.
+import delimited "$salarios/SMV + bonificaciones.csv", ///
+    clear delimiter(",") encoding("ISO-8859-1") varnames(1)
 keep in 12/21
 rename (periodo total) (anio salario_min)
 keep anio salario_min
@@ -459,14 +467,14 @@ foreach y of numlist 1991(1)2025 {
 }
 
 save "$out/historico_adec_sim.dta", replace
-s
+* s   // stop de depuracion: cortaba el do-file con r(199) tras el save
 use "$out/historico_adec_sim.dta", clear
 
 tab anio adec [iw = fexp], nofreq row
 
 tab anio d_d [iw = fexp], nofreq row
 
-s
+* s   // stop de depuracion: cortaba el do-file con r(199) tras el save
 
 tabstat adec adec_sim, by(anio) statistics(mean)
 
