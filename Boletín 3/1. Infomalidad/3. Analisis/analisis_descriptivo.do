@@ -30,7 +30,7 @@ global important_variable3 informal2_sim
 global important_variable4 informal1_sim
 
 * Años en los que se mostrarán etiquetas de valor en los gráficos
-global label_years 2001 2006 2014 2020 2025
+global label_years 2003 2006 2014 2020 2025
 
 * Cargar base de datos de trabajo
 use "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago/base_trabajo.dta", clear
@@ -63,6 +63,18 @@ foreach var of varlist affiliated adec* no_remunerado institucion_formal {
 	
 }
 
+
+* ----------------------------------------------------------------
+* ANIOS EXCLUIDOS DE TODA LA SERIE: 2001 y 2002
+*   2002: muestra muy reducida frente a los anios vecinos.
+*   2001: la pregunta de RUC (pe51) solo se le hace a patronos y a
+*         cuenta propia. Entre los asalariados tiene dato el 0.7%,
+*         frente a 88-90% desde 2003 (2002 llega al 100%). Con la
+*         armonizacion corregida esos casos quedan en missing, asi que
+*         el indicador de 2001 se calculaba sobre un tercio de los
+*         ocupados, casi todos independientes: no es comparable.
+*         La serie con el criterio de RUC arranca entonces en 2003.
+* ----------------------------------------------------------------
 
 * ============================================================
 **# INFORMALIDAD 1
@@ -107,7 +119,7 @@ replace informal2_sim = . if inlist(., affiliated, adec_sim,  institucion_formal
 * ===============================================================
 
 preserve
-    collapse (mean) informal1 informal2 if anio != 2002 [iw = fexp], by(anio)
+    collapse (mean) informal1 informal2 if !inlist(anio, 2001, 2002) [iw = fexp], by(anio)
 	export excel using "$out_results/Tablas/informal_con_y_sin_ruc.xlsx", replace firstrow(var)
     replace informal1 = informal1 * 100
     replace informal2 = informal2 * 100
@@ -115,16 +127,16 @@ preserve
     format informal2 %9.2f
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_informal1 = informal1 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_informal2 = informal2 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_informal1 = informal1 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_informal2 = informal2 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_informal1 %9.1f
     format lbl_informal2 %9.1f
 
     twoway (connected informal1 anio, lcolor(navy) mcolor(navy)) /// 
-	       (connected informal2 anio if anio >= 2001, lcolor(maroon) mcolor(maroon)) ///
+	       (connected informal2 anio if anio >= 2003, lcolor(maroon) mcolor(maroon)) ///
 	       (scatter lbl_informal1 anio, msymbol(none) ///
 	            mlabel(lbl_informal1) mlabposition(12) mlabcolor(navy) mlabsize(small)) ///
-	       (scatter lbl_informal2 anio if anio >= 2001, msymbol(none) ///
+	       (scatter lbl_informal2 anio if anio >= 2003, msymbol(none) ///
 	            mlabel(lbl_informal2) mlabposition(6) mlabcolor(maroon) mlabsize(small)), ///
 		   legend(order(1 "Informalidad sin criterio RUC" 2 "Informalidad con criterio RUC") position(6) ring(1)) ///
            yscale(range(50 100)) ylabel(50(10)100, format(%9.0f)) ///
@@ -170,7 +182,7 @@ label var comp_no_ruc   "No tiene RUC"
 
 preserve
     collapse (mean) comp_no_adec comp_no_remun comp_no_iess comp_no_ruc ///
-             informal1 informal2 [iw=fexp] if anio != 2002, by(anio)
+             informal1 informal2 [iw=fexp] if !inlist(anio, 2001, 2002), by(anio)
     replace informal1 = informal1 * 100
     replace informal2 = informal2 * 100
     export excel using "$out_results/Tablas/Informalidad_y_componentes.xlsx", firstrow(var) replace
@@ -180,10 +192,10 @@ preserve
     replace informal_combined = informal2 if anio >= 2000
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_inf_comb = informal_combined if inlist(anio, 1991, 1995, 1999, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_iess  = comp_no_iess      if inlist(anio, 1991, 1995, 1999, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_remun = comp_no_remun     if inlist(anio, 1991, 1995, 1999, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_ruc   = comp_no_ruc       if inlist(anio, 1991, 1995, 1999, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_inf_comb = informal_combined if inlist(anio, 1991, 1995, 1999, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_iess  = comp_no_iess      if inlist(anio, 1991, 1995, 1999, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_remun = comp_no_remun     if inlist(anio, 1991, 1995, 1999, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_ruc   = comp_no_ruc       if inlist(anio, 1991, 1995, 1999, 2003, 2006, 2014, 2020, 2025)
     format lbl_inf_comb lbl_no_iess lbl_no_remun lbl_no_ruc %9.1f
 
     twoway ///
@@ -239,7 +251,7 @@ restore
 
 preserve
     collapse (mean) comp_no_iess comp_no_adec comp_no_remun comp_no_ruc ///
-             informal1 informal2 [iw=fexp] if anio != 2002, by(anio sexo) 
+             informal1 informal2 [iw=fexp] if !inlist(anio, 2001, 2002), by(anio sexo) 
 			 
     replace informal1 = informal1 * 100
     replace informal2 = informal2 * 100
@@ -249,11 +261,11 @@ preserve
     replace informal_combined = informal2 if anio >= 2000
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_inf_comb = informal_combined if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_iess  = comp_no_iess      if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_adec  = comp_no_adec      if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_remun = comp_no_remun     if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_ruc   = comp_no_ruc       if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_inf_comb = informal_combined if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_iess  = comp_no_iess      if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_adec  = comp_no_adec      if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_remun = comp_no_remun     if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_ruc   = comp_no_ruc       if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_inf_comb lbl_no_iess lbl_no_adec lbl_no_remun lbl_no_ruc %9.1f
 
     * --- Panel A: Informalidad – Hombres ---
@@ -351,7 +363,7 @@ restore
 
 preserve
     collapse (mean) comp_no_iess comp_no_adec comp_no_remun comp_no_ruc ///
-             informal1 informal2 [iw=fexp] if anio != 2002, by(anio area)
+             informal1 informal2 [iw=fexp] if !inlist(anio, 2001, 2002), by(anio area)
 
     replace informal1 = informal1 * 100
     replace informal2 = informal2 * 100
@@ -361,11 +373,11 @@ preserve
     replace informal_combined = informal2 if anio >= 2000
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_inf_comb = informal_combined if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_iess  = comp_no_iess      if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_adec  = comp_no_adec      if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_remun = comp_no_remun     if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_no_ruc   = comp_no_ruc       if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_inf_comb = informal_combined if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_iess  = comp_no_iess      if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_adec  = comp_no_adec      if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_remun = comp_no_remun     if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_no_ruc   = comp_no_ruc       if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_inf_comb lbl_no_iess lbl_no_adec lbl_no_remun lbl_no_ruc %9.1f
 
     * --- Panel A: Informalidad – Urbano ---
@@ -475,8 +487,8 @@ label var cond_4 "4 condiciones"
 
 * Colapsar por año
 preserve
-keep if inrange(anio, 2001, 2025)
-    collapse (mean) cond_1 cond_2 cond_3 cond_4 [iw=fexp] if anio != 2002, by(anio)
+keep if inrange(anio, 2003, 2025)
+    collapse (mean) cond_1 cond_2 cond_3 cond_4 [iw=fexp] if !inlist(anio, 2001, 2002), by(anio)
     export excel using "$out_results/Tablas/n_condiciones_informalidad.xlsx", firstrow(var) replace
     * --- Etiquetas de valor solo en años seleccionados ---
     gen lbl_cond_1 = cond_1 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
@@ -496,8 +508,8 @@ keep if inrange(anio, 2001, 2025)
         ytitle("Porcentaje de ocupados (%)") xtitle("") ///
         ylabel(0(10)50, angle(0) grid labsize(small) format(%9.0f)) ///
         yscale(range(0 50)) ///
-        xscale(range(2001 2025)) ///
-        xlabel(2001(2)2025, angle(90) labsize(small)) ///
+        xscale(range(2003 2025)) ///
+        xlabel(2003(2)2025, angle(90) labsize(small)) ///
         legend(order(1 "1" 2 "2" 3 "3" 4 "4") ///
                rows(1) size(small) position(6)) ///
         graphregion(color(white)) plotregion(color(white)) scheme(s2color) ///
@@ -516,7 +528,7 @@ restore
 
 /*
 preserve
-    collapse (mean) informal1 if anio != 2002, by(anio area)
+    collapse (mean) informal1 if !inlist(anio, 2001, 2002), by(anio area)
     replace informal1 = informal1 * 100
     list
     format informal1 %9.2f
@@ -527,8 +539,8 @@ preserve
 restore
 
 preserve
-    keep if anio >= 2001
-    collapse (mean) informal1  if anio != 2002 [iw = fexp], by(anio area)
+    keep if anio >= 2003
+    collapse (mean) informal1  if !inlist(anio, 2001, 2002) [iw = fexp], by(anio area)
     replace informal1 = informal1 * 100
     list
     format informal1 %9.2f
@@ -539,7 +551,7 @@ preserve
 restore
 
 preserve
-    collapse (mean) informal1 if anio != 2002, by(anio)
+    collapse (mean) informal1 if !inlist(anio, 2001, 2002), by(anio)
     replace informal1 = informal1 * 100
     format informal1 %9.2f
     rename informal1 ${important_variable}_nac
@@ -552,7 +564,7 @@ preserve
            legend(order(1 "Nacional" 2 "Urbano" 3 "Rural")) ///
            yscale(range(50 100)) ylabel(50(10)100, format(%9.0f)) ///
            ytitle("Informalidad (%)") ///
-           xscale(range(2001 2024)) xlabel(2001(3)2024) ///
+           xscale(range(2003 2024)) xlabel(2003(3)2024) ///
            name(informal1_nac_urb, replace)
     graph export "$out_results/informal1_nac_urb.png", replace width(3000)
 restore
@@ -562,9 +574,9 @@ restore
 *::::::::::::::::::::: CON CRITERIO RUC :::::::::::::::::::::
 
 preserve
-    keep if anio >= 2001
+    keep if anio >= 2003
     gen uno = 1
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(anio area)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio area)
     export excel using "$out_results/Graficos/Informalidad_area.xlsx", firstrow(var) replace
 
     * Compute standard errors and CI bounds
@@ -595,9 +607,9 @@ preserve
     list anio informal2_nac informal21 informal22, sepby(anio)
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_nac = informal2_nac if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_urb = informal21    if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_rur = informal22    if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_nac = informal2_nac if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_urb = informal21    if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_rur = informal22    if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_nac lbl_urb lbl_rur %9.1f
 
     twoway ///
@@ -611,7 +623,7 @@ preserve
         yscale(range(50 100)) ylabel(50(10)100, format(%9.0f)) ///
         ytitle("Informalidad (%)") ///
         xtitle("") ///
-        xscale(range(2001 2024)) xlabel(2001(3)2024, angle(90)) ///
+        xscale(range(2003 2024)) xlabel(2003(3)2024, angle(90)) ///
         graphregion(color(white)) ///
         name(informal2_area, replace)
 		
@@ -623,9 +635,9 @@ restore
 * ============================================================
 
 preserve
-    keep if anio >= 2001
+    keep if anio >= 2003
     gen uno = 1
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(anio sexo)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio sexo)
     export excel using "$out_results/Tablas/Informalidad_genero.xlsx", firstrow(var) replace
 
     reshape wide informal2 N, i(anio) j(sexo)
@@ -654,8 +666,8 @@ preserve
     replace lb_m = lb_m * 100
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_h = informal21 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_m = informal22 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_h = informal21 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_m = informal22 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_h lbl_m %9.1f
 
     twoway ///
@@ -664,7 +676,7 @@ preserve
         (scatter lbl_h anio, msymbol(none) mlabel(lbl_h) mlabposition(6)  mlabcolor(navy)   mlabsize(vsmall)) ///
         (scatter lbl_m anio, msymbol(none) mlabel(lbl_m) mlabposition(12) mlabcolor(maroon) mlabsize(vsmall)), ///
         legend(order(1 "Hombre" 2 "Mujer") position(6) rows(1) size(small)) ///
-        xlabel(2001(2)2025, angle(90)) ///
+        xlabel(2003(2)2025, angle(90)) ///
         ylabel(50(10)100, format(%9.0f)) ///
         ytitle("Informalidad (%)") ///
         yscale(range(50 100)) ///
@@ -714,7 +726,7 @@ restore
 	preserve
     keep if anio == 2025
     gen uno = 1
-    collapse (mean) informal2 (sum) N=uno [iw = fexp] if anio != 2002, by(provincia)
+    collapse (mean) informal2 (sum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(provincia)
     gen se = sqrt((informal2*(1-informal2))/N)
     gen ub = informal2 + 1.96*se
     gen lb = informal2 - 1.96*se
@@ -780,10 +792,10 @@ restore
 * DIVIDIDA POR REGIÓN: SIERRA, COSTA, ORIENTE, INSULAR
 * ============================================================
 preserve
-    keep if inlist(anio, 2001, 2005, 2010, 2015, 2020, 2025)
+    keep if inlist(anio, 2003, 2005, 2010, 2015, 2020, 2025)
     drop if provincia == 25
     gen uno = 1
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(provincia anio)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(provincia anio)
 	export excel using "$out_results/informalidad_provicia.xlsx", firstrow(var) replace
     rename informal2 inf
     keep provincia anio inf
@@ -804,7 +816,7 @@ preserve
     file write tex "\label{tab:informal_prov}" _n
     file write tex "\begin{tabular}{lcccccc}" _n
     file write tex "\hline\hline" _n
-    file write tex "Provincia & 2001 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
+    file write tex "Provincia & 2003 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
     
     local nobs = _N
     
@@ -817,7 +829,7 @@ preserve
         forvalues i = 1/`nobs' {
             if region[`i'] == `reg_num' {
                 local prov : label (provincia) `=provincia[`i']'
-                local f01 = cond(missing(inf2001[`i']), "--", string(inf2001[`i'], "%6.3f"))
+                local f01 = cond(missing(inf2003[`i']), "--", string(inf2003[`i'], "%6.3f"))
                 local f05 = cond(missing(inf2005[`i']), "--", string(inf2005[`i'], "%6.3f"))
                 local f10 = cond(missing(inf2010[`i']), "--", string(inf2010[`i'], "%6.3f"))
                 local f15 = cond(missing(inf2015[`i']), "--", string(inf2015[`i'], "%6.3f"))
@@ -843,7 +855,7 @@ restore
 * With CV
 
 preserve
-keep if inlist(anio, 2001, 2005, 2010, 2015, 2020, 2025)
+keep if inlist(anio, 2003, 2005, 2010, 2015, 2020, 2025)
 drop if provincia == 25
 gen uno = 1
 replace informal2 = informal2*100
@@ -864,13 +876,13 @@ file write tex "\caption{Tasa de informalidad por provincia, Ecuador (semi-ampli
 file write tex "\label{tab:informal_prov}" _n
 file write tex "\begin{tabular}{lcccccc}" _n
 file write tex "\hline\hline" _n
-file write tex "Provincia & 2001 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
+file write tex "Provincia & 2003 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
 file write tex "\hline" _n
 
 local nobs = _N
 forvalues i = 1/`nobs' {
     local prov : label (provincia) `=provincia[`i']'
-    foreach yr in 2001 2005 2010 2015 2020 2025 {
+    foreach yr in 2003 2005 2010 2015 2020 2025 {
         local v`yr' = inf`yr'[`i']
         local h`yr' = hci_inf`yr'[`i']
         if missing(`v`yr'') {
@@ -880,21 +892,21 @@ forvalues i = 1/`nobs' {
             local f`yr' = string(`v`yr'', "%4.1f") + " (" + string(`h`yr'', "%4.1f") + ")"
         }
     }
-    file write tex "`prov' & `f2001' & `f2005' & `f2010' & `f2015' & `f2020' & `f2025' \\" _n
+    file write tex "`prov' & `f2003' & `f2005' & `f2010' & `f2015' & `f2020' & `f2025' \\" _n
 }
 file write tex "\hline\hline" _n
 file write tex "\end{tabular}" _n
 file write tex "\end{table}" _n
 file close tex
 display "Tabla exportada a: informalidad_provincia.tex"
-list provincia inf2001 hci_inf2001 inf2025 hci_inf2025, sep(0)
+list provincia inf2003 hci_inf2003 inf2025 hci_inf2025, sep(0)
 restore
 
 
 
 * Without CV
 preserve
-keep if inlist(anio, 2001, 2005, 2010, 2015, 2020, 2025)
+keep if inlist(anio, 2003, 2005, 2010, 2015, 2020, 2025)
 drop if provincia == 25
 gen uno = 1
 replace informal2 = informal2*100
@@ -910,12 +922,12 @@ file write tex "\caption{Tasa de informalidad por provincia, Ecuador}" _n
 file write tex "\label{tab:informal_prov}" _n
 file write tex "\begin{tabular}{lcccccc}" _n
 file write tex "\hline\hline" _n
-file write tex "Provincia & 2001 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
+file write tex "Provincia & 2003 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
 file write tex "\hline" _n
 local nobs = _N
 forvalues i = 1/`nobs' {
     local prov : label (provincia) `=provincia[`i']'
-    foreach yr in 2001 2005 2010 2015 2020 2025 {
+    foreach yr in 2003 2005 2010 2015 2020 2025 {
         local v`yr' = inf`yr'[`i']
         if missing(`v`yr'') {
             local f`yr' = "--"
@@ -924,14 +936,14 @@ forvalues i = 1/`nobs' {
             local f`yr' = string(`v`yr'', "%4.1f")
         }
     }
-    file write tex "`prov' & `f2001' & `f2005' & `f2010' & `f2015' & `f2020' & `f2025' \\" _n
+    file write tex "`prov' & `f2003' & `f2005' & `f2010' & `f2015' & `f2020' & `f2025' \\" _n
 }
 file write tex "\hline\hline" _n
 file write tex "\end{tabular}" _n
 file write tex "\end{table}" _n
 file close tex
 display "Tabla exportada a: informalidad_provincia.tex"
-list provincia inf2001 inf2025, sep(0)
+list provincia inf2003 inf2025, sep(0)
 restore
 
 
@@ -939,9 +951,9 @@ restore
 * TABLA LATEX: INFORMALIDAD POR RAMA DE ACTIVIDAD - 2001-2025 (cada 5 años)
 * ============================================================
 preserve
-    keep if inlist(anio, 2001, 2005, 2010, 2015, 2020, 2025)
+    keep if inlist(anio, 2003, 2005, 2010, 2015, 2020, 2025)
     gen uno = 1
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(rama1 anio)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(rama1 anio)
 	export excel using "$out_results/informalidad_rama.xlsx", replace firstrow(var)
 	replace informal2 = informal2 * 100
     rename informal2 inf
@@ -984,14 +996,14 @@ preserve
     file write tex "\label{tab:informal_rama}" _n
     file write tex "\begin{tabular}{lcccccc}" _n
     file write tex "\hline\hline" _n
-    file write tex "Rama de actividad & 2001 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
+    file write tex "Rama de actividad & 2003 & 2005 & 2010 & 2015 & 2020 & 2025 \\" _n
     file write tex "\hline" _n
     
     local nobs = _N
     
     forvalues i = 1/`nobs' {
         local rama = rama_short[`i']
-        local f01 = cond(missing(inf2001[`i']), "--", string(inf2001[`i'], "%6.1f"))
+        local f01 = cond(missing(inf2003[`i']), "--", string(inf2003[`i'], "%6.1f"))
         local f05 = cond(missing(inf2005[`i']), "--", string(inf2005[`i'], "%6.1f"))
         local f10 = cond(missing(inf2010[`i']), "--", string(inf2010[`i'], "%6.1f"))
         local f15 = cond(missing(inf2015[`i']), "--", string(inf2015[`i'], "%6.1f"))
@@ -1027,10 +1039,10 @@ tab age_cat
 
 * Nacional
 preserve
-    keep if anio >= 2001
+    keep if anio >= 2003
     drop if missing(age_cat)
     gen uno = 1
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(anio age_cat)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio age_cat)
     export excel using "$out_results/Tablas/informalidad_edad.xlsx", firstrow(var) replace
     reshape wide informal2 N, i(anio) j(age_cat)
     gen se_1 = sqrt((informal21*(1-informal21))/N1)
@@ -1071,9 +1083,9 @@ preserve
     }
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_1 = informal21 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_2 = informal22 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_3 = informal23 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_1 = informal21 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_2 = informal22 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_3 = informal23 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     replace lbl_1 = . if anio == 2014
     format lbl_1 lbl_2 lbl_3 %9.1f
 
@@ -1085,7 +1097,7 @@ preserve
         (scatter lbl_2 anio, msymbol(none) mlabel(lbl_2) mlabposition(12) mlabcolor(maroon)       mlabsize(vsmall)) ///
         (scatter lbl_3 anio, msymbol(none) mlabel(lbl_3) mlabposition(6)  mlabcolor(forest_green) mlabsize(vsmall)), ///
         legend(order(1 "18-29" 2 "30-64" 3 "65+") position(6) rows(1) size(small)) ///
-        xlabel(2001(2)2025, angle(90)) ///
+        xlabel(2003(2)2025, angle(90)) ///
         ylabel(50(10)100, format(%9.0f)) ///
         yscale(range(50 100)) ///
 		xtitle("") ///
@@ -1098,10 +1110,10 @@ restore
 * Urbano
 preserve 
     keep if area == 1
-    keep if anio >= 2001 & anio <= 2024
+    keep if anio >= 2003 & anio <= 2024
     drop if missing(age_cat)
     gen uno = 1 
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(anio age_cat)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio age_cat)
     reshape wide informal2 N, i(anio) j(age_cat)
     gen se_1 = sqrt((informal21*(1-informal21))/N1)
     gen se_2 = sqrt((informal22*(1-informal22))/N2)
@@ -1160,7 +1172,7 @@ preserve
     keep if anio >= 2003
     drop if missing(etnia_arm)
     gen uno = 1 
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(anio etnia_arm)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio etnia_arm)
 	export excel using "$out_results/Tablas/informalidad_etnia.xlsx", replace firstrow(var)
     tab etnia_arm
     reshape wide informal2 N, i(anio) j(etnia_arm)
@@ -1226,7 +1238,7 @@ preserve
     keep if anio >= 2003 & anio <= 2024
     drop if missing(etnia_arm)
     gen uno = 1
-    collapse (mean) informal2 (sum) N=uno [iw = fexp] if anio != 2002, by(anio etnia_arm)
+    collapse (mean) informal2 (sum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio etnia_arm)
     tab etnia_arm
     reshape wide informal2 N, i(anio) j(etnia_arm)
     foreach g in 1 2 3 {
@@ -1281,10 +1293,10 @@ restore
 * ============================================================
 
 preserve
-    keep if anio >= 2001
+    keep if anio >= 2003
     drop if missing(educ_univ)
     gen uno = 1
-    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(anio educ_univ)
+    collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio educ_univ)
     export excel using "$out_results/Tablas/informalidad_educacion.xlsx", replace firstrow(var)
     tab educ_univ
     reshape wide informal2 N, i(anio) j(educ_univ)
@@ -1309,8 +1321,8 @@ preserve
     }
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_0 = informal20 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
-    gen lbl_1 = informal21 if inlist(anio, 2001, 2006, 2014, 2020, 2025)
+    gen lbl_0 = informal20 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_1 = informal21 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_0 lbl_1 %9.1f
 
     twoway ///
@@ -1319,7 +1331,7 @@ preserve
         (scatter lbl_0 anio, msymbol(none) mlabel(lbl_0) mlabposition(12) mlabcolor(navy)   mlabsize(vsmall)) ///
         (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(6)  mlabcolor(maroon) mlabsize(vsmall)), ///
         legend(order(1 "No universitaria" 2 "Universitaria") position(6) rows(1)) ///
-        xlabel(2001(2)2025, angle(90)) ///
+        xlabel(2003(2)2025, angle(90)) ///
         xtitle("") ///
         ylabel(20(10)100, format(%9.0f)) ///
         ytitle("Informalidad (%)") ///
@@ -1334,10 +1346,10 @@ restore
 * Urbano
 preserve 
     keep if area == 1
-    keep if anio >= 2001 & anio <= 2024
+    keep if anio >= 2003 & anio <= 2024
     drop if missing(educ_univ)
     gen uno = 1
-    collapse (mean) informal2 (sum) N=uno [iw = fexp] if anio != 2002, by(anio educ_univ)
+    collapse (mean) informal2 (sum) N=uno [iw = fexp] if !inlist(anio, 2001, 2002), by(anio educ_univ)
     tab educ_univ
     reshape wide informal2 N, i(anio) j(educ_univ)
     foreach g in 0 1 {
@@ -1471,7 +1483,7 @@ keep if edad >= 15
 foreach var of varlist affiliated adec* no_remunerado tiene_ruc {
 	gen `var'_a = `var'
 	replace `var'_a = . if inrange(condact, 5, 8) & anio < 2001
-	replace `var'_a = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2001
+	replace `var'_a = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2003
 }
 
 
