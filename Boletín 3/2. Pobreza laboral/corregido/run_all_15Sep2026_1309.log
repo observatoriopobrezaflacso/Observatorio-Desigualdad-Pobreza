@@ -1,0 +1,2780 @@
+-------------------------------------------------------------------------------
+      name:  runall
+       log:  /Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/
+> Boletín 3/2. Pobreza laboral/corregido/run_all_15Sep2026_1309.log
+  log type:  text
+ opened on:  15 Sep 2026, 13:09:26
+
+. 
+. display as text _n(2) "{hline 78}"
+
+
+------------------------------------------------------------------------------
+
+. display as text "POBREZA LABORAL — corrida completa"
+POBREZA LABORAL — corrida completa
+
+. display as text "Inicio: `c(current_date)' `c(current_time)'"
+Inicio: 15 Sep 2026 13:09:26
+
+. display as text "{hline 78}"
+------------------------------------------------------------------------------
+
+. 
+. *----------------------------------------------------------------------------
+> --*
+. * Ejecucion
+. *----------------------------------------------------------------------------
+> --*
+. local fallidas ""
+
+. local corridas ""
+
+. 
+. foreach par in "01 01_panel" "05 05_validacion" "02 02_indicadores" ///
+>                "03 03_impacto" "04 04_descriptivos" {
+  2. 
+.     local num : word 1 of `par'
+  3.     local scr : word 2 of `par'
+  4. 
+.     if !`hacer_`num'' {
+  5.         display as text _n "--- `scr'.do: OMITIDA por interruptor ---"
+  6.         continue
+  7.     }
+  8. 
+.     display as text _n(2) "{hline 78}"
+  9.     display as text ">>> `scr'.do   (`c(current_time)')"
+ 10.     display as text "{hline 78}"
+ 11. 
+.     * Se mide con reloj de pared: "clear all" dentro de cada script borra los
+.     * timers de Stata, asi que no se pueden usar aqui.
+.     local t0 = clock("`c(current_date)' `c(current_time)'", "DMY hms")
+ 12.     capture noisily do "`codigo'/`scr'.do"
+ 13.     local rc = _rc
+ 14.     local t1 = clock("`c(current_date)' `c(current_time)'", "DMY hms")
+ 15.     local seg = (`t1' - `t0') / 1000
+ 16. 
+.     * Cada script hace "clear all", que puede dejar el directorio de trabajo
+.     * intacto pero conviene reafirmarlo antes de la siguiente etapa.
+.     quietly cd "`codigo'"
+ 17. 
+.     if `rc' {
+ 18.         display as error _n "!!! `scr'.do fallo con codigo de error `rc'"
+ 19.         local fallidas "`fallidas' `scr'"
+ 20.         display as error "Se interrumpe la cadena: las etapas siguientes d
+> ependen de esta."
+ 21.         continue, break
+ 22.     }
+ 23.     else {
+ 24.         display as result _n "OK  `scr'.do  (" %6.1f `seg' " segundos)"
+ 25.         local corridas "`corridas' `scr'"
+ 26.     }
+ 27. }
+
+
+------------------------------------------------------------------------------
+>>> 01_panel.do   (13:09:26)
+------------------------------------------------------------------------------
+
+. *----------------------------------------------------------------------------
+> --*
+. * 01_panel.do — Construye el panel armonizado 2001-2025 de pobreza laboral
+. *----------------------------------------------------------------------------
+> --*
+. * Guarda DOS juegos de insumos:
+. *   (a) las versiones corregidas  (sufijo _ok)
+. *   (b) las versiones tal como las produce el codigo original (sufijo _orig)
+. * Esto permite cuantificar el efecto de cada error sin volver a leer las base
+> s.
+. *
+. * Mapa real de la condicion de actividad en las bases (verificado):
+. *   2001-2005  condact  (clasificacion ANTIGUA, 0/1-8; ocupado = 0..4)
+. *   2007-2013  CONDACT + CONDACTN  (MAYUSCULAS)
+. *   2014-2015  condact + condactn
+. *   2016-2017  condactn  unicamente
+. *   2018-2025  condact   unicamente, pero con la clasificacion NUEVA (0-9)
+. * En la clasificacion NUEVA ocupado = 1..6 (no ocupado = 0,7,8,9).
+. *----------------------------------------------------------------------------
+> --*
+. 
+. do "00_config.do"
+
+. *----------------------------------------------------------------------------
+> --*
+. * 00_config.do — Rutas y parametros comunes (Pobreza laboral, Boletin 3)
+. *----------------------------------------------------------------------------
+> --*
+. * Detecta la raiz de Google Drive segun el usuario de la maquina, en lugar de
+. * fijar "/Users/vero/...". Si se agrega un colaborador, basta con anadir su c
+> aso.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. local u = c(username)
+
+. 
+. if "`u'" == "vero" {
+.     global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/vero/Documents/Observatorio GH/Observatorio-Desi
+> gualdad-Pobreza"
+. }
+
+. else if "`u'" == "santiago" {
+.     global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observ
+> atorio.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/santiago/Documents/GitHub/Observatorio-Desiguald
+> ad-Pobreza"
+. }
+
+. else {
+.     display as error "Usuario `u' no configurado en 00_config.do. Defina user
+> _root y gh_root."
+.     error 198
+. }
+
+. 
+. capture confirm file "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
+> /ing_perca_2001_nac_precios2000.dta"
+
+. if _rc {
+.     display as error "No se encuentra la carpeta de bases en: $user_root"
+.     error 601
+. }
+
+. 
+. global nacional    "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. * Salidas en carpeta propia: NO se sobrescriben los resultados publicados.
+. global outdir   "$user_root/Boletín 3/4. Resultados/pobreza laboral/corregido
+> "
+
+. global paneldir "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza"
+
+. 
+. capture mkdir "$user_root/Boletín 3/4. Resultados/pobreza laboral"
+
+. capture mkdir "$outdir"
+
+. capture mkdir "$paneldir"
+
+. 
+. * Anios procesados: rondas de diciembre disponibles a nivel nacional.
+. global anios "2001(2)2007 2008(1)2025"
+
+. 
+. display as text "Configuracion lista para usuario `u'."
+Configuracion lista para usuario santiago.
+
+. 
+end of do-file
+
+. 
+. *--- Lineas de pobreza anuales (diciembre, precios corrientes) ---*
+. tempfile lineas
+
+. import excel using "$lineas_xlsx", clear
+(5 vars, 58 obs)
+
+. rename A anio
+
+. rename C linea_pobreza
+
+. keep anio linea_pobreza
+
+. foreach v in anio linea_pobreza {
+  2.     capture confirm numeric variable `v'
+  3.     if _rc destring `v', replace force
+  4. }
+anio: contains nonnumeric characters; replaced as int
+(1 missing value generated)
+linea_pobreza: contains nonnumeric characters; replaced as double
+(1 missing value generated)
+
+. drop if missing(anio) | missing(linea_pobreza)
+(1 observation deleted)
+
+. duplicates drop anio, force
+
+Duplicates in terms of anio
+
+(0 observations are duplicates)
+
+. save `lineas', replace
+(file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000001 not
+    found)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000001 saved
+    as .dta format
+
+. 
+. *--- Procesamiento anio por anio ---*
+. local anios_all
+
+. foreach y of numlist $anios {
+  2.     local anios_all `anios_all' `y'
+  3. }
+
+. 
+. * Las variables de diseno muestral cambian de tipo entre anios (plan_muestreo
+>  y
+. * estrato son string en algunos, numericas en otros). Se guardan todas como
+. * string para que el append nunca falle por conflicto de tipos.
+. local svyvars ciudad zona sector plan_muestreo estrato upm
+
+. 
+. foreach y of local anios_all {
+  2. 
+.     local infile "$nacional/ing_perca_`y'_nac_precios2000.dta"
+  3. 
+.     capture confirm file "`infile'"
+  4.     if _rc {
+  5.         display as error "No existe el archivo: `infile'"
+  6.         error 601
+  7.     }
+  8. 
+.     * Linea de pobreza del anio
+.     quietly use `lineas', clear
+  9.     quietly keep if anio == `y'
+ 10.     if _N != 1 {
+ 11.         display as error "No hay linea de pobreza unica para `y'"
+ 12.         error 459
+ 13.     }
+ 14.     local lp = linea_pobreza[1]
+ 15. 
+.     * Solo se cargan las variables que existen en ese anio
+.     quietly describe using "`infile'", varlist
+ 16.     local vl `r(varlist)'
+ 17.     local loadv
+ 18.     foreach v in ingtot_per ing_lab fexp area sexo p02 edad p03 p24 hortra
+> sa ///
+>                  p25 p27 p28 nivinst nnivins p10a ///
+>                  condact condactn CONDACT CONDACTN `svyvars' {
+ 19.         local h : list posof "`v'" in vl
+ 20.         if `h' local loadv `loadv' `v'
+ 21.     }
+ 22. 
+.     quietly use `loadv' using "`infile'", clear
+ 23.     quietly generate int anio = `y'
+ 24. 
+.     *--- Armonizacion de nombres ---*
+.     capture confirm variable hortrasa
+ 25.     if !_rc rename hortrasa p24
+ 26. 
+.     capture confirm variable p03
+ 27.     if !_rc rename p03 edad
+ 28. 
+.     capture confirm variable sexo
+ 29.     if _rc {
+ 30.         capture confirm variable p02
+ 31.         if !_rc  generate byte sexo = p02
+ 32.         else     generate byte sexo = .
+ 33.     }
+ 34. 
+.     foreach v in p24 edad p25 p27 p28 {
+ 35.         capture confirm variable `v'
+ 36.         if _rc quietly generate double `v' = .
+ 37.     }
+ 38. 
+.     *--- Condicion de actividad: version CORREGIDA ---*
+.     * cond_nueva = clasificacion nueva (0-9); cond_vieja = clasificacion anti
+> gua
+.     quietly generate byte cond_nueva = .
+ 39.     quietly generate byte cond_vieja = .
+ 40. 
+.     if inrange(`y', 2001, 2005) {
+ 41.         quietly replace cond_vieja = condact
+ 42.     }
+ 43.     else if inrange(`y', 2007, 2013) {
+ 44.         quietly replace cond_nueva = CONDACTN
+ 45.         quietly replace cond_vieja = CONDACT
+ 46.     }
+ 47.     else if inrange(`y', 2014, 2015) {
+ 48.         quietly replace cond_nueva = condactn
+ 49.         quietly replace cond_vieja = condact
+ 50.     }
+ 51.     else if inrange(`y', 2016, 2017) {
+ 52.         quietly replace cond_nueva = condactn
+ 53.     }
+ 54.     else if `y' >= 2018 {
+ 55.         quietly replace cond_nueva = condact
+ 56.     }
+ 57. 
+.     * Ocupado corregido: nunca imputa 1 a los valores perdidos.
+.     quietly generate byte ocupado_ok = .
+ 58.     quietly replace ocupado_ok = inrange(cond_nueva, 1, 6) if !missing(con
+> d_nueva)
+ 59.     quietly replace ocupado_ok = inrange(cond_vieja, 0, 4) ///
+>         if missing(cond_nueva) & !missing(cond_vieja)
+ 60. 
+.     *--- Condicion de actividad: replica EXACTA del codigo original ---*
+.     * El original hacia: cap confirm variable CONDACT / if !_rc rename CONDAC
+> TN*, lower
+.     * y despues keep ... condact*  (patron sensible a mayusculas).
+.     quietly generate byte condact_orig  = .
+ 61.     quietly generate byte condactn_orig = .
+ 62. 
+.     capture confirm variable CONDACTN
+ 63.     if !_rc quietly replace condactn_orig = CONDACTN          // 2007-2013
+ 64.     capture confirm variable condactn
+ 65.     if !_rc quietly replace condactn_orig = condactn          // 2014-2017
+ 66.     capture confirm variable condact
+ 67.     if !_rc quietly replace condact_orig = condact            // 2001-2005
+> , 2014-2015, 2018-2025
+ 68.     * CONDACT en mayusculas se perdia con "keep condact*": se replica ese 
+> descarte.
+. 
+.     *--- Educacion superior ---*
+.     * Codigos verificados:
+.     *   2001        nivinst: 6=superior, 7=postgrado
+.     *   2003-2005   nivinst: 8=superior no univ., 9=superior univ., 10=postgr
+> ado
+.     *   2007+       p10a   : 8=superior no univ., 9=superior univ., 10=postgr
+> ado
+.     * _ok    = educacion superior en sentido amplio (incluye superior no univ
+> ersitaria),
+.     *          comparable con el codigo 6 de 2001.
+.     * _orig  = lo que hacia el codigo original (excluia superior no universit
+> aria
+.     *          desde 2003, pero la incluia en 2001).
+.     quietly generate byte educsup_ok   = .
+ 69.     quietly generate byte educsup_orig = .
+ 70. 
+.     if `y' == 2001 {
+ 71.         quietly replace educsup_ok   = inlist(nivinst, 6, 7) if !missing(n
+> ivinst)
+ 72.         quietly replace educsup_orig = inlist(nivinst, 6, 7) if !missing(n
+> ivinst)
+ 73.     }
+ 74.     else if inrange(`y', 2003, 2005) {
+ 75.         quietly replace educsup_ok   = inlist(nivinst, 8, 9, 10) if !missi
+> ng(nivinst)
+ 76.         quietly replace educsup_orig = inlist(nivinst, 9, 10)    if !missi
+> ng(nivinst)
+ 77.     }
+ 78.     else {
+ 79.         quietly replace educsup_ok   = inlist(p10a, 8, 9, 10) if !missing(
+> p10a)
+ 80.         quietly replace educsup_orig = inlist(p10a, 9, 10)    if !missing(
+> p10a)
+ 81.     }
+ 82. 
+.     *--- Pobreza ---*
+.     * ingtot_per esta en precios corrientes, igual que linea_pobreza_dic. Coh
+> erente.
+.     quietly generate double linea_pobreza   = `lp'
+ 83.     quietly generate double ingreso_pobreza = ingtot_per
+ 84.     quietly generate byte   pobreza = (ingreso_pobreza < linea_pobreza) //
+> /
+>         if !missing(ingreso_pobreza)
+ 85. 
+.     *--- Variables de diseno muestral presentes ese anio ---*
+.     foreach v of local svyvars {
+ 86.         capture confirm variable `v'
+ 87.         if _rc {
+ 88.             quietly generate str1 `v' = ""
+ 89.         }
+ 90.         else {
+ 91.             capture confirm string variable `v'
+ 92.             if _rc quietly tostring `v', replace force
+ 93.         }
+ 94.     }
+ 95. 
+.     quietly keep anio fexp sexo area edad p24 p25 p27 p28 ///
+>                  ing_lab ingtot_per ingreso_pobreza linea_pobreza pobreza ///
+>                  cond_nueva cond_vieja ocupado_ok condact_orig condactn_orig 
+> ///
+>                  educsup_ok educsup_orig `svyvars'
+ 96. 
+.     quietly compress
+ 97.     tempfile a`y'
+ 98.     quietly save `a`y''
+ 99. 
+.     quietly count if pobreza == 1
+100.     local np = r(N)
+101.     quietly count if !missing(pobreza)
+102.     local nv = r(N)
+103.     display as text "`y': linea = " as result %7.2f `lp' ///
+>         as text "  pobres/validos = " as result %9.0fc `np' as text " / " as 
+> result %9.0fc `nv'
+104. }
+2001: linea =   45.34  pobres/validos =    33,582 /    57,163
+2003: linea =   52.97  pobres/validos =    49,892 /    82,038
+2005: linea =   55.50  pobres/validos =    37,289 /    75,829
+2007: linea =   58.83  pobres/validos =    32,058 /    75,629
+2008: linea =   64.20  pobres/validos =    32,129 /    77,796
+2009: linea =   66.78  pobres/validos =    32,225 /    77,808
+2010: linea =   69.05  pobres/validos =    31,155 /    82,004
+2011: linea =   72.87  pobres/validos =    23,075 /    68,741
+2012: linea =   76.34  pobres/validos =    23,823 /    72,621
+2013: linea =   78.10  pobres/validos =    24,679 /    80,889
+2014: linea =   81.04  pobres/validos =    31,582 /   115,710
+2015: linea =   83.79  pobres/validos =    30,924 /   111,733
+2016: linea =   84.68  pobres/validos =    31,599 /   113,309
+2017: linea =   84.49  pobres/validos =    27,513 /   109,607
+2018: linea =   84.79  pobres/validos =    12,181 /    59,022
+2019: linea =   84.82  pobres/validos =    11,879 /    58,895
+2020: linea =   84.05  pobres/validos =     8,087 /    30,326
+2021: linea =   85.60  pobres/validos =     5,870 /    29,787
+2022: linea =   88.72  pobres/validos =     4,991 /    28,838
+2023: linea =   90.08  pobres/validos =     4,829 /    28,168
+2024: linea =   91.43  pobres/validos =     4,411 /    27,454
+2025: linea =   92.40  pobres/validos =     3,960 /    27,675
+
+. 
+. *--- Union de todos los anios ---*
+. clear
+
+. local first 1
+
+. foreach y of local anios_all {
+  2.     if `first' {
+  3.         use `a`y'', clear
+  4.         local first 0
+  5.     }
+  6.     else {
+  7.         append using `a`y''
+  8.     }
+  9. }
+(variable sector was str2, now str3 to accommodate using data's values)
+(label area already defined)
+(label sexo already defined)
+(label area already defined)
+(label sexo already defined)
+(variable ing_lab was int, now long to accommodate using data's values)
+(variable fexp was float, now double to accommodate using data's values)
+(label area already defined)
+(label area already defined)
+(label p03 already defined)
+(label p24 already defined)
+(label p25 already defined)
+(label p27 already defined)
+(label p28 already defined)
+(label ingrl already defined)
+(label area already defined)
+(label p03 already defined)
+(label p24 already defined)
+(label p25 already defined)
+(label p27 already defined)
+(label p28 already defined)
+(label ingrl already defined)
+(variable ing_lab was long, now double to accommodate using data's values)
+(label area already defined)
+(label p03 already defined)
+(label p24 already defined)
+(label p25 already defined)
+(label p27 already defined)
+(label p28 already defined)
+(label area already defined)
+(label p03 already defined)
+(label p24 already defined)
+(label p25 already defined)
+(label p27 already defined)
+(label p28 already defined)
+(label area already defined)
+(label p03 already defined)
+(label p24 already defined)
+(label p25 already defined)
+(label p27 already defined)
+(label p28 already defined)
+(label area already defined)
+(label p03 already defined)
+(label p24 already defined)
+(label p25 already defined)
+(label p27 already defined)
+(label p28 already defined)
+(variable plan_muestreo was str1, now str4 to accommodate using data's
+       values)
+(label labels33 already defined)
+(label labels36 already defined)
+(label labels0 already defined)
+(label labels6 already defined)
+(label labels33 already defined)
+(label labels34 already defined)
+(label labels36 already defined)
+(label labels37 already defined)
+(label labels37 already defined)
+(label labels36 already defined)
+(label labels34 already defined)
+(label labels33 already defined)
+(label labels6 already defined)
+(label labels0 already defined)
+(variable estrato was str1, now str4 to accommodate using data's values)
+(variable upm was str1, now str12 to accommodate using data's values)
+(label labels34 already defined)
+(label labels33 already defined)
+(label labels5 already defined)
+(label labels0 already defined)
+(label labels31 already defined)
+(label labels30 already defined)
+(label labels6 already defined)
+(label labels0 already defined)
+(label labels35 already defined)
+(label labels34 already defined)
+(label labels31 already defined)
+(label labels30 already defined)
+(label labels6 already defined)
+(label labels0 already defined)
+(label labels31 already defined)
+(label labels30 already defined)
+(label labels28 already defined)
+(label labels27 already defined)
+(label labels6 already defined)
+(label labels0 already defined)
+(label labels33 already defined)
+(label labels32 already defined)
+(label labels30 already defined)
+(label labels6 already defined)
+(label labels0 already defined)
+(label labels33 already defined)
+(label labels32 already defined)
+(label labels30 already defined)
+(label labels29 already defined)
+(label labels6 already defined)
+(label labels0 already defined)
+(label area already defined)
+(label p03 already defined)
+(label p24 already defined)
+(label p25 already defined)
+(label p27 already defined)
+(label p28 already defined)
+(label labels33 already defined)
+(label labels32 already defined)
+(label labels30 already defined)
+(label labels29 already defined)
+(label labels6 already defined)
+(label labels0 already defined)
+
+. 
+. *--- Ocupado: replica EXACTA del error original ---*
+. * El original parchaba condactn solo para 2019-2025, dejando 2018 sin condact
+> n,
+. * y usaba !inlist()/!inrange() sin excluir los valores perdidos (missing -> 1
+> ).
+. generate byte condactn_bug = condactn_orig
+(512,063 missing values generated)
+
+. replace condactn_bug = condact_orig if inrange(anio, 2019, 2025)
+(232,597 real changes made)
+
+. 
+. generate byte ocupado_orig = !inlist(condactn_bug, 0, 7, 8, 9) if anio >= 200
+> 7
+(220,116 missing values generated)
+
+. replace ocupado_orig = !inrange(condact_orig, 5, 8) if anio < 2007
+(220,116 real changes made)
+
+. 
+. label variable ocupado_ok   "Ocupado (corregido)"
+
+. label variable ocupado_orig "Ocupado (replica del codigo original)"
+
+. label variable educsup_ok   "Educacion superior (amplia, comparable)"
+
+. label variable educsup_orig "Educacion superior (definicion del codigo origin
+> al)"
+
+. label variable pobreza      "Ingreso per capita del hogar bajo la linea de po
+> breza"
+
+. 
+. label define pobreza_lbl 0 "No pobre" 1 "Pobre", replace
+
+. label values pobreza pobreza_lbl
+
+. 
+. compress
+  variable ing_lab was double now long
+  (6,031,192 bytes saved)
+
+. save "$paneldir/panel_pobreza_laboral.dta", replace
+file
+    /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@fla
+    > cso.edu.ec/Mi
+    unidad/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza/panel_pobreza_laboral.
+    > dta saved
+
+. 
+. display as text _n "Panel guardado: $paneldir/panel_pobreza_laboral.dta"
+
+Panel guardado: /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.p
+> obreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza/pa
+> nel_pobreza_laboral.dta
+
+. tabulate anio, missing
+
+       anio |      Freq.     Percent        Cum.
+------------+-----------------------------------
+       2001 |     60,749        4.03        4.03
+       2003 |     82,317        5.46        9.49
+       2005 |     77,050        5.11       14.60
+       2007 |     76,921        5.10       19.70
+       2008 |     78,742        5.22       24.92
+       2009 |     78,878        5.23       30.15
+       2010 |     82,774        5.49       35.64
+       2011 |     69,653        4.62       40.26
+       2012 |     73,686        4.89       45.15
+       2013 |     81,386        5.40       50.55
+       2014 |    116,505        7.73       58.27
+       2015 |    112,821        7.48       65.76
+       2016 |    114,086        7.57       73.32
+       2017 |    110,283        7.31       80.64
+       2018 |     59,350        3.94       84.57
+       2019 |     59,208        3.93       88.50
+       2020 |     30,646        2.03       90.53
+       2021 |     30,026        1.99       92.52
+       2022 |     28,993        1.92       94.45
+       2023 |     28,306        1.88       96.32
+       2024 |     27,610        1.83       98.16
+       2025 |     27,808        1.84      100.00
+------------+-----------------------------------
+      Total |  1,507,798      100.00
+
+. 
+end of do-file
+
+OK  01_panel.do  (   3.0 segundos)
+
+
+------------------------------------------------------------------------------
+>>> 05_validacion.do   (13:09:29)
+------------------------------------------------------------------------------
+
+. do "00_config.do"
+
+. *----------------------------------------------------------------------------
+> --*
+. * 00_config.do — Rutas y parametros comunes (Pobreza laboral, Boletin 3)
+. *----------------------------------------------------------------------------
+> --*
+. * Detecta la raiz de Google Drive segun el usuario de la maquina, en lugar de
+. * fijar "/Users/vero/...". Si se agrega un colaborador, basta con anadir su c
+> aso.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. local u = c(username)
+
+. 
+. if "`u'" == "vero" {
+.     global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/vero/Documents/Observatorio GH/Observatorio-Desi
+> gualdad-Pobreza"
+. }
+
+. else if "`u'" == "santiago" {
+.     global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observ
+> atorio.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/santiago/Documents/GitHub/Observatorio-Desiguald
+> ad-Pobreza"
+. }
+
+. else {
+.     display as error "Usuario `u' no configurado en 00_config.do. Defina user
+> _root y gh_root."
+.     error 198
+. }
+
+. 
+. capture confirm file "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
+> /ing_perca_2001_nac_precios2000.dta"
+
+. if _rc {
+.     display as error "No se encuentra la carpeta de bases en: $user_root"
+.     error 601
+. }
+
+. 
+. global nacional    "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. * Salidas en carpeta propia: NO se sobrescriben los resultados publicados.
+. global outdir   "$user_root/Boletín 3/4. Resultados/pobreza laboral/corregido
+> "
+
+. global paneldir "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza"
+
+. 
+. capture mkdir "$user_root/Boletín 3/4. Resultados/pobreza laboral"
+
+. capture mkdir "$outdir"
+
+. capture mkdir "$paneldir"
+
+. 
+. * Anios procesados: rondas de diciembre disponibles a nivel nacional.
+. global anios "2001(2)2007 2008(1)2025"
+
+. 
+. display as text "Configuracion lista para usuario `u'."
+Configuracion lista para usuario santiago.
+
+. 
+end of do-file
+
+. use "$paneldir/panel_pobreza_laboral.dta", clear
+
+. 
+. * Replica exacta del original: drop antes de todo
+. drop if p24 == 999
+(6 observations deleted)
+
+. 
+. preserve
+
+. collapse (mean) t = pobreza [iw=fexp] if pobreza < . & fexp < ., by(anio)
+
+. gen total_orig = 100*t
+
+. list anio total_orig, noobs sep(0)
+
+  +-----------------+
+  | anio   total_~g |
+  |-----------------|
+  | 2001   58.06781 |
+  | 2003   54.75561 |
+  | 2005   43.16964 |
+  | 2007   36.70818 |
+  | 2008   35.09365 |
+  | 2009   36.02621 |
+  | 2010   32.80061 |
+  | 2011   28.64519 |
+  | 2012   27.30581 |
+  | 2013    25.5552 |
+  | 2014   22.48883 |
+  | 2015   23.29946 |
+  | 2016   22.93794 |
+  | 2017   21.48029 |
+  | 2018    23.2416 |
+  | 2019   25.05941 |
+  | 2020     32.342 |
+  | 2021   27.70355 |
+  | 2022   25.22731 |
+  | 2023   26.02336 |
+  | 2024   27.99462 |
+  | 2025   21.37095 |
+  +-----------------+
+
+. restore
+
+. 
+. preserve
+
+. collapse (mean) t = pobreza [iw=fexp] if pobreza < . & fexp < . & ocupado_ori
+> g == 1, by(anio)
+
+. gen ocup_orig = 100*t
+
+. list anio ocup_orig, noobs sep(0)
+
+  +-----------------+
+  | anio   ocup_o~g |
+  |-----------------|
+  | 2001   52.76833 |
+  | 2003   47.13432 |
+  | 2005   36.34677 |
+  | 2007   29.57403 |
+  | 2008   27.02854 |
+  | 2009   28.34965 |
+  | 2010   24.94838 |
+  | 2011   21.34812 |
+  | 2012   20.56493 |
+  | 2013   18.07851 |
+  | 2014   16.16664 |
+  | 2015   17.39301 |
+  | 2016   18.05109 |
+  | 2017   16.82369 |
+  | 2018    23.2416 |
+  | 2019   19.86171 |
+  | 2020     26.171 |
+  | 2021   22.32163 |
+  | 2022     19.549 |
+  | 2023   19.75266 |
+  | 2024   21.06412 |
+  | 2025   16.94384 |
+  +-----------------+
+
+. restore
+
+. 
+. preserve
+
+. collapse (mean) t = pobreza [iw=fexp] if pobreza < . & fexp < . & ocupado_ori
+> g == 1 & area < ., by(anio area)
+
+. gen v = 100*t
+
+. keep anio area v
+
+. reshape wide v, i(anio) j(area)
+(j = 1 2)
+
+Data                               Long   ->   Wide
+-----------------------------------------------------------------------------
+Number of observations               44   ->   22          
+Number of variables                   3   ->   3           
+j variable (2 values)              area   ->   (dropped)
+xij variables:
+                                      v   ->   v1 v2
+-----------------------------------------------------------------------------
+
+. list, noobs sep(0)
+
+  +----------------------------+
+  | anio         v1         v2 |
+  |----------------------------|
+  | 2001   40.66439   71.23306 |
+  | 2003   33.70383   70.70338 |
+  | 2005   23.75278   58.77799 |
+  | 2007    17.5004   53.20757 |
+  | 2008   15.33728   50.71384 |
+  | 2009   17.36905   49.49123 |
+  | 2010   15.05561   44.28249 |
+  | 2011    11.1968   41.74818 |
+  | 2012    10.4472   40.46828 |
+  | 2013   10.91491   32.77239 |
+  | 2014   10.22052   28.34362 |
+  | 2015   10.25571   32.34452 |
+  | 2016   10.75873   32.60063 |
+  | 2017   8.555782   33.69241 |
+  | 2018   15.38107   40.01922 |
+  | 2019   11.26074   36.29136 |
+  | 2020   17.89508   41.97895 |
+  | 2021   14.48844   37.16545 |
+  | 2022   11.11463   35.01189 |
+  | 2023   11.36253   35.19345 |
+  | 2024    12.0216   36.94633 |
+  | 2025   9.527769    30.7028 |
+  +----------------------------+
+
+. restore
+
+. 
+end of do-file
+
+OK  05_validacion.do  (   1.0 segundos)
+
+
+------------------------------------------------------------------------------
+>>> 02_indicadores.do   (13:09:30)
+------------------------------------------------------------------------------
+
+. *----------------------------------------------------------------------------
+> --*
+. * 02_indicadores.do — Series corregidas de pobreza laboral (2001-2025)
+. *----------------------------------------------------------------------------
+> --*
+. * Correcciones respecto del codigo original:
+. *   1. "scope" quedaba sin definir: cobertura_pobreza salia vacia. Ahora es "
+> nac".
+. *   2. ocupado ya no imputa 1 a los valores perdidos de la condicion de activ
+> idad,
+. *      y 2018 usa su propia variable (antes quedaba sin condactn -> todos ocu
+> pados).
+. *   3. No se eliminan las observaciones con p24 == 999 de las tasas de pobrez
+> a:
+. *      "no sabe cuantas horas trabaja" no es motivo para excluir a alguien de
+> l
+. *      calculo de pobreza. Ese filtro solo se aplica donde se usan las horas.
+. *   4. El panel se guarda DESPUES de todas las correcciones, no antes.
+. *   5. Cada poblacion de referencia escribe en archivos con nombre propio, de
+>  modo
+. *      que la version "ocupados" y la version "con ingreso laboral" no se pis
+> an.
+. *   6. educacion_superior usa una definicion comparable en toda la serie.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. do "00_config.do"
+
+. *----------------------------------------------------------------------------
+> --*
+. * 00_config.do — Rutas y parametros comunes (Pobreza laboral, Boletin 3)
+. *----------------------------------------------------------------------------
+> --*
+. * Detecta la raiz de Google Drive segun el usuario de la maquina, en lugar de
+. * fijar "/Users/vero/...". Si se agrega un colaborador, basta con anadir su c
+> aso.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. local u = c(username)
+
+. 
+. if "`u'" == "vero" {
+.     global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/vero/Documents/Observatorio GH/Observatorio-Desi
+> gualdad-Pobreza"
+. }
+
+. else if "`u'" == "santiago" {
+.     global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observ
+> atorio.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/santiago/Documents/GitHub/Observatorio-Desiguald
+> ad-Pobreza"
+. }
+
+. else {
+.     display as error "Usuario `u' no configurado en 00_config.do. Defina user
+> _root y gh_root."
+.     error 198
+. }
+
+. 
+. capture confirm file "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
+> /ing_perca_2001_nac_precios2000.dta"
+
+. if _rc {
+.     display as error "No se encuentra la carpeta de bases en: $user_root"
+.     error 601
+. }
+
+. 
+. global nacional    "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. * Salidas en carpeta propia: NO se sobrescriben los resultados publicados.
+. global outdir   "$user_root/Boletín 3/4. Resultados/pobreza laboral/corregido
+> "
+
+. global paneldir "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza"
+
+. 
+. capture mkdir "$user_root/Boletín 3/4. Resultados/pobreza laboral"
+
+. capture mkdir "$outdir"
+
+. capture mkdir "$paneldir"
+
+. 
+. * Anios procesados: rondas de diciembre disponibles a nivel nacional.
+. global anios "2001(2)2007 2008(1)2025"
+
+. 
+. display as text "Configuracion lista para usuario `u'."
+Configuracion lista para usuario santiago.
+
+. 
+end of do-file
+
+. 
+. use "$paneldir/panel_pobreza_laboral.dta", clear
+
+. 
+. *--- Metadatos ---*
+. generate str3 cobertura_pobreza = "nac"
+
+. label variable cobertura_pobreza "Cobertura de la base usada"
+
+. 
+. *--- Etiquetas de los grupos ---*
+. * "export excel" escribe las etiquetas de valor, no los codigos, asi que esta
+> s
+. * etiquetas son los nombres con los que el generador del Word lee cada grupo.
+. * Cambiarlas obliga a cambiar tambien configuracion.py del boletin automatiza
+> do.
+. label define area_lbl 1 "Urbana" 2 "Rural", replace
+
+. label values area area_lbl
+
+. 
+. label define sexo_lbl 1 "Hombre" 2 "Mujer", replace
+
+. label values sexo sexo_lbl
+
+. 
+. label define educsup_lbl 0 "Sin educación superior" 1 "Con educación superior
+> ", replace
+
+. label values educsup_ok   educsup_lbl
+
+. label values educsup_orig educsup_lbl
+
+. 
+. *--- Grupos de edad ---*
+. generate byte age_cat = .
+(1,507,798 missing values generated)
+
+. replace age_cat = 1 if inrange(edad, 18, 29)
+(281,361 real changes made)
+
+. replace age_cat = 2 if inrange(edad, 30, 64)
+(552,559 real changes made)
+
+. replace age_cat = 3 if inrange(edad, 65, 97)
+(138,842 real changes made)
+
+. label define age_cat_lbl 1 "18-29" 2 "30-64" 3 "65+", replace
+
+. label values age_cat age_cat_lbl
+
+. label variable age_cat "Grupo de edad"
+
+. 
+. *--- Horas trabajadas: 999 = "no sabe". Se marca como perdido en lugar de
+. *--- eliminar la observacion completa del calculo de pobreza.              --
+> -*
+. generate double horas = p24
+(813,660 missing values generated)
+
+. replace horas = . if p24 == 999 | p24 >= 999
+(6 real changes made, 6 to missing)
+
+. label variable horas "Horas trabajadas a la semana (999 = no sabe -> perdido)
+> "
+
+. 
+. compress
+  variable horas was double now int
+  (9,046,788 bytes saved)
+
+. save "$paneldir/panel_pobreza_laboral_final.dta", replace
+file
+    /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@fla
+    > cso.edu.ec/Mi
+    unidad/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza/panel_pobreza_laboral_
+    > final.dta saved
+
+. 
+. *----------------------------------------------------------------------------
+> --*
+. * Series. Dos poblaciones de referencia, con nombres de archivo distintos:
+. *   ocupados  -> ocupado_ok == 1        (definicion del boletin)
+. *   inglab    -> !missing(ing_lab)      (variante con ingreso laboral observa
+> do)
+. *----------------------------------------------------------------------------
+> --*
+. 
+. foreach pob in total ocupados inglab {
+  2. 
+.     if "`pob'" == "total"    local filtro ""
+  3.     if "`pob'" == "ocupados" local filtro "& ocupado_ok == 1"
+  4.     if "`pob'" == "inglab"   local filtro "& !missing(ing_lab)"
+  5. 
+.     foreach dim in nacional area sexo edad educ {
+  6. 
+.         if "`dim'" == "nacional" local byv ""
+  7.         if "`dim'" == "area"     local byv "area"
+  8.         if "`dim'" == "sexo"     local byv "sexo"
+  9.         if "`dim'" == "edad"     local byv "age_cat"
+ 10.         if "`dim'" == "educ"     local byv "educsup_ok"
+ 11. 
+.         local cond "pobreza < . & fexp < . `filtro'"
+ 12.         if "`byv'" != "" local cond "`cond' & `byv' < ."
+ 13. 
+.         preserve
+ 14.         collapse (mean) tasa_pobreza = pobreza (rawsum) n_casos = fexp ///
+>             [iw = fexp] if `cond', by(anio `byv')
+ 15. 
+.         generate tasa_pobreza_pct = 100 * tasa_pobreza
+ 16.         label variable tasa_pobreza_pct "Pobreza (%)"
+ 17. 
+.         export excel using "$outdir/pobreza_`pob'_`dim'.xlsx", ///
+>             replace firstrow(var)
+ 18.         restore
+ 19.     }
+ 20. }
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_nacional.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_area.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_sexo.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_edad.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_educ.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_nacional.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_area.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_sexo.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_edad.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_educ.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_nacional.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_area.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_sexo.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_edad.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_educ.xlsx saved
+
+. 
+. display as text _n "Series corregidas exportadas a: $outdir"
+
+Series corregidas exportadas a: /Users/santiago/Library/CloudStorage/GoogleDriv
+> e-observatorio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobrez
+> a laboral/corregido
+
+. 
+. *----------------------------------------------------------------------------
+> --*
+. * Graficos del boletin (poblacion: ocupados), con la serie completa en el eje
+>  X
+. *----------------------------------------------------------------------------
+> --*
+. 
+. * Grafico 9: evolucion nacional
+. preserve
+
+. collapse (mean) t = pobreza [iw = fexp] if pobreza < . & fexp < . & ocupado_o
+> k == 1, by(anio)
+
+. generate tasa = 100 * t
+
+. generate lbl = tasa if inlist(anio, 2001, 2009, 2017, 2025)
+(18 missing values generated)
+
+. format lbl %9.1f
+
+. 
+. twoway (connected tasa anio, lcolor(maroon) lwidth(medthick) msymbol(circle) 
+> mcolor(maroon)) ///
+>        (scatter lbl anio, msymbol(none) mlabel(lbl) mlabposition(12) ///
+>             mlabcolor(maroon) mlabsize(vsmall)), ///
+>     title("Pobreza laboral a nivel nacional") ///
+>     xtitle("") ytitle("Pobreza (%)") ///
+>     ylabel(0(10)60, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
+>     legend(off) name(g9, replace) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. graph export "$outdir/g09_pobreza_laboral_nacional.png", replace width(2400)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/g09_pob
+> reza_laboral_nacional.png written in PNG format
+
+. restore
+
+. 
+. * Grafico 10: por area
+. preserve
+
+. collapse (mean) t = pobreza [iw = fexp] ///
+>     if pobreza < . & fexp < . & ocupado_ok == 1 & area < ., by(anio area)
+
+. generate tasa = 100 * t
+
+. generate lbl_u = tasa if area == 1 & inlist(anio, 2001, 2009, 2017, 2025)
+(40 missing values generated)
+
+. generate lbl_r = tasa if area == 2 & inlist(anio, 2001, 2009, 2017, 2025)
+(40 missing values generated)
+
+. format lbl_u lbl_r %9.1f
+
+. 
+. twoway (connected tasa anio if area == 1, lcolor(navy) lwidth(medthick) mcolo
+> r(navy)) ///
+>        (connected tasa anio if area == 2, lcolor(maroon) lwidth(medthick) mco
+> lor(maroon)) ///
+>        (scatter lbl_u anio, msymbol(none) mlabel(lbl_u) mlabposition(6) mlabc
+> olor(navy) mlabsize(vsmall)) ///
+>        (scatter lbl_r anio, msymbol(none) mlabel(lbl_r) mlabposition(12) mlab
+> color(maroon) mlabsize(vsmall)), ///
+>     title("Pobreza laboral por area") ///
+>     xtitle("") ytitle("Pobreza (%)") ///
+>     ylabel(0(10)80, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Urbana" 2 "Rural") position(6) rows(1)) name(g10, replace
+> ) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. graph export "$outdir/g10_pobreza_laboral_area.png", replace width(2400)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/g10_pob
+> reza_laboral_area.png written in PNG format
+
+. restore
+
+. 
+. * Grafico 11: por educacion superior
+. preserve
+
+. collapse (mean) t = pobreza [iw = fexp] ///
+>     if pobreza < . & fexp < . & ocupado_ok == 1 & educsup_ok < ., by(anio edu
+> csup_ok)
+
+. generate tasa = 100 * t
+
+. generate lbl_0 = tasa if educsup_ok == 0 & inlist(anio, 2001, 2009, 2017, 202
+> 5)
+(40 missing values generated)
+
+. generate lbl_1 = tasa if educsup_ok == 1 & inlist(anio, 2001, 2009, 2017, 202
+> 5)
+(40 missing values generated)
+
+. format lbl_0 lbl_1 %9.1f
+
+. 
+. twoway (connected tasa anio if educsup_ok == 0, lcolor(navy) lwidth(medthick)
+>  mcolor(navy)) ///
+>        (connected tasa anio if educsup_ok == 1, lcolor(maroon) lwidth(medthic
+> k) mcolor(maroon)) ///
+>        (scatter lbl_0 anio, msymbol(none) mlabel(lbl_0) mlabposition(12) mlab
+> color(navy) mlabsize(vsmall)) ///
+>        (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(6) mlabc
+> olor(maroon) mlabsize(vsmall)), ///
+>     title("Pobreza laboral por nivel educativo") ///
+>     xtitle("") ytitle("Pobreza (%)") ///
+>     ylabel(0(10)60, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Sin educacion superior" 2 "Con educacion superior") posit
+> ion(6) rows(1)) ///
+>     name(g11, replace) graphregion(color(white)) plotregion(color(white))
+
+. graph export "$outdir/g11_pobreza_laboral_educacion.png", replace width(2400)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/g11_pob
+> reza_laboral_educacion.png written in PNG format
+
+. restore
+
+. 
+. display as text _n "Graficos exportados a: $outdir"
+
+Graficos exportados a: /Users/santiago/Library/CloudStorage/GoogleDrive-observa
+> torio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral
+> /corregido
+
+. 
+end of do-file
+
+OK  02_indicadores.do  (   6.0 segundos)
+
+
+------------------------------------------------------------------------------
+>>> 03_impacto.do   (13:09:36)
+------------------------------------------------------------------------------
+
+. *----------------------------------------------------------------------------
+> --*
+. * 03_impacto.do — Cuantifica el efecto de cada error sobre los resultados
+. *----------------------------------------------------------------------------
+> --*
+. * Estrategia: partir de la version corregida y reintroducir UN error a la vez
+> .
+. * La variante "orig" reproduce exactamente los archivos publicados (verificad
+> o
+. * contra pobreza_evolucion.xlsx y pobreza_laboral.xlsx del 16-jun).
+. *
+. * Variantes de la poblacion "ocupados":
+. *   ok      : correcta
+. *   e2018   : solo el error de 2018 (condactn ausente, parche desde 2019)
+. *   emiss   : solo la imputacion de ocupado=1 a los valores perdidos
+. *   orig    : ambas (replica del codigo publicado)
+. *----------------------------------------------------------------------------
+> --*
+. 
+. do "00_config.do"
+
+. *----------------------------------------------------------------------------
+> --*
+. * 00_config.do — Rutas y parametros comunes (Pobreza laboral, Boletin 3)
+. *----------------------------------------------------------------------------
+> --*
+. * Detecta la raiz de Google Drive segun el usuario de la maquina, en lugar de
+. * fijar "/Users/vero/...". Si se agrega un colaborador, basta con anadir su c
+> aso.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. local u = c(username)
+
+. 
+. if "`u'" == "vero" {
+.     global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/vero/Documents/Observatorio GH/Observatorio-Desi
+> gualdad-Pobreza"
+. }
+
+. else if "`u'" == "santiago" {
+.     global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observ
+> atorio.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/santiago/Documents/GitHub/Observatorio-Desiguald
+> ad-Pobreza"
+. }
+
+. else {
+.     display as error "Usuario `u' no configurado en 00_config.do. Defina user
+> _root y gh_root."
+.     error 198
+. }
+
+. 
+. capture confirm file "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
+> /ing_perca_2001_nac_precios2000.dta"
+
+. if _rc {
+.     display as error "No se encuentra la carpeta de bases en: $user_root"
+.     error 601
+. }
+
+. 
+. global nacional    "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. * Salidas en carpeta propia: NO se sobrescriben los resultados publicados.
+. global outdir   "$user_root/Boletín 3/4. Resultados/pobreza laboral/corregido
+> "
+
+. global paneldir "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza"
+
+. 
+. capture mkdir "$user_root/Boletín 3/4. Resultados/pobreza laboral"
+
+. capture mkdir "$outdir"
+
+. capture mkdir "$paneldir"
+
+. 
+. * Anios procesados: rondas de diciembre disponibles a nivel nacional.
+. global anios "2001(2)2007 2008(1)2025"
+
+. 
+. display as text "Configuracion lista para usuario `u'."
+Configuracion lista para usuario santiago.
+
+. 
+end of do-file
+
+. use "$paneldir/panel_pobreza_laboral_final.dta", clear
+
+. 
+. *--- Variantes de "ocupado" que aislan cada error ---*
+. generate byte ocup_e2018 = ocupado_ok
+
+. replace     ocup_e2018 = ocupado_orig if anio == 2018
+(31,153 real changes made)
+
+. 
+. generate byte ocup_emiss = ocupado_orig
+
+. replace     ocup_emiss = ocupado_ok if anio == 2018
+(31,153 real changes made)
+
+. 
+. tempfile panel
+
+. save `panel', replace
+(file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000001 not
+    found)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000001 saved
+    as .dta format
+
+. 
+. *============================================================================
+> ==*
+. * A. Serie nacional de pobreza laboral (ocupados) — Grafico 9
+. *============================================================================
+> ==*
+. tempfile acum
+
+. local first 1
+
+. 
+. foreach v in ocupado_ok ocup_e2018 ocup_emiss ocupado_orig {
+  2.     use `panel', clear
+  3.     collapse (mean) t = pobreza [iw = fexp] if pobreza < . & fexp < . & `v
+> ' == 1, by(anio)
+  4.     generate str12 variante = "`v'"
+  5.     generate double tasa = 100 * t
+  6.     keep anio variante tasa
+  7.     if `first' {
+  8.         save `acum', replace
+  9.         local first 0
+ 10.     }
+ 11.     else {
+ 12.         append using `acum'
+ 13.         save `acum', replace
+ 14.     }
+ 15. }
+(file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000002 not
+    found)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000002 saved
+    as .dta format
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000002 saved
+    as .dta format
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000002 saved
+    as .dta format
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000002 saved
+    as .dta format
+
+. 
+. * Variante: efecto de "drop if p24 == 999" sobre la serie corregida
+. use `panel', clear
+
+. drop if p24 == 999
+(6 observations deleted)
+
+. collapse (mean) t = pobreza [iw = fexp] if pobreza < . & fexp < . & ocupado_o
+> k == 1, by(anio)
+
+. generate str12 variante = "drop999"
+
+. generate double tasa = 100 * t
+
+. keep anio variante tasa
+
+. append using `acum'
+
+. save `acum', replace
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000002 saved
+    as .dta format
+
+. 
+. * Variante: poblacion definida por ing_lab en vez de ocupados (colision de ar
+> chivos)
+. use `panel', clear
+
+. collapse (mean) t = pobreza [iw = fexp] if pobreza < . & fexp < . & !missing(
+> ing_lab), by(anio)
+
+. generate str12 variante = "inglab"
+
+. generate double tasa = 100 * t
+
+. keep anio variante tasa
+
+. append using `acum'
+
+. save `acum', replace
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000002 saved
+    as .dta format
+
+. 
+. use `acum', clear
+
+. reshape wide tasa, i(anio) j(variante) string
+(j = drop999 inglab ocup_e2018 ocup_emiss ocupado_ok ocupado_orig)
+
+Data                               Long   ->   Wide
+-----------------------------------------------------------------------------
+Number of observations              132   ->   22          
+Number of variables                   3   ->   7           
+j variable (6 values)          variante   ->   (dropped)
+xij variables:
+                                   tasa   ->   tasadrop999 tasainglab ... tasao
+> cupado_orig
+-----------------------------------------------------------------------------
+
+. 
+. generate double d_2018   = tasaocup_e2018   - tasaocupado_ok
+
+. generate double d_miss   = tasaocup_emiss   - tasaocupado_ok
+
+. generate double d_orig   = tasaocupado_orig - tasaocupado_ok
+
+. generate double d_drop   = tasadrop999      - tasaocupado_ok
+
+. generate double d_inglab = tasainglab       - tasaocupado_ok
+
+. 
+. format tasa* d_* %9.3f
+
+. label variable tasaocupado_ok  "Corregida"
+
+. label variable tasaocupado_orig "Original (publicada)"
+
+. 
+. list anio tasaocupado_ok tasaocupado_orig d_orig d_2018 d_miss d_drop d_ingla
+> b, ///
+>     noobs sep(0) abbreviate(18)
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2001 |         52.506 |           52.768 |  0.262 |  0.000 |  0.262 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -6.235              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2003 |         47.132 |           47.132 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.002              |               -3.303              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2005 |         36.347 |           36.347 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.660              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2007 |         29.578 |           29.578 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |             -0.004              |               -3.804              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2008 |         27.029 |           27.029 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.472              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2009 |         28.350 |           28.350 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.125              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2010 |         24.948 |           24.948 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.963              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2011 |         21.348 |           21.348 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.038              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2012 |         20.565 |           20.565 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.823              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2013 |         18.079 |           18.079 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -2.503              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2014 |         16.167 |           16.167 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -2.591              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2015 |         17.393 |           17.393 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.460              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2016 |         18.051 |           18.051 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.745              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2017 |         16.824 |           16.824 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.807              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2018 |         18.242 |           23.242 |  4.999 |  4.999 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.258              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2019 |         19.862 |           19.862 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.735              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2020 |         26.171 |           26.171 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -5.335              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2021 |         22.322 |           22.322 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -3.928              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2022 |         19.549 |           19.549 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.798              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2023 |         19.753 |           19.753 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.799              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2024 |         21.064 |           21.064 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.941              |
+  +---------------------------------------------------------------------+
+
+  +---------------------------------------------------------------------+
+  | anio | tasaocupado_ok | tasaocupado_orig | d_orig | d_2018 | d_miss |
+  | 2025 |         16.944 |           16.944 |  0.000 |  0.000 |  0.000 |
+  |---------------------------------------------------------------------|
+  |             d_drop              |             d_inglab              |
+  |              0.000              |               -4.097              |
+  +---------------------------------------------------------------------+
+
+. 
+. export excel using "$outdir/impacto_serie_nacional.xlsx", replace firstrow(va
+> rlabels)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/impacto
+> _serie_nacional.xlsx saved
+
+. 
+. *============================================================================
+> ==*
+. * B. Pobreza laboral por area — Grafico 10
+. *============================================================================
+> ==*
+. tempfile acum2
+
+. local first 1
+
+. foreach v in ocupado_ok ocupado_orig {
+  2.     use `panel', clear
+  3.     collapse (mean) t = pobreza [iw = fexp] ///
+>         if pobreza < . & fexp < . & `v' == 1 & area < ., by(anio area)
+  4.     generate str12 variante = "`v'"
+  5.     generate double tasa = 100 * t
+  6.     keep anio area variante tasa
+  7.     if `first' {
+  8.         save `acum2', replace
+  9.         local first 0
+ 10.     }
+ 11.     else {
+ 12.         append using `acum2'
+ 13.         save `acum2', replace
+ 14.     }
+ 15. }
+(file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000003 not
+    found)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000003 saved
+    as .dta format
+(label area_lbl already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000003 saved
+    as .dta format
+
+. use `acum2', clear
+
+. reshape wide tasa, i(anio area) j(variante) string
+(j = ocupado_ok ocupado_orig)
+
+Data                               Long   ->   Wide
+-----------------------------------------------------------------------------
+Number of observations               88   ->   44          
+Number of variables                   4   ->   4           
+j variable (2 values)          variante   ->   (dropped)
+xij variables:
+                                   tasa   ->   tasaocupado_ok tasaocupado_orig
+-----------------------------------------------------------------------------
+
+. generate double dif = tasaocupado_orig - tasaocupado_ok
+
+. format tasa* dif %9.3f
+
+. di _n "=== AREA (1=urbana, 2=rural) ==="
+
+=== AREA (1=urbana, 2=rural) ===
+
+. list anio area tasaocupado_ok tasaocupado_orig dif, noobs sep(0) abbreviate(1
+> 8)
+
+  +-----------------------------------------------------------+
+  | anio     area   tasaocupado_ok   tasaocupado_orig     dif |
+  |-----------------------------------------------------------|
+  | 2001   Urbana           40.161             40.664   0.503 |
+  | 2001    Rural           71.158             71.233   0.075 |
+  | 2003   Urbana           33.699             33.699   0.000 |
+  | 2003    Rural           70.706             70.706   0.000 |
+  | 2005   Urbana           23.753             23.753   0.000 |
+  | 2005    Rural           58.778             58.778   0.000 |
+  | 2007   Urbana           17.507             17.507   0.000 |
+  | 2007    Rural           53.208             53.208   0.000 |
+  | 2008   Urbana           15.337             15.337   0.000 |
+  | 2008    Rural           50.714             50.714   0.000 |
+  | 2009   Urbana           17.369             17.369   0.000 |
+  | 2009    Rural           49.491             49.491   0.000 |
+  | 2010   Urbana           15.056             15.056   0.000 |
+  | 2010    Rural           44.282             44.282   0.000 |
+  | 2011   Urbana           11.197             11.197   0.000 |
+  | 2011    Rural           41.748             41.748   0.000 |
+  | 2012   Urbana           10.447             10.447   0.000 |
+  | 2012    Rural           40.468             40.468   0.000 |
+  | 2013   Urbana           10.915             10.915   0.000 |
+  | 2013    Rural           32.772             32.772   0.000 |
+  | 2014   Urbana           10.221             10.221   0.000 |
+  | 2014    Rural           28.344             28.344   0.000 |
+  | 2015   Urbana           10.256             10.256   0.000 |
+  | 2015    Rural           32.345             32.345   0.000 |
+  | 2016   Urbana           10.759             10.759   0.000 |
+  | 2016    Rural           32.601             32.601   0.000 |
+  | 2017   Urbana            8.556              8.556   0.000 |
+  | 2017    Rural           33.692             33.692   0.000 |
+  | 2018   Urbana           10.310             15.381   5.071 |
+  | 2018    Rural           33.789             40.019   6.230 |
+  | 2019   Urbana           11.261             11.261   0.000 |
+  | 2019    Rural           36.291             36.291   0.000 |
+  | 2020   Urbana           17.895             17.895   0.000 |
+  | 2020    Rural           41.979             41.979   0.000 |
+  | 2021   Urbana           14.488             14.488   0.000 |
+  | 2021    Rural           37.165             37.165   0.000 |
+  | 2022   Urbana           11.115             11.115   0.000 |
+  | 2022    Rural           35.012             35.012   0.000 |
+  | 2023   Urbana           11.363             11.363   0.000 |
+  | 2023    Rural           35.193             35.193   0.000 |
+  | 2024   Urbana           12.022             12.022   0.000 |
+  | 2024    Rural           36.946             36.946   0.000 |
+  | 2025   Urbana            9.528              9.528   0.000 |
+  | 2025    Rural           30.703             30.703   0.000 |
+  +-----------------------------------------------------------+
+
+. export excel using "$outdir/impacto_area.xlsx", replace firstrow(var)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/impacto
+> _area.xlsx saved
+
+. 
+. *============================================================================
+> ==*
+. * C. Pobreza laboral por educacion — Grafico 11
+. *============================================================================
+> ==*
+. tempfile acum3
+
+. local first 1
+
+. foreach spec in "ocupado_ok educsup_ok ok" "ocupado_orig educsup_orig orig" /
+> //
+>                 "ocupado_ok educsup_orig soloeduc" {
+  2.     local ov  : word 1 of `spec'
+  3.     local ev  : word 2 of `spec'
+  4.     local nm  : word 3 of `spec'
+  5.     use `panel', clear
+  6.     collapse (mean) t = pobreza [iw = fexp] ///
+>         if pobreza < . & fexp < . & `ov' == 1 & `ev' < ., by(anio `ev')
+  7.     rename `ev' educsup
+  8.     generate str12 variante = "`nm'"
+  9.     generate double tasa = 100 * t
+ 10.     keep anio educsup variante tasa
+ 11.     if `first' {
+ 12.         save `acum3', replace
+ 13.         local first 0
+ 14.     }
+ 15.     else {
+ 16.         append using `acum3'
+ 17.         save `acum3', replace
+ 18.     }
+ 19. }
+(file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000004 not
+    found)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000004 saved
+    as .dta format
+(label educsup_lbl already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000004 saved
+    as .dta format
+(label educsup_lbl already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39051.000004 saved
+    as .dta format
+
+. use `acum3', clear
+
+. reshape wide tasa, i(anio educsup) j(variante) string
+(j = ok orig soloeduc)
+
+Data                               Long   ->   Wide
+-----------------------------------------------------------------------------
+Number of observations              132   ->   44          
+Number of variables                   4   ->   5           
+j variable (3 values)          variante   ->   (dropped)
+xij variables:
+                                   tasa   ->   tasaok tasaorig tasasoloeduc
+-----------------------------------------------------------------------------
+
+. generate double d_total    = tasaorig     - tasaok
+
+. generate double d_soloeduc = tasasoloeduc - tasaok
+
+. format tasa* d_* %9.3f
+
+. di _n "=== EDUCACION SUPERIOR (0=sin, 1=con) ==="
+
+=== EDUCACION SUPERIOR (0=sin, 1=con) ===
+
+. list anio educsup tasaok tasaorig d_total d_soloeduc, noobs sep(0) abbreviate
+> (18)
+
+  +--------------------------------------------------------------------------+
+  | anio                  educsup   tasaok   tasaorig   d_total   d_soloeduc |
+  |--------------------------------------------------------------------------|
+  | 2001   Sin educación superior   58.922     59.163     0.240        0.000 |
+  | 2001   Con educación superior   18.739     18.972     0.233        0.000 |
+  | 2003   Sin educación superior   54.206     53.800    -0.406       -0.406 |
+  | 2003   Con educación superior   14.377     14.242    -0.135       -0.135 |
+  | 2005   Sin educación superior   42.746     42.475    -0.272       -0.272 |
+  | 2005   Con educación superior    7.272      7.022    -0.250       -0.250 |
+  | 2007   Sin educación superior   35.319     35.056    -0.263       -0.263 |
+  | 2007   Con educación superior    5.567      5.343    -0.224       -0.224 |
+  | 2008   Sin educación superior   32.661     32.454    -0.207       -0.207 |
+  | 2008   Con educación superior    4.204      3.966    -0.238       -0.238 |
+  | 2009   Sin educación superior   33.684     33.415    -0.269       -0.269 |
+  | 2009   Con educación superior    6.813      6.923     0.110        0.110 |
+  | 2010   Sin educación superior   30.321     30.050    -0.271       -0.271 |
+  | 2010   Con educación superior    5.036      5.040     0.004        0.004 |
+  | 2011   Sin educación superior   26.076     25.853    -0.223       -0.223 |
+  | 2011   Con educación superior    3.975      3.890    -0.085       -0.085 |
+  | 2012   Sin educación superior   25.070     24.823    -0.247       -0.247 |
+  | 2012   Con educación superior    4.438      4.394    -0.044       -0.044 |
+  | 2013   Sin educación superior   22.423     22.148    -0.274       -0.274 |
+  | 2013   Con educación superior    2.323      2.185    -0.138       -0.138 |
+  | 2014   Sin educación superior   19.499     19.308    -0.191       -0.191 |
+  | 2014   Con educación superior    2.911      2.747    -0.164       -0.164 |
+  | 2015   Sin educación superior   21.245     20.914    -0.332       -0.332 |
+  | 2015   Con educación superior    3.234      3.111    -0.123       -0.123 |
+  | 2016   Sin educación superior   21.858     21.506    -0.353       -0.353 |
+  | 2016   Con educación superior    3.400      3.208    -0.192       -0.192 |
+  | 2017   Sin educación superior   20.390     20.015    -0.375       -0.375 |
+  | 2017   Con educación superior    3.069      2.982    -0.087       -0.087 |
+  | 2018   Sin educación superior   22.164     25.362     3.198       -0.417 |
+  | 2018   Con educación superior    2.815      4.213     1.398       -0.030 |
+  | 2019   Sin educación superior   23.975     23.481    -0.494       -0.494 |
+  | 2019   Con educación superior    3.570      3.482    -0.088       -0.088 |
+  | 2020   Sin educación superior   30.924     30.312    -0.612       -0.612 |
+  | 2020   Con educación superior    6.313      6.134    -0.179       -0.179 |
+  | 2021   Sin educación superior   27.129     26.430    -0.699       -0.699 |
+  | 2021   Con educación superior    4.417      3.644    -0.773       -0.773 |
+  | 2022   Sin educación superior   24.253     23.503    -0.750       -0.750 |
+  | 2022   Con educación superior    2.041      1.761    -0.280       -0.280 |
+  | 2023   Sin educación superior   24.037     23.284    -0.753       -0.753 |
+  | 2023   Con educación superior    3.371      2.817    -0.554       -0.554 |
+  | 2024   Sin educación superior   25.004     24.156    -0.848       -0.848 |
+  | 2024   Con educación superior    3.613      3.369    -0.244       -0.244 |
+  | 2025   Sin educación superior   20.464     19.781    -0.683       -0.683 |
+  | 2025   Con educación superior    2.476      2.234    -0.242       -0.242 |
+  +--------------------------------------------------------------------------+
+
+. export excel using "$outdir/impacto_educacion.xlsx", replace firstrow(var)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/impacto
+> _educacion.xlsx saved
+
+. 
+. *============================================================================
+> ==*
+. * D. Composicion de los ocupados pobres en 2025 (cifras 33.8% y 22.5%)
+. *============================================================================
+> ==*
+. use `panel', clear
+
+. keep if anio == 2025 & pobreza == 1 & fexp < .
+(1,503,838 observations deleted)
+
+. 
+. di _n "=== Cuantos ocupados pobres hay en 2025 segun cada definicion ==="
+
+=== Cuantos ocupados pobres hay en 2025 segun cada definicion ===
+
+. count if ocupado_ok   == 1
+  1,438
+
+. count if ocupado_orig == 1
+  1,438
+
+. 
+. * --- Version ORIGINAL del fragmento "descriptivos?texto" ---
+. generate byte cuarenta_orig = p24 >= 40
+
+. generate byte a_orig = .
+(3,960 missing values generated)
+
+. replace a_orig = 1 if inrange(p27, 1, 3) & p28 == 1
+(419 real changes made)
+
+. replace a_orig = . if inlist(., p27, p28)
+(0 real changes made)
+
+. replace a_orig = 0 if p27 == 4 | p25 == 9
+(1,083 real changes made)
+
+. generate byte b_orig = .
+(3,960 missing values generated)
+
+. replace b_orig = 1 if cuarenta_orig == 1
+(2,891 real changes made)
+
+. replace b_orig = 2 if cuarenta_orig == 0 & a_orig == 1
+(389 real changes made)
+
+. replace b_orig = 3 if cuarenta_orig == 0 & a_orig == 0
+(676 real changes made)
+
+. 
+. * --- Version CORREGIDA ---
+. * horas ya excluye el codigo 999 ("no sabe")
+. generate byte cuarenta_ok = horas >= 40 if !missing(horas)
+(2,454 missing values generated)
+
+. generate byte a_ok = .
+(3,960 missing values generated)
+
+. replace a_ok = 0 if p27 == 4 | p25 == 9
+(1,083 real changes made)
+
+. replace a_ok = 1 if inrange(p27, 1, 3) & p28 == 1
+(419 real changes made)
+
+. generate byte b_ok = .
+(3,960 missing values generated)
+
+. replace b_ok = 1 if cuarenta_ok == 1
+(437 real changes made)
+
+. replace b_ok = 2 if cuarenta_ok == 0 & a_ok == 1
+(389 real changes made)
+
+. replace b_ok = 3 if cuarenta_ok == 0 & a_ok == 0
+(676 real changes made)
+
+. 
+. di _n "=== ORIGINAL: b entre ocupados(orig) pobres 2025 ==="
+
+=== ORIGINAL: b entre ocupados(orig) pobres 2025 ===
+
+. tabulate b_orig if ocupado_orig == 1 [iw = fexp], missing
+
+     b_orig |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 | 477,587.21       33.87       33.87
+          2 | 317,169.66       22.49       56.36
+          3 | 614,815.76       43.60       99.95
+          . |  655.38372        0.05      100.00
+------------+-----------------------------------
+      Total |  1,410,228      100.00
+
+. di _n "=== CORREGIDO: b entre ocupados(ok) pobres 2025 ==="
+
+=== CORREGIDO: b entre ocupados(ok) pobres 2025 ===
+
+. tabulate b_ok if ocupado_ok == 1 [iw = fexp], missing
+
+       b_ok |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 | 477,587.21       33.87       33.87
+          2 | 317,169.66       22.49       56.36
+          3 | 614,815.76       43.60       99.95
+          . |  655.38372        0.05      100.00
+------------+-----------------------------------
+      Total |  1,410,228      100.00
+
+. 
+. di _n "=== p24 == 999 y horas perdidas entre ocupados pobres 2025 ==="
+
+=== p24 == 999 y horas perdidas entre ocupados pobres 2025 ===
+
+. count if ocupado_ok == 1 & p24 == 999
+  0
+
+. count if ocupado_ok == 1 & missing(p24)
+  0
+
+. 
+. *============================================================================
+> ==*
+. * E. Cuantas observaciones toca cada error
+. *============================================================================
+> ==*
+. use `panel', clear
+
+. di _n "=== Discrepancias ocupado_orig vs ocupado_ok, por anio ==="
+
+=== Discrepancias ocupado_orig vs ocupado_ok, por anio ===
+
+. generate byte discrepa = (ocupado_orig != ocupado_ok)
+
+. tabulate anio discrepa, row nofreq
+
+           |       discrepa
+      anio |         0          1 |     Total
+-----------+----------------------+----------
+      2001 |     99.64       0.36 |    100.00 
+      2003 |    100.00       0.00 |    100.00 
+      2005 |    100.00       0.00 |    100.00 
+      2007 |    100.00       0.00 |    100.00 
+      2008 |    100.00       0.00 |    100.00 
+      2009 |    100.00       0.00 |    100.00 
+      2010 |    100.00       0.00 |    100.00 
+      2011 |    100.00       0.00 |    100.00 
+      2012 |    100.00       0.00 |    100.00 
+      2013 |    100.00       0.00 |    100.00 
+      2014 |    100.00       0.00 |    100.00 
+      2015 |    100.00       0.00 |    100.00 
+      2016 |    100.00       0.00 |    100.00 
+      2017 |    100.00       0.00 |    100.00 
+      2018 |     47.51      52.49 |    100.00 
+      2019 |    100.00       0.00 |    100.00 
+      2020 |    100.00       0.00 |    100.00 
+      2021 |    100.00       0.00 |    100.00 
+      2022 |    100.00       0.00 |    100.00 
+      2023 |    100.00       0.00 |    100.00 
+      2024 |    100.00       0.00 |    100.00 
+      2025 |    100.00       0.00 |    100.00 
+-----------+----------------------+----------
+     Total |     97.92       2.08 |    100.00 
+
+. 
+. di _n "=== p24 == 999 por anio (observaciones eliminadas por drop) ==="
+
+=== p24 == 999 por anio (observaciones eliminadas por drop) ===
+
+. generate byte p999 = (p24 == 999)
+
+. tabulate anio p999, row nofreq
+
+           |         p999
+      anio |         0          1 |     Total
+-----------+----------------------+----------
+      2001 |    100.00       0.00 |    100.00 
+      2003 |    100.00       0.00 |    100.00 
+      2005 |    100.00       0.00 |    100.00 
+      2007 |    100.00       0.00 |    100.00 
+      2008 |    100.00       0.00 |    100.00 
+      2009 |    100.00       0.00 |    100.00 
+      2010 |    100.00       0.00 |    100.00 
+      2011 |    100.00       0.00 |    100.00 
+      2012 |    100.00       0.00 |    100.00 
+      2013 |    100.00       0.00 |    100.00 
+      2014 |    100.00       0.00 |    100.00 
+      2015 |    100.00       0.00 |    100.00 
+      2016 |    100.00       0.00 |    100.00 
+      2017 |    100.00       0.00 |    100.00 
+      2018 |    100.00       0.00 |    100.00 
+      2019 |    100.00       0.00 |    100.00 
+      2020 |    100.00       0.00 |    100.00 
+      2021 |    100.00       0.00 |    100.00 
+      2022 |    100.00       0.00 |    100.00 
+      2023 |    100.00       0.00 |    100.00 
+      2024 |    100.00       0.00 |    100.00 
+      2025 |    100.00       0.00 |    100.00 
+-----------+----------------------+----------
+     Total |    100.00       0.00 |    100.00 
+
+. 
+. di _n "=== educsup_orig vs educsup_ok, por anio ==="
+
+=== educsup_orig vs educsup_ok, por anio ===
+
+. generate byte dedu = (educsup_orig != educsup_ok) & !missing(educsup_ok)
+
+. tabulate anio dedu, row nofreq
+
+           |         dedu
+      anio |         0          1 |     Total
+-----------+----------------------+----------
+      2001 |    100.00       0.00 |    100.00 
+      2003 |     99.46       0.54 |    100.00 
+      2005 |     99.52       0.48 |    100.00 
+      2007 |     99.49       0.51 |    100.00 
+      2008 |     99.49       0.51 |    100.00 
+      2009 |     99.52       0.48 |    100.00 
+      2010 |     99.49       0.51 |    100.00 
+      2011 |     99.46       0.54 |    100.00 
+      2012 |     99.38       0.62 |    100.00 
+      2013 |     99.36       0.64 |    100.00 
+      2014 |     99.29       0.71 |    100.00 
+      2015 |     99.09       0.91 |    100.00 
+      2016 |     98.91       1.09 |    100.00 
+      2017 |     98.82       1.18 |    100.00 
+      2018 |     98.77       1.23 |    100.00 
+      2019 |     98.58       1.42 |    100.00 
+      2020 |     98.46       1.54 |    100.00 
+      2021 |     97.87       2.13 |    100.00 
+      2022 |     97.67       2.33 |    100.00 
+      2023 |     97.40       2.60 |    100.00 
+      2024 |     97.09       2.91 |    100.00 
+      2025 |     97.03       2.97 |    100.00 
+-----------+----------------------+----------
+     Total |     99.08       0.92 |    100.00 
+
+. 
+. *============================================================================
+> ==*
+. * F. Cifras puntuales citadas en el boletin
+. *============================================================================
+> ==*
+. use `panel', clear
+
+. 
+. di _n "=== 2025: % de ocupados pobres SIN educacion superior (boletin: 97.8%)
+>  ==="
+
+=== 2025: % de ocupados pobres SIN educacion superior (boletin: 97.8%) ===
+
+. preserve
+
+. keep if anio == 2025 & pobreza == 1 & fexp < .
+(1,503,838 observations deleted)
+
+. quietly summarize educsup_orig [iw = fexp] if ocupado_orig == 1 & educsup_ori
+> g < .
+
+. di "  ORIGINAL  : " %6.2f 100*(1 - r(mean)) "%"
+  ORIGINAL  :  97.87%
+
+. quietly summarize educsup_ok [iw = fexp] if ocupado_ok == 1 & educsup_ok < .
+
+. di "  CORREGIDO : " %6.2f 100*(1 - r(mean)) "%"
+  CORREGIDO :  97.14%
+
+. restore
+
+. 
+. di _n "=== 2018: cuanta poblacion contaba el codigo original como 'ocupada' =
+> =="
+
+=== 2018: cuanta poblacion contaba el codigo original como 'ocupada' ===
+
+. preserve
+
+. keep if anio == 2018 & fexp < .
+(1,448,448 observations deleted)
+
+. quietly summarize fexp if ocupado_orig == 1
+
+. di "  ORIGINAL  : " %12.0fc r(sum) " personas (n = " r(N) ")"
+  ORIGINAL  :   17,223,542 personas (n = 59350)
+
+. quietly summarize fexp if ocupado_ok == 1
+
+. di "  CORREGIDO : " %12.0fc r(sum) " personas (n = " r(N) ")"
+  CORREGIDO :    7,731,032 personas (n = 28197)
+
+. quietly summarize fexp
+
+. di "  Base 2018 : " %12.0fc r(sum) " personas (n = " r(N) ")"
+  Base 2018 :   17,223,542 personas (n = 59350)
+
+. restore
+
+. 
+. di _n "=== 2018: composicion de esos 'ocupados' segun la condicion de activid
+> ad ==="
+
+=== 2018: composicion de esos 'ocupados' segun la condicion de actividad ===
+
+. preserve
+
+. keep if anio == 2018
+(1,448,448 observations deleted)
+
+. label define cn_lbl 0 "Menores de 15" 1 "Empleo adecuado" 2 "Subempleo tiempo
+> " ///
+>     3 "Subempleo ingresos" 4 "Otro empleo no pleno" 5 "Empleo no remunerado" 
+> ///
+>     6 "Empleo no clasificado" 7 "Desempleo abierto" 8 "Desempleo oculto" ///
+>     9 "Inactivos (PEI)", replace
+
+. label values cond_nueva cn_lbl
+
+. tabulate cond_nueva if ocupado_orig == 1, missing
+
+           cond_nueva |      Freq.     Percent        Cum.
+----------------------+-----------------------------------
+        Menores de 15 |     14,687       24.75       24.75
+      Empleo adecuado |     11,748       19.79       44.54
+     Subempleo tiempo |      3,762        6.34       50.88
+   Subempleo ingresos |        858        1.45       52.33
+ Otro empleo no pleno |      8,669       14.61       66.93
+ Empleo no remunerado |      3,073        5.18       72.11
+Empleo no clasificado |         87        0.15       72.26
+    Desempleo abierto |        875        1.47       73.73
+     Desempleo oculto |        185        0.31       74.04
+      Inactivos (PEI) |     15,406       25.96      100.00
+----------------------+-----------------------------------
+                Total |     59,350      100.00
+
+. restore
+
+. 
+. di _n "=== Observaciones con p24 == 999 (las que eliminaba el drop) ==="
+
+=== Observaciones con p24 == 999 (las que eliminaba el drop) ===
+
+. count if p24 == 999
+  6
+
+. levelsof anio, local(ys)
+2001 2003 2005 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019
+>  2020 2021 2022 2023 2024 2025
+
+. foreach y of local ys {
+  2.     quietly count if anio == `y' & p24 == 999
+  3.     if r(N) > 0 di "  `y': " r(N) " casos"
+  4. }
+  2001: 1 casos
+  2003: 3 casos
+  2007: 2 casos
+
+. 
+end of do-file
+
+OK  03_impacto.do  (   4.0 segundos)
+
+
+------------------------------------------------------------------------------
+>>> 04_descriptivos.do   (13:09:40)
+------------------------------------------------------------------------------
+
+. *----------------------------------------------------------------------------
+> --*
+. * 04_descriptivos.do — Composicion de los ocupados en situacion de pobreza
+. *----------------------------------------------------------------------------
+> --*
+. * Produce las dos series que el boletin automatizado cita en el texto:
+. *   composicion_horas_ocupados_pobres.xlsx  -> reparto por horas trabajadas
+. *   composicion_educ_ocupados_pobres.xlsx   -> reparto por educacion superior
+. *
+. * Version corregida del fragmento suelto "descriptivos?texto".
+. *
+. * Correcciones:
+. *   1. "gen cuarenta_h_mas = p24 >= 40" clasificaba como "40 horas o mas" a t
+> odo
+. *      aquel con p24 perdido, porque en Stata missing >= 40 es verdadero. Sob
+> re
+. *      los ocupados no cambia nada (todos tienen horas validas), pero sobre
+. *      cualquier otra poblacion infla el grupo de forma grave: entre TODOS lo
+> s
+. *      pobres de 2025 pasaba de 437 a 2,891 casos.
+. *   2. "replace a = . if inlist(., p27, p28)" era codigo muerto (0 cambios) y
+. *      ademas estaba colocado antes del "replace a = 0". Se elimina y se orde
+> na
+. *      como en adec.do: primero el 0, despues el 1.
+. *   3. Se explicita la restriccion a ocupados, que antes era implicita.
+. *
+. * Nota: p25, p27 y p28 solo existen desde 2007, asi que el reparto por horas
+. * empieza en ese anio. El reparto por educacion cubre toda la serie.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. do "00_config.do"
+
+. *----------------------------------------------------------------------------
+> --*
+. * 00_config.do — Rutas y parametros comunes (Pobreza laboral, Boletin 3)
+. *----------------------------------------------------------------------------
+> --*
+. * Detecta la raiz de Google Drive segun el usuario de la maquina, en lugar de
+. * fijar "/Users/vero/...". Si se agrega un colaborador, basta con anadir su c
+> aso.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. local u = c(username)
+
+. 
+. if "`u'" == "vero" {
+.     global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/vero/Documents/Observatorio GH/Observatorio-Desi
+> gualdad-Pobreza"
+. }
+
+. else if "`u'" == "santiago" {
+.     global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observ
+> atorio.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/santiago/Documents/GitHub/Observatorio-Desiguald
+> ad-Pobreza"
+. }
+
+. else {
+.     display as error "Usuario `u' no configurado en 00_config.do. Defina user
+> _root y gh_root."
+.     error 198
+. }
+
+. 
+. capture confirm file "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
+> /ing_perca_2001_nac_precios2000.dta"
+
+. if _rc {
+.     display as error "No se encuentra la carpeta de bases en: $user_root"
+.     error 601
+. }
+
+. 
+. global nacional    "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. * Salidas en carpeta propia: NO se sobrescriben los resultados publicados.
+. global outdir   "$user_root/Boletín 3/4. Resultados/pobreza laboral/corregido
+> "
+
+. global paneldir "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza"
+
+. 
+. capture mkdir "$user_root/Boletín 3/4. Resultados/pobreza laboral"
+
+. capture mkdir "$outdir"
+
+. capture mkdir "$paneldir"
+
+. 
+. * Anios procesados: rondas de diciembre disponibles a nivel nacional.
+. global anios "2001(2)2007 2008(1)2025"
+
+. 
+. display as text "Configuracion lista para usuario `u'."
+Configuracion lista para usuario santiago.
+
+. 
+end of do-file
+
+. use "$paneldir/panel_pobreza_laboral_final.dta", clear
+
+. 
+. local anio_horas 2007   // primer anio con p25/p27/p28
+
+. 
+. *--- Trabaja 40 horas o mas (horas ya trata el codigo 999 como perdido) ---*
+. generate byte cuarenta_h_mas = horas >= 40 if !missing(horas)
+(813,666 missing values generated)
+
+. label variable cuarenta_h_mas "Trabaja 40 horas o mas a la semana"
+
+. 
+. *--- Desea trabajar mas horas y esta disponible (mismo criterio que adec.do) 
+> ---*
+. generate byte desea_disp = .
+(1,507,798 missing values generated)
+
+. replace desea_disp = 0 if p27 == 4 | p25 == 9
+(462,252 real changes made)
+
+. replace desea_disp = 1 if inrange(p27, 1, 3) & p28 == 1
+(126,397 real changes made)
+
+. label variable desea_disp "Desea trabajar mas horas y esta disponible"
+
+. 
+. generate byte grupo_horas = .
+(1,507,798 missing values generated)
+
+. replace grupo_horas = 1 if cuarenta_h_mas == 1
+(461,054 real changes made)
+
+. replace grupo_horas = 2 if cuarenta_h_mas == 0 & desea_disp == 1
+(77,532 real changes made)
+
+. replace grupo_horas = 3 if cuarenta_h_mas == 0 & desea_disp == 0
+(119,997 real changes made)
+
+. label define grupo_horas_lbl ///
+>     1 "40 horas o más" ///
+>     2 "Menos de 40 horas, desea y puede trabajar más" ///
+>     3 "Menos de 40 horas, no desea o no puede trabajar más", replace
+
+. label values grupo_horas grupo_horas_lbl
+
+. label variable grupo_horas "Composición por horas trabajadas"
+
+. 
+. *============================================================================
+> ==*
+. * Reparto por horas trabajadas entre los ocupados pobres
+. *============================================================================
+> ==*
+. preserve
+
+. keep if ocupado_ok == 1 & pobreza == 1 & fexp < . & !missing(grupo_horas)
+(1,346,429 observations deleted)
+
+. keep if anio >= `anio_horas'
+(28,997 observations deleted)
+
+. 
+. collapse (sum) personas = fexp, by(anio grupo_horas)
+
+. bysort anio: egen double total = total(personas)
+
+. generate double porcentaje = 100 * personas / total
+
+. drop total
+
+. format personas %12.0fc
+
+. format porcentaje %6.2f
+
+. 
+. export excel using "$outdir/composicion_horas_ocupados_pobres.xlsx", ///
+>     replace firstrow(var)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/composi
+> cion_horas_ocupados_pobres.xlsx saved
+
+. 
+. display as text _n "=== Reparto por horas, ocupados pobres (ultimo anio) ==="
+
+=== Reparto por horas, ocupados pobres (ultimo anio) ===
+
+. quietly summarize anio
+
+. list grupo_horas personas porcentaje if anio == r(max), noobs abbreviate(20)
+
+  +----------------------------------------------------------------+
+  |                                         grupo_horas | personas |
+  |                                      40 horas o más |  477,587 |
+  |----------------------------------------------------------------|
+  |                           porcentaje                           |
+  |                                33.88                           |
+  +----------------------------------------------------------------+
+
+  +----------------------------------------------------------------+
+  |                                         grupo_horas | personas |
+  |       Menos de 40 horas, desea y puede trabajar más |  317,170 |
+  |----------------------------------------------------------------|
+  |                           porcentaje                           |
+  |                                22.50                           |
+  +----------------------------------------------------------------+
+
+  +----------------------------------------------------------------+
+  |                                         grupo_horas | personas |
+  | Menos de 40 horas, no desea o no puede trabajar más |  614,816 |
+  |----------------------------------------------------------------|
+  |                           porcentaje                           |
+  |                                43.62                           |
+  +----------------------------------------------------------------+
+
+. restore
+
+. 
+. *============================================================================
+> ==*
+. * Reparto por educacion superior entre los ocupados pobres
+. *============================================================================
+> ==*
+. preserve
+
+. keep if ocupado_ok == 1 & pobreza == 1 & fexp < . & !missing(educsup_ok)
+(1,325,093 observations deleted)
+
+. 
+. collapse (sum) personas = fexp, by(anio educsup_ok)
+
+. bysort anio: egen double total = total(personas)
+
+. generate double porcentaje = 100 * personas / total
+
+. drop total
+
+. format personas %12.0fc
+
+. format porcentaje %6.2f
+
+. 
+. export excel using "$outdir/composicion_educ_ocupados_pobres.xlsx", ///
+>     replace firstrow(var)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/composi
+> cion_educ_ocupados_pobres.xlsx saved
+
+. 
+. display as text _n "=== Reparto por educación, ocupados pobres (ultimo anio) 
+> ==="
+
+=== Reparto por educación, ocupados pobres (ultimo anio) ===
+
+. quietly summarize anio
+
+. list educsup_ok personas porcentaje if anio == r(max), noobs abbreviate(24)
+
+  +-------------------------------------------------+
+  |             educsup_ok    personas   porcentaje |
+  |-------------------------------------------------|
+  | Sin educación superior   1,369,891        97.14 |
+  | Con educación superior      40,337         2.86 |
+  +-------------------------------------------------+
+
+. restore
+
+. 
+end of do-file
+
+OK  04_descriptivos.do  (   0.0 segundos)
+
+. 
+. *----------------------------------------------------------------------------
+> --*
+. * Resumen
+. *----------------------------------------------------------------------------
+> --*
+. do "`codigo'/00_config.do"
+
+. *----------------------------------------------------------------------------
+> --*
+. * 00_config.do — Rutas y parametros comunes (Pobreza laboral, Boletin 3)
+. *----------------------------------------------------------------------------
+> --*
+. * Detecta la raiz de Google Drive segun el usuario de la maquina, en lugar de
+. * fijar "/Users/vero/...". Si se agrega un colaborador, basta con anadir su c
+> aso.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. local u = c(username)
+
+. 
+. if "`u'" == "vero" {
+.     global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/vero/Documents/Observatorio GH/Observatorio-Desi
+> gualdad-Pobreza"
+. }
+
+. else if "`u'" == "santiago" {
+.     global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observ
+> atorio.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/santiago/Documents/GitHub/Observatorio-Desiguald
+> ad-Pobreza"
+. }
+
+. else {
+.     display as error "Usuario `u' no configurado en 00_config.do. Defina user
+> _root y gh_root."
+.     error 198
+. }
+
+. 
+. capture confirm file "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
+> /ing_perca_2001_nac_precios2000.dta"
+
+. if _rc {
+.     display as error "No se encuentra la carpeta de bases en: $user_root"
+.     error 601
+. }
+
+. 
+. global nacional    "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. * Salidas en carpeta propia: NO se sobrescriben los resultados publicados.
+. global outdir   "$user_root/Boletín 3/4. Resultados/pobreza laboral/corregido
+> "
+
+. global paneldir "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza"
+
+. 
+. capture mkdir "$user_root/Boletín 3/4. Resultados/pobreza laboral"
+
+. capture mkdir "$outdir"
+
+. capture mkdir "$paneldir"
+
+. 
+. * Anios procesados: rondas de diciembre disponibles a nivel nacional.
+. global anios "2001(2)2007 2008(1)2025"
+
+. 
+. display as text "Configuracion lista para usuario `u'."
+Configuracion lista para usuario santiago.
+
+. 
+end of do-file
+
+. 
+. display as text _n(2) "{hline 78}"
+
+
+------------------------------------------------------------------------------
+
+. display as text "RESUMEN"
+RESUMEN
+
+. display as text "{hline 78}"
+------------------------------------------------------------------------------
+
+. display as text "Etapas completadas:`corridas'"
+Etapas completadas: 01_panel 05_validacion 02_indicadores 03_impacto 04_descrip
+> tivos
+
+. 
+. if "`fallidas'" != "" {
+.     display as error "Etapas con error:`fallidas'"
+. }
+
+. else {
+.     display as result "Todas las etapas solicitadas terminaron sin errores."
+Todas las etapas solicitadas terminaron sin errores.
+.     display as text _n "Salidas:"
+
+Salidas:
+.     display as text "  Series y graficos : $outdir"
+  Series y graficos : /Users/santiago/Library/CloudStorage/GoogleDrive-observat
+> orio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/
+> corregido
+.     display as text "  Tablas de impacto : $outdir/impacto_*.xlsx"
+  Tablas de impacto : /Users/santiago/Library/CloudStorage/GoogleDrive-observat
+> orio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/
+> corregido/impacto_*.xlsx
+.     display as text "  Panel armonizado  : $paneldir"
+  Panel armonizado  : /Users/santiago/Library/CloudStorage/GoogleDrive-observat
+> orio.pobreza@flacso.edu.ec/Mi unidad/Bases/ENEMDU/Procesadas/ingresos_pc/pobr
+> eza
+.     display as text _n "Los archivos publicados en" _n ///
+>                     "  $user_root/Boletín 3/4. Resultados/pobreza laboral" _n
+>  ///
+>                     "no se modifican: todo se escribe en la subcarpeta 'corre
+> gido'."
+
+Los archivos publicados en
+  /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.
+> edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral
+no se modifican: todo se escribe en la subcarpeta 'corregido'.
+. }
+
+. 
+. display as text _n "Fin: `c(current_date)' `c(current_time)'"
+
+Fin: 15 Sep 2026 13:09:40
+
+. display as text "{hline 78}"
+------------------------------------------------------------------------------
+
+. 
+. capture log close runall

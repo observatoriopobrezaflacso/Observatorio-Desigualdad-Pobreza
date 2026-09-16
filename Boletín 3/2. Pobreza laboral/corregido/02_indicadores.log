@@ -1,0 +1,437 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       SE—Standard Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user network, expiring 15 Aug 2028
+Serial number: 401909300808
+  Licensed to: Santiago Valdivieso
+               MIT
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do 02_indicadores.do 
+
+. *----------------------------------------------------------------------------
+> --*
+. * 02_indicadores.do — Series corregidas de pobreza laboral (2001-2025)
+. *----------------------------------------------------------------------------
+> --*
+. * Correcciones respecto del codigo original:
+. *   1. "scope" quedaba sin definir: cobertura_pobreza salia vacia. Ahora es "
+> nac".
+. *   2. ocupado ya no imputa 1 a los valores perdidos de la condicion de activ
+> idad,
+. *      y 2018 usa su propia variable (antes quedaba sin condactn -> todos ocu
+> pados).
+. *   3. No se eliminan las observaciones con p24 == 999 de las tasas de pobrez
+> a:
+. *      "no sabe cuantas horas trabaja" no es motivo para excluir a alguien de
+> l
+. *      calculo de pobreza. Ese filtro solo se aplica donde se usan las horas.
+. *   4. El panel se guarda DESPUES de todas las correcciones, no antes.
+. *   5. Cada poblacion de referencia escribe en archivos con nombre propio, de
+>  modo
+. *      que la version "ocupados" y la version "con ingreso laboral" no se pis
+> an.
+. *   6. educacion_superior usa una definicion comparable en toda la serie.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. do "00_config.do"
+
+. *----------------------------------------------------------------------------
+> --*
+. * 00_config.do — Rutas y parametros comunes (Pobreza laboral, Boletin 3)
+. *----------------------------------------------------------------------------
+> --*
+. * Detecta la raiz de Google Drive segun el usuario de la maquina, en lugar de
+. * fijar "/Users/vero/...". Si se agrega un colaborador, basta con anadir su c
+> aso.
+. *----------------------------------------------------------------------------
+> --*
+. 
+. clear all
+
+. set more off
+
+. version 15.1
+
+. set varabbrev off
+
+. 
+. local u = c(username)
+
+. 
+. if "`u'" == "vero" {
+.     global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/vero/Documents/Observatorio GH/Observatorio-Desi
+> gualdad-Pobreza"
+. }
+
+. else if "`u'" == "santiago" {
+.     global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observ
+> atorio.pobreza@flacso.edu.ec/Mi unidad"
+.     global gh_root   "/Users/santiago/Documents/GitHub/Observatorio-Desiguald
+> ad-Pobreza"
+. }
+
+. else {
+.     display as error "Usuario `u' no configurado en 00_config.do. Defina user
+> _root y gh_root."
+.     error 198
+. }
+
+. 
+. capture confirm file "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
+> /ing_perca_2001_nac_precios2000.dta"
+
+. if _rc {
+.     display as error "No se encuentra la carpeta de bases en: $user_root"
+.     error 601
+. }
+
+. 
+. global nacional    "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
+
+. global lineas_xlsx "$user_root/Bases/lineas_pobreza/lineas_de_pobreza_histori
+> ca.xlsx"
+
+. 
+. * Salidas en carpeta propia: NO se sobrescriben los resultados publicados.
+. global outdir   "$user_root/Boletín 3/4. Resultados/pobreza laboral/corregido
+> "
+
+. global paneldir "$user_root/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza"
+
+. 
+. capture mkdir "$user_root/Boletín 3/4. Resultados/pobreza laboral"
+
+. capture mkdir "$outdir"
+
+. capture mkdir "$paneldir"
+
+. 
+. * Anios procesados: rondas de diciembre disponibles a nivel nacional.
+. global anios "2001(2)2007 2008(1)2025"
+
+. 
+. display as text "Configuracion lista para usuario `u'."
+Configuracion lista para usuario santiago.
+
+. 
+end of do-file
+
+. 
+. use "$paneldir/panel_pobreza_laboral.dta", clear
+
+. 
+. *--- Metadatos ---*
+. generate str3 cobertura_pobreza = "nac"
+
+. label variable cobertura_pobreza "Cobertura de la base usada"
+
+. 
+. *--- Etiquetas de los grupos ---*
+. * "export excel" escribe las etiquetas de valor, no los codigos, asi que esta
+> s
+. * etiquetas son los nombres con los que el generador del Word lee cada grupo.
+. * Cambiarlas obliga a cambiar tambien configuracion.py del boletin automatiza
+> do.
+. label define area_lbl 1 "Urbana" 2 "Rural", replace
+
+. label values area area_lbl
+
+. 
+. label define sexo_lbl 1 "Hombre" 2 "Mujer", replace
+
+. label values sexo sexo_lbl
+
+. 
+. label define educsup_lbl 0 "Sin educación superior" 1 "Con educación superior
+> ", replace
+
+. label values educsup_ok   educsup_lbl
+
+. label values educsup_orig educsup_lbl
+
+. 
+. *--- Grupos de edad ---*
+. generate byte age_cat = .
+(1,507,798 missing values generated)
+
+. replace age_cat = 1 if inrange(edad, 18, 29)
+(281,361 real changes made)
+
+. replace age_cat = 2 if inrange(edad, 30, 64)
+(552,559 real changes made)
+
+. replace age_cat = 3 if inrange(edad, 65, 97)
+(138,842 real changes made)
+
+. label define age_cat_lbl 1 "18-29" 2 "30-64" 3 "65+", replace
+
+. label values age_cat age_cat_lbl
+
+. label variable age_cat "Grupo de edad"
+
+. 
+. *--- Horas trabajadas: 999 = "no sabe". Se marca como perdido en lugar de
+. *--- eliminar la observacion completa del calculo de pobreza.              --
+> -*
+. generate double horas = p24
+(813,660 missing values generated)
+
+. replace horas = . if p24 == 999 | p24 >= 999
+(6 real changes made, 6 to missing)
+
+. label variable horas "Horas trabajadas a la semana (999 = no sabe -> perdido)
+> "
+
+. 
+. compress
+  variable horas was double now int
+  (9,046,788 bytes saved)
+
+. save "$paneldir/panel_pobreza_laboral_final.dta", replace
+file
+    /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@fla
+    > cso.edu.ec/Mi
+    unidad/Bases/ENEMDU/Procesadas/ingresos_pc/pobreza/panel_pobreza_laboral_
+    > final.dta saved
+
+. 
+. *----------------------------------------------------------------------------
+> --*
+. * Series. Dos poblaciones de referencia, con nombres de archivo distintos:
+. *   ocupados  -> ocupado_ok == 1        (definicion del boletin)
+. *   inglab    -> !missing(ing_lab)      (variante con ingreso laboral observa
+> do)
+. *----------------------------------------------------------------------------
+> --*
+. 
+. foreach pob in total ocupados inglab {
+  2. 
+.     if "`pob'" == "total"    local filtro ""
+  3.     if "`pob'" == "ocupados" local filtro "& ocupado_ok == 1"
+  4.     if "`pob'" == "inglab"   local filtro "& !missing(ing_lab)"
+  5. 
+.     foreach dim in nacional area sexo edad educ {
+  6. 
+.         if "`dim'" == "nacional" local byv ""
+  7.         if "`dim'" == "area"     local byv "area"
+  8.         if "`dim'" == "sexo"     local byv "sexo"
+  9.         if "`dim'" == "edad"     local byv "age_cat"
+ 10.         if "`dim'" == "educ"     local byv "educsup_ok"
+ 11. 
+.         local cond "pobreza < . & fexp < . `filtro'"
+ 12.         if "`byv'" != "" local cond "`cond' & `byv' < ."
+ 13. 
+.         preserve
+ 14.         collapse (mean) tasa_pobreza = pobreza (rawsum) n_casos = fexp ///
+>             [iw = fexp] if `cond', by(anio `byv')
+ 15. 
+.         generate tasa_pobreza_pct = 100 * tasa_pobreza
+ 16.         label variable tasa_pobreza_pct "Pobreza (%)"
+ 17. 
+.         export excel using "$outdir/pobreza_`pob'_`dim'.xlsx", ///
+>             replace firstrow(var)
+ 18.         restore
+ 19.     }
+ 20. }
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_nacional.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_area.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_sexo.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_edad.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _total_educ.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_nacional.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_area.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_sexo.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_edad.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _ocupados_educ.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_nacional.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_area.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_sexo.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_edad.xlsx saved
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/pobreza
+> _inglab_educ.xlsx saved
+
+. 
+. display as text _n "Series corregidas exportadas a: $outdir"
+
+Series corregidas exportadas a: /Users/santiago/Library/CloudStorage/GoogleDriv
+> e-observatorio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobrez
+> a laboral/corregido
+
+. 
+. *----------------------------------------------------------------------------
+> --*
+. * Graficos del boletin (poblacion: ocupados), con la serie completa en el eje
+>  X
+. *----------------------------------------------------------------------------
+> --*
+. 
+. * Grafico 9: evolucion nacional
+. preserve
+
+. collapse (mean) t = pobreza [iw = fexp] if pobreza < . & fexp < . & ocupado_o
+> k == 1, by(anio)
+
+. generate tasa = 100 * t
+
+. generate lbl = tasa if inlist(anio, 2001, 2009, 2017, 2025)
+(18 missing values generated)
+
+. format lbl %9.1f
+
+. 
+. twoway (connected tasa anio, lcolor(maroon) lwidth(medthick) msymbol(circle) 
+> mcolor(maroon)) ///
+>        (scatter lbl anio, msymbol(none) mlabel(lbl) mlabposition(12) ///
+>             mlabcolor(maroon) mlabsize(vsmall)), ///
+>     title("Pobreza laboral a nivel nacional") ///
+>     xtitle("") ytitle("Pobreza (%)") ///
+>     ylabel(0(10)60, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
+>     legend(off) name(g9, replace) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. graph export "$outdir/g09_pobreza_laboral_nacional.png", replace width(2400)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/g09_pob
+> reza_laboral_nacional.png written in PNG format
+
+. restore
+
+. 
+. * Grafico 10: por area
+. preserve
+
+. collapse (mean) t = pobreza [iw = fexp] ///
+>     if pobreza < . & fexp < . & ocupado_ok == 1 & area < ., by(anio area)
+
+. generate tasa = 100 * t
+
+. generate lbl_u = tasa if area == 1 & inlist(anio, 2001, 2009, 2017, 2025)
+(40 missing values generated)
+
+. generate lbl_r = tasa if area == 2 & inlist(anio, 2001, 2009, 2017, 2025)
+(40 missing values generated)
+
+. format lbl_u lbl_r %9.1f
+
+. 
+. twoway (connected tasa anio if area == 1, lcolor(navy) lwidth(medthick) mcolo
+> r(navy)) ///
+>        (connected tasa anio if area == 2, lcolor(maroon) lwidth(medthick) mco
+> lor(maroon)) ///
+>        (scatter lbl_u anio, msymbol(none) mlabel(lbl_u) mlabposition(6) mlabc
+> olor(navy) mlabsize(vsmall)) ///
+>        (scatter lbl_r anio, msymbol(none) mlabel(lbl_r) mlabposition(12) mlab
+> color(maroon) mlabsize(vsmall)), ///
+>     title("Pobreza laboral por area") ///
+>     xtitle("") ytitle("Pobreza (%)") ///
+>     ylabel(0(10)80, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Urbana" 2 "Rural") position(6) rows(1)) name(g10, replace
+> ) ///
+>     graphregion(color(white)) plotregion(color(white))
+
+. graph export "$outdir/g10_pobreza_laboral_area.png", replace width(2400)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/g10_pob
+> reza_laboral_area.png written in PNG format
+
+. restore
+
+. 
+. * Grafico 11: por educacion superior
+. preserve
+
+. collapse (mean) t = pobreza [iw = fexp] ///
+>     if pobreza < . & fexp < . & ocupado_ok == 1 & educsup_ok < ., by(anio edu
+> csup_ok)
+
+. generate tasa = 100 * t
+
+. generate lbl_0 = tasa if educsup_ok == 0 & inlist(anio, 2001, 2009, 2017, 202
+> 5)
+(40 missing values generated)
+
+. generate lbl_1 = tasa if educsup_ok == 1 & inlist(anio, 2001, 2009, 2017, 202
+> 5)
+(40 missing values generated)
+
+. format lbl_0 lbl_1 %9.1f
+
+. 
+. twoway (connected tasa anio if educsup_ok == 0, lcolor(navy) lwidth(medthick)
+>  mcolor(navy)) ///
+>        (connected tasa anio if educsup_ok == 1, lcolor(maroon) lwidth(medthic
+> k) mcolor(maroon)) ///
+>        (scatter lbl_0 anio, msymbol(none) mlabel(lbl_0) mlabposition(12) mlab
+> color(navy) mlabsize(vsmall)) ///
+>        (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(6) mlabc
+> olor(maroon) mlabsize(vsmall)), ///
+>     title("Pobreza laboral por nivel educativo") ///
+>     xtitle("") ytitle("Pobreza (%)") ///
+>     ylabel(0(10)60, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
+>     legend(order(1 "Sin educacion superior" 2 "Con educacion superior") posit
+> ion(6) rows(1)) ///
+>     name(g11, replace) graphregion(color(white)) plotregion(color(white))
+
+. graph export "$outdir/g11_pobreza_laboral_educacion.png", replace width(2400)
+file /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flac
+> so.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral/corregido/g11_pob
+> reza_laboral_educacion.png written in PNG format
+
+. restore
+
+. 
+. display as text _n "Graficos exportados a: $outdir"
+
+Graficos exportados a: /Users/santiago/Library/CloudStorage/GoogleDrive-observa
+> torio.pobreza@flacso.edu.ec/Mi unidad/Boletín 3/4. Resultados/pobreza laboral
+> /corregido
+
+. 
+end of do-file

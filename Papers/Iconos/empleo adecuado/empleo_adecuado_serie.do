@@ -31,7 +31,7 @@
 *   aunotra  → p22      (aunque no trabajó, ¿tiene trabajo?)
 *   hortrasa → p24      (horas trabajadas la semana anterior)
 *   ratmeh   → p25      (razón por la que trabajó menos de 40 horas)
-*   hormas   → p27      (desea trabajar más horas) [solo 2000+]
+*   hormas   → p27      (desea trabajar más horas) [solo 2001+]
 *   bustrama → p32      (buscó trabajo el mes anterior)
 *   motnobus → p34      (razón por la que no buscó trabajo)
 *   deseatra → p35      (desea trabajar) - SUSTITUTO de p28
@@ -62,14 +62,15 @@
 *     - 2007+: d_d = 0 si p25 == 9
 *
 * p27 - DESEA TRABAJAR MÁS HORAS:
-*   1990-1999: Variable no existe directamente. Se construye:
+*   1990-2000: Variable no existe directamente. Se construye:
 *              p27 = 2 (no) por defecto para empleados
-*              p27 = 1 (sí) si ratmeh1 != . o hormas != .
-*   2000-2006: 2 categorías → 1 = "sí", 2 = "no"
+*              p27 = 1 (sí) si hay motivo anotado; 1991-1992 en ratmeh1 y sólo
+*              con los códigos 3,4,5,6,9 (de mercado), 1993-2000 en hormas
+*   2001-2006: 2 categorías → 1 = "sí", 2 = "no"
 *   2015:      4 categorías → 1-3 = opciones de sí, 4 = "no desea"
 *   AJUSTE:
-*     - 1990-1999: p27 == 1 (sí), p27 == 2 (no)
-*     - 2000-2006: p27 == 1 (sí), p27 == 2 (no)
+*     - 1990-2000: p27 == 1 (sí), p27 == 2 (no)
+*     - 2001-2006: p27 == 1 (sí), p27 == 2 (no)
 *     - 2007+: p27 <= 3 (sí), p27 == 4 (no)
 *
 * p28 - DISPONIBILIDAD PARA TRABAJAR MÁS HORAS:
@@ -104,8 +105,9 @@
 *              8-11 = otras razones → PEI
 *              12 = "no está en edad de trabajar"
 *   AJUSTE para PEAN (desempleo oculto):
-*     - 1990-1999: pean = 1 si p34 >= 7 & p35 == 1 (espera respuesta)
-*     - 2000-2006: pean = 1 si p34 <= 7 & p34 != 4 & p35 == 1
+*     - 1990-1998: pean = 1 si inrange(p34, 5, 8) & p35 == 1
+*     - 1999-2000: pean = 1 si inrange(p34, 1, 4) & p35 == 1 (lista reordenada)
+*     - 2001-2006: pean = 1 si p34 <= 7 & p34 != 4 & p35 == 1
 *     - 2007+: pean = 1 si p34 <= 7 & p35 == 1
 *
 *------------------------------------------------------------------------------*
@@ -118,9 +120,11 @@
 *    más de 40h. Esto no afecta el empleo adecuado porque la disponibilidad solo
 *    es relevante cuando la persona trabajó menos de 40h.
 *
-* 2. Para 1990-1999, la variable p27 se construye a partir de ratmeh1 (razón
-*    por la que desea trabajar más horas) o hormas. Si estas variables tienen
-*    valor no missing, se interpreta como deseo de trabajar más horas.
+* 2. Para 1990-2000, la variable p27 se construye a partir del motivo por el
+*    que no trabajó más horas: ratmeh1 en 1991-1992 y hormas en 1993-2000. En
+*    1991-1992 sólo cuentan los códigos de mercado (3,4,5,6,9); los personales
+*    y de salud desde 1993 se registran en p25 y no expresan deseo. En 1992
+*    hormas es el sí/no y no sirve para inferir el motivo.
 *
 * 3. La categoría "cónyuge/familia no le permite" (p34==4 en 2005) se excluye
 *    del desempleo oculto y se asigna a la PEI.
@@ -136,19 +140,19 @@
 *   - p34: desempleo oculto = p34 <= 7
 *   - p28: disponible = p28 == 1
 *
-* PERÍODO 2000-2006:
+* PERÍODO 2001-2006:
 *   - p21: realizó actividad = p21 <= 10; no realizó = p21 == 11
 *   - p27: sí desea = p27 == 1; no desea = p27 == 2
 *   - p32: sí buscó = p32 == 1; no buscó = p32 == 2
 *   - p34: desempleo oculto = p34 <= 7 & p34 != 4
 *   - p28: no existe (se asume disponibilidad si p35 == 1)
 *
-* PERÍODO 1990-1999:
+* PERÍODO 1990-2000:
 *   - p21: realizó actividad = p21 <= 11; no realizó = p21 == 12
-*   - p27: construido de ratmeh1/hormas; sí = 1, no = 2
+*   - p27: construido del motivo (ratmeh1 en 1991-1992, hormas en 1993-2000)
 *   - p32: sí buscó = p32 == 1; no buscó = p32 == 2
-*   - p34: desempleo oculto = p34 >= 7 (categorías 7-8)
-*   - p25: no desea más horas = p25 == 2 (1991) o p25 == 3 (1993-1999)
+*   - p34: desempleo oculto = inrange(p34,5,8) hasta 1998, inrange(p34,1,4) desde 1999
+*   - p25: no desea más horas = p25 == 2 (1991-1992) o p25 == 3 (1993-2000)
 *
 *==============================================================================*
 
@@ -379,7 +383,7 @@ foreach y of numlist $anio_ini/$anio_fin {
             capture rename hortrahp p51a
             capture rename hortrahs p51b
             capture rename hortraho p51c
-            if `y' >= 2000 capture rename hormas p27
+            if `y' >= 2001 capture rename hormas p27
         }
 
         * variables ausentes en algunos años: crearlas vacías para poder usarlas
@@ -404,16 +408,26 @@ foreach y of numlist $anio_ini/$anio_fin {
     qui {
 
         *----------------------------------------------------------------------*
-        * 3.2 p27 en 1991-1999: no se pregunta, se construye
-        *     (1991-1992 tienen ratmeh1; 1993-1999 tienen hormas)
+        * 3.2 p27 en 1991-2000: no hay sí/no de "desea más horas", se infiere de
+        *     tener motivo anotado.
+        *     1991-1992: el motivo está en ratmeh1, sin los códigos 7-8
+        *     (personales, enfermedad), que desde 1993 van a p25 == 2. Tomar
+        *     "ratmeh1 < ." contaba a todos los que respondieron y sobrestimaba
+        *     el deseo. En 1992 hormas es el sí/no, no el motivo, así que
+        *     tampoco sirve para inferir: quien contestó "no" entraba como sí.
+        *     1993-2000: el motivo está en hormas.
         *----------------------------------------------------------------------*
-        if `y' <= 1999 {
+        if `y' <= 2000 {
             capture drop p27
             gen byte p27 = 2 if p20 == 1 | p22 == 1
-            capture confirm variable ratmeh1
-            if !_rc replace p27 = 1 if ratmeh1 < .
-            capture confirm variable hormas
-            if !_rc replace p27 = 1 if hormas  < .
+            if `y' <= 1992 {
+                capture confirm variable ratmeh1
+                if !_rc replace p27 = 1 if inlist(ratmeh1, 3, 4, 5, 6, 9)
+            }
+            else {
+                capture confirm variable hormas
+                if !_rc replace p27 = 1 if hormas < .
+            }
         }
 
         *--- 999 = no responde en las variables de horas (C4) ---
@@ -424,7 +438,10 @@ foreach y of numlist $anio_ini/$anio_fin {
         }
 
         *--- indicadores de período, siempre sobre el local `y' (C6) ---
-        local p00 = (`y' >= 2000 & `y' <= 2006)
+* 2000 va con los noventa: el sí/no de "desea más horas" y la lista larga de
+        * actividades recién aparecen en 2001, aunque los ingresos ya estén en
+        * dólares. p00 gobierna p21, la PEA, el empleo, las horas y d_d.
+        local p00 = (`y' >= 2001 & `y' <= 2006)
         local p07 = (`y' >= 2007)
 
         * categoría "no realizó ninguna actividad" de p21
@@ -456,9 +473,19 @@ foreach y of numlist $anio_ini/$anio_fin {
         }
         else {
             replace pean = 1 if petn==1 & p20==2 & p21==`p21_no' & p22==2 & p32 == 1
-            * C5: sin el tope "< ." la condición es verdadera con p34 missing
+            * Desempleo oculto: esperas y desalentados dentro de la PEA; fuera
+            * los que no pueden participar (sin tiempo, familia, enfermedad,
+            * edad). El bloque de desaliento de motnobus son los códigos 5-8
+            * hasta 1998 y los 1-4 desde 1999: la lista se reordena y las
+            * etiquetas del .dta de 1999-2000 se quedaron con el orden viejo.
+            * El orden real se verifica con condact (5/6 = desocupados) y con el
+            * universo al que se preguntó deseatra, que es ese bloque.
+            * "p34 >= 7" dejaba fuera a casi todos los desalentados.
+            * inrange() ya excluye el missing, que con ">=" entraría a la PEA (C5).
+            if `y' <= 1998 local desalent "inrange(p34, 5, 8)"
+            else           local desalent "inrange(p34, 1, 4)"
             replace pean = 1 if petn==1 & p20==2 & p21==`p21_no' & p22==2 & p32 == 2 ///
-                              & p34 >= 7 & p34 < . & p35 == 1
+                              & `desalent' & p35 == 1
         }
         label variable pean "Población Económicamente Activa"
 
@@ -529,6 +556,13 @@ foreach y of numlist $anio_ini/$anio_fin {
         egen double hh = rowtotal(p51a p51b p51c), missing
         replace hh = . if hh < 0
         replace horas = hh if pean == 1 & p20 == 2 & p21 == `p21_no' & p22 == 1
+
+        * Quien trabajó pero no declaró p24 se queda sin horas y por tanto con
+        * t = . , o sea fuera del empleo adecuado aunque cumpla el ingreso. Si
+        * declaró las horas que trabaja habitualmente (p51a-p51c), se usan esas.
+        * Es el criterio de la clasificación oficial: sin este respaldo la serie
+        * pierde 35 personas en 2007 que el INEC sí cuenta como adecuadas.
+        replace horas = hh if empleo == 1 & horas >= . & hh < .
         label variable horas "Horas de trabajo semanal"
 
         capture drop t
