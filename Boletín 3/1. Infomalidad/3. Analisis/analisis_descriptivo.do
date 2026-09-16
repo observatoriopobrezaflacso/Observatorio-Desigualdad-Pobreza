@@ -1161,7 +1161,7 @@ restore
 
 * Nacional — desde 2003 (primer año con datos completos post-2002)
 preserve 
-    keep if anio >= 2003 & anio <= 2024
+    keep if anio >= 2003
     drop if missing(etnia_arm)
     gen uno = 1 
     collapse (mean) informal2 (rawsum) N=uno [iw = fexp] if anio != 2002, by(anio etnia_arm)
@@ -1198,9 +1198,9 @@ preserve
 	}
 
     * --- Etiquetas de valor solo en años seleccionados (2003 en lugar de 2001) ---
-    gen lbl_1 = informal21 if inlist(anio, 2003, 2006, 2014, 2020, 2024)
-    gen lbl_2 = informal22 if inlist(anio, 2003, 2006, 2014, 2020, 2024)
-    gen lbl_3 = informal23 if inlist(anio, 2003, 2006, 2014, 2020, 2024)
+    gen lbl_1 = informal21 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_2 = informal22 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_3 = informal23 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
     format lbl_1 lbl_2 lbl_3 %9.1f
 
     twoway ///
@@ -1215,7 +1215,7 @@ preserve
         (scatter lbl_3 anio, msymbol(none) mlabel(lbl_3) mlabposition(6)  mlabcolor(orange) mlabsize(vsmall)), ///
         legend(order(2 "Indígena" 4 "Afroecuatoriano" 6 "Blanco/Mestizo") ///
 		position(6) rows(1)) ///
-        xlabel(2003(2)2024, angle(45)) ///
+        xlabel(2003(2)2025, angle(45)) ///
 		xtitle("") ///
         ylabel(50(10)100, format(%9.0f)) ///
         ytitle("Informalidad (%)") ///

@@ -66,6 +66,33 @@
 * 9. El comando s al final del do-file (comando inexistente que abortaba la
 *    ejecución) -> eliminado.
 *
+* 10. Deseo de más horas en 1991-1992 sobrestimado.
+*    p27 se construía con "ratmeh1 < . | hormas < .". En 1991-1992 eso sumaba
+*    los motivos personales y de salud (ratmeh1 7-8), que desde 1993 se
+*    registran en p25 y no expresan deseo de trabajar más; y en 1992, donde
+*    hormas es el sí/no y no el motivo, contaba también a quien respondió que
+*    NO. Ahora 1991-1992 usan inlist(ratmeh1,3,4,5,6,9) y 1993-2000 hormas.
+*
+* 11. El año 2000 se leía como año del cuestionario nuevo.
+*    p00 arrancaba en 2000, así que a ese año se le aplicaba el sí/no directo de
+*    "desea más horas" (que recién existe en 2001) y la lista corta de
+*    actividades. Resultado: d_d valía 0 para todos los ocupados de 2000. El
+*    corte ahora es 2001 en p21, PEA, empleo, horas y d_d; 2000 va con los
+*    noventa aunque sus ingresos ya estén en dólares.
+*
+* 12. Desempleo oculto incompleto en 1991-2000.
+*    El criterio era "p34 >= 7", que recoge sólo las dos últimas categorías de
+*    la lista de ocho. El bloque de espera y desaliento son los códigos 5-8
+*    hasta 1998 y los 1-4 desde 1999, porque la lista se reordena y las
+*    etiquetas del .dta de 1999-2000 conservan el orden viejo. Con el criterio
+*    anterior faltaba buena parte de la PEA de esos años.
+*
+* 13. Horas desconocidas con horas habituales declaradas.
+*    Quien trabajó pero no declaró p24 quedaba sin horas y por tanto fuera del
+*    empleo adecuado, aunque hubiera declarado p51a-p51c. Ahora se usan las
+*    habituales como respaldo. Afecta a pocos casos por año (ninguno desde
+*    2008) y reproduce la clasificación oficial de 2007.
+*
 *------------------------------------------------------------------------------*
 * VERIFICADO Y CONSERVADO (no eran errores)                                    *
 *------------------------------------------------------------------------------*
@@ -93,7 +120,7 @@
 * PENDIENTE DE DECISIÓN (ver hoja "Diagnostico")                               *
 *------------------------------------------------------------------------------*
 *
-* - d_d en 2000-2006: la documentación del script original dice que p35 hace de
+* - d_d en 2001-2006: la documentación del script original dice que p35 hace de
 *   sustituto de p28 (disponibilidad), y "empleo adecuado 90s.do" efectivamente
 *   exige p27 == 1 & p35 == 1. Pero el código de armonización sólo exigía
 *   p27 == 1. Los dos scripts NO coinciden. Por defecto se mantiene el
@@ -302,7 +329,7 @@ foreach y of numlist $anio_ini/$anio_fin {
             capture rename hortrahp p51a
             capture rename hortrahs p51b
             capture rename hortraho p51c
-            if `y' >= 2000 capture rename hormas p27
+            if `y' >= 2001 capture rename hormas p27
         }
 
         * variables ausentes en algunos años -> crear vacías para poder referirlas
@@ -323,16 +350,26 @@ foreach y of numlist $anio_ini/$anio_fin {
         if "`faltan'" == "" {
 
         *----------------------------------------------------------------------*
-        * 2.2 p27 en 1991-1999: no se pregunta directamente, se construye
-        *     (1991 sólo tiene ratmeh1; 1993-1999 sólo hormas; 1992 ambas)
+        * 2.2 p27 en 1991-2000: no hay sí/no de "desea más horas", se infiere de
+        *     tener motivo anotado (CORRECCIÓN 10).
+        *     1991-1992: el motivo está en ratmeh1, y sólo cuentan los códigos
+        *     de mercado (3,4,5,6,9). Tomar "ratmeh1 < ." sumaba también los
+        *     personales y de salud (7-8), que desde 1993 se registran en p25 y
+        *     no expresan deseo de trabajar más. En 1992 hormas es el sí/no y no
+        *     el motivo: con "hormas < ." entraba también quien contestó que NO.
+        *     1993-2000: el motivo está en hormas.
         *----------------------------------------------------------------------*
-        if `y' <= 1999 {
+        if `y' <= 2000 {
             capture drop p27
             gen byte p27 = 2 if p20 == 1 | p22 == 1
-            capture confirm variable ratmeh1
-            if !_rc replace p27 = 1 if ratmeh1 < .
-            capture confirm variable hormas
-            if !_rc replace p27 = 1 if hormas  < .
+            if `y' <= 1992 {
+                capture confirm variable ratmeh1
+                if !_rc replace p27 = 1 if inlist(ratmeh1, 3, 4, 5, 6, 9)
+            }
+            else {
+                capture confirm variable hormas
+                if !_rc replace p27 = 1 if hormas < .
+            }
         }
 
         *--- códigos de no respuesta en horas (CORRECCIÓN 4) ---
@@ -341,7 +378,11 @@ foreach y of numlist $anio_ini/$anio_fin {
         }
 
         *--- indicadores de período (CORRECCIÓN 7: todo sobre el local y) ---
-        local p00 = (`y' >= 2000 & `y' <= 2006)
+        * CORRECCIÓN 11: 2000 va con los noventa. El sí/no de "desea más horas"
+        * y la lista larga de actividades recién aparecen en 2001, aunque los
+        * ingresos ya estén en dólares. p00 gobierna p21, la PEA, el empleo, las
+        * horas y d_d, así que el corte tiene que ser 2001 en todos.
+        local p00 = (`y' >= 2001 & `y' <= 2006)
         local p07 = (`y' >= 2007)
 
         * categoría "no realizó ninguna actividad" en p21
@@ -373,9 +414,18 @@ foreach y of numlist $anio_ini/$anio_fin {
         }
         else {
             replace pean = 1 if petn==1 & p20==2 & p21==`p21_no' & p22==2 & p32 == 1
-            * CORRECCIÓN 5: acotar por arriba; si no, p34 >= 7 es TRUE con missing
+            * CORRECCIÓN 12: el bloque de desaliento de motnobus son los códigos
+            * 5-8 hasta 1998 y los 1-4 desde 1999; la lista se reordena y las
+            * etiquetas del .dta de 1999-2000 conservan el orden viejo. Con
+            * "p34 >= 7" quedaba fuera casi todo el desempleo oculto. El orden
+            * real se verifica con condact (5/6 = desocupados) y con el universo
+            * al que se preguntó deseatra, que es ese bloque.
+            * inrange() ya excluye el missing (CORRECCIÓN 5), que con ">=" habría
+            * entrado a la PEA.
+            if `y' <= 1998 local desalent "inrange(p34, 5, 8)"
+            else           local desalent "inrange(p34, 1, 4)"
             replace pean = 1 if petn==1 & p20==2 & p21==`p21_no' & p22==2 & p32 == 2 ///
-                                & p34 >= 7 & p34 < . & p35 == 1
+                                & `desalent' & p35 == 1
         }
         label variable pean "Población Económicamente Activa"
 
@@ -417,6 +467,14 @@ foreach y of numlist $anio_ini/$anio_fin {
         egen double hh = rowtotal(p51a p51b p51c), missing
         replace hh = . if hh < 0
         replace horas = hh if pean == 1 & p20 == 2 & p21 == `p21_no' & p22 == 1
+
+        * CORRECCIÓN 13: quien trabajó pero no declaró p24 se queda sin horas y
+        * por tanto con t = . , o sea fuera del empleo adecuado aunque cumpla el
+        * ingreso. Si declaró las horas que trabaja habitualmente (p51a-p51c),
+        * se usan esas. Es el criterio de la clasificación oficial: sin este
+        * respaldo la serie pierde 35 personas en 2007 que el INEC sí cuenta
+        * como adecuadas.
+        replace horas = hh if empleo == 1 & horas >= . & hh < .
         label variable horas "Horas de trabajo semanal"
 
         capture drop t

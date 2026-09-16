@@ -20,7 +20,6 @@
 
 clear all
 set more off
-capture log close
 
 *------------------------------------------------------------------------------*
 * 0. RUTAS
@@ -55,8 +54,26 @@ scalar tc_dolarizacion = 25000
 
 * Datos: filas 6..62 = años 1969..2025 (todos los meses completos).
 * La fila 63 corresponde a 2026 (parcial) y se excluye del rango.
+* El nombre de la hoja NO se escribe literal. En este .xls la "Í" viene como un
+* solo byte (0xCD) y Stata lo convierte a UTF-8 usando el locale del proceso.
+* Desde el GUI (locale en_US.UTF-8) sale bien; arrancado desde un shell sin LANG
+* -o con un locale que el sistema no tiene, como es_EC- convierte de más y la
+* hoja pasa a llamarse "1. ÃNDICE", con lo que sheet("1. ÍNDICE") falla con
+* "worksheet not found" (r(601)). Se toma el nombre tal como Stata lo lee, que
+* funciona en los dos casos.
+import excel "$ipc/SERIE HISTORICA IPC_03_2026.xls", describe
+
+local hoja ""
+forvalues s = 1/`r(N_worksheet)' {
+    if strpos("`r(worksheet_`s')'", "NDICE") local hoja "`r(worksheet_`s')'"
+}
+if "`hoja'" == "" {
+    di as error "No hay una hoja de índice en SERIE HISTORICA IPC_03_2026.xls."
+    exit 601
+}
+
 import excel "$ipc/SERIE HISTORICA IPC_03_2026.xls", ///
-    sheet("1. ÍNDICE") cellrange(A6:M62) clear
+    sheet("`hoja'") cellrange(A6:M62) clear
 
 rename A     anio
 rename B     m01
@@ -215,6 +232,7 @@ destring area, replace
 drop in 1
 tempfile adec_acumulado
 save `adec_acumulado', replace
+
 
 foreach y of numlist 1991(1)2025 {
 
@@ -395,6 +413,13 @@ foreach y of numlist 1991(1)2025 {
         else {
             replace horas = hh if pean == 1 & p20 == 2 & p21 == 12 & p22 == 1
         }
+
+        * Quien trabajó pero no declaró p24 se queda sin horas y por tanto con
+        * t = . , o sea fuera del empleo adecuado aunque cumpla el ingreso. Si
+        * declaró las horas que trabaja habitualmente (p51a-p51c), se usan esas.
+        * Es el criterio de la clasificación oficial: sin este respaldo la serie
+        * pierde 35 personas en 2007 que el INEC sí cuenta como adecuadas.
+        replace horas = hh if empleo == 1 & horas >= . & hh < .
         label variable horas "Horas de trabajo semanal"
 
         capture drop t
