@@ -1,3 +1,6 @@
 # Bitácoras generadas por las corridas
 logs/
 master_boletin3*.log
+
+# Bitácoras que deja Stata al correr los armonizados
+*.log
