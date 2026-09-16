@@ -106,7 +106,6 @@ format lbl %9.1f
 twoway (connected tasa anio, lcolor(maroon) lwidth(medthick) msymbol(circle) mcolor(maroon)) ///
        (scatter lbl anio, msymbol(none) mlabel(lbl) mlabposition(12) ///
             mlabcolor(maroon) mlabsize(vsmall)), ///
-    title("Pobreza laboral a nivel nacional") ///
     xtitle("") ytitle("Pobreza (%)") ///
     ylabel(0(10)60, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
     legend(off) name(g9, replace) ///
@@ -127,7 +126,6 @@ twoway (connected tasa anio if area == 1, lcolor(navy) lwidth(medthick) mcolor(n
        (connected tasa anio if area == 2, lcolor(maroon) lwidth(medthick) mcolor(maroon)) ///
        (scatter lbl_u anio, msymbol(none) mlabel(lbl_u) mlabposition(6) mlabcolor(navy) mlabsize(vsmall)) ///
        (scatter lbl_r anio, msymbol(none) mlabel(lbl_r) mlabposition(12) mlabcolor(maroon) mlabsize(vsmall)), ///
-    title("Pobreza laboral por area") ///
     xtitle("") ytitle("Pobreza (%)") ///
     ylabel(0(10)80, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
     legend(order(1 "Urbana" 2 "Rural") position(6) rows(1)) name(g10, replace) ///
@@ -148,7 +146,6 @@ twoway (connected tasa anio if educsup_ok == 0, lcolor(navy) lwidth(medthick) mc
        (connected tasa anio if educsup_ok == 1, lcolor(maroon) lwidth(medthick) mcolor(maroon)) ///
        (scatter lbl_0 anio, msymbol(none) mlabel(lbl_0) mlabposition(12) mlabcolor(navy) mlabsize(vsmall)) ///
        (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(6) mlabcolor(maroon) mlabsize(vsmall)), ///
-    title("Pobreza laboral por nivel educativo") ///
     xtitle("") ytitle("Pobreza (%)") ///
     ylabel(0(10)60, angle(horizontal)) xlabel(2001(2)2025, angle(90)) ///
     legend(order(1 "Sin educacion superior" 2 "Con educacion superior") position(6) rows(1)) ///

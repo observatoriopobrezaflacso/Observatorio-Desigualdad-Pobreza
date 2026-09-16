@@ -494,7 +494,6 @@ keep if inrange(anio, 2001, 2025)
         (scatter lbl_cond_3 anio, msymbol(none) mlabel(lbl_cond_3) mlabposition(12) mlabcolor(teal)      mlabsize(vsmall)) ///
         (scatter lbl_cond_4 anio, msymbol(none) mlabel(lbl_cond_4) mlabposition(6)  mlabcolor(orange)    mlabsize(vsmall)), ///
         ytitle("Porcentaje de ocupados (%)") xtitle("") ///
-        title("Número de condiciones de informalidad cumplidas", size(medium)) ///
         ylabel(0(10)50, angle(0) grid labsize(small) format(%9.0f)) ///
         yscale(range(0 50)) ///
         xscale(range(2001 2025)) ///
@@ -771,7 +770,6 @@ restore
 		xtitle("Informalidad") ///
         legend(off) ///
         graphregion(color(white)) ///
-        title("Informalidad por provincia - 2024", size(medium)) ///
         name(informal2_provincia_ci_2024, replace)
 *    graph export "$out_results/informal2_provincia_ci_2024.png", replace
 restore
@@ -1216,7 +1214,6 @@ preserve
         ytitle("Informalidad (%)") ///
         yscale(range(50 100)) ///
         graphregion(color(white)) bgcolor(white) ///
-        title("Informalidad por etnia (Nacional)", size(med)) ///
         name(informal2_etnia, replace)
     graph export "$out_results/Graficos/informal2_etnia.png", replace width(3000)
 restore 
@@ -1273,7 +1270,6 @@ preserve
         ytitle("Informalidad (%)") ///
         yscale(range(50 100)) ///
         graphregion(color(white)) bgcolor(white) ///
-        title("Informalidad por etnia (Urbano)", size(med)) ///
         name(informal2_etnia_urb_IC, replace)
    *graph export "$out_results/informal2_etnia_urb_IC.png", replace
 restore
@@ -1329,7 +1325,6 @@ preserve
         ytitle("Informalidad (%)") ///
         yscale(range(30 100)) ///
         graphregion(color(white)) bgcolor(white) ///
-        title("Informalidad por educación (Nacional)", size(med)) ///
         name(informal2_educ, replace)
     graph export "$out_results/Graficos/informal2_educ.png", replace width(3000)
 restore
@@ -1375,7 +1370,6 @@ preserve
         ytitle("Informalidad (%)") ///
         yscale(range(50 100)) ///
         graphregion(color(white)) bgcolor(white) ///
-        title("Informalidad por educación (Urbano)", size(med)) ///
         name(informal2_educ_urb_IC, replace)
   *  graph export "$out_results/informal2_educ_urb_IC.png", replace
 restore
@@ -1447,7 +1441,6 @@ preserve
         ytitle("Informalidad (%)") ///
         yscale(range(30 100)) ///
         graphregion(color(white)) bgcolor(white) ///
-        title("Informalidad por deciles de ingreso (Nacional)", size(med)) ///
         name(informal2_decil, replace)
     graph export "$out_results/Graficos/informal2_decil.png", replace width(3000)
 restore
