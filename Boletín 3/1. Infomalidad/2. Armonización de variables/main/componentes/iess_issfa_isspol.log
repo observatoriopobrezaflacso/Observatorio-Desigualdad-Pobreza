@@ -1,0 +1,763 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       SE—Standard Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user network, expiring 15 Aug 2028
+Serial number: 401909300808
+  Licensed to: Santiago Valdivieso
+               MIT
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do iess_issfa_isspol.do 
+
+. *============================================================================
+> ==*
+. * HARMONIZACIÓN: AFILIACIÓN AL IESS (1990-2024)                              
+>   *
+. * affiliated = 1 si la persona está afiliada a algun seguro, 0 en otro caso  
+>   *
+. *============================================================================
+> ==*
+. 
+. 
+. * Definición de rutas globales para facilitar la portabilidad del código
+. global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observator
+> io.pobreza@flacso.edu.ec/Mi unidad/"
+
+. global bases "$user_root/Bases"
+
+. global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
+
+. global salarios "$bases/Salarios"
+
+. global out "$bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
+
+. global gh "/Users/vero/Documents/Observatorio GH/Observatorio-Desigualdad-Pob
+> reza/"
+
+. global out_plot "$user_root/Boletín 3/2. Armonización de variables/Gráfico
+> s de control"
+
+. 
+. global important_variable affiliated
+
+. 
+. use "$raw/empleo1990.dta" in 1, clear 
+
+. destring area, replace
+area: all characters numeric; replaced as byte
+
+. drop in 1
+(1 observation deleted)
+
+. 
+. tempfile iess_acumulado
+
+. save `iess_acumulado', replace
+(dataset contains 0 observations)
+(file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 not
+    found)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+
+. 
+. foreach y of numlist 1990(1)2025 {
+  2. 
+.     di "*****************   `y'   ************************"
+  3. 
+.     use "$raw/empleo`y'.dta", clear 
+  4.     
+.     rename *, lower
+  5.  
+.     *gen anio = `y'
+.     
+.     gen affiliated = 0
+  6.     
+.     *------------------------------------------------------------------------
+> --*
+.     * PERÍODO 1990-2000: variable 'iess' binaria (1=sí, 2=no)
+.     *------------------------------------------------------------------------
+> --*
+.     if (inrange(`y', 1990, 2000)) {
+  7.             replace affiliated = 1 if iess == 1
+  8.             replace affiliated = . if missing(iess) | !inrange(condact, 0,
+>  4)
+  9.     }
+ 10.     
+.     *------------------------------------------------------------------------
+> --*
+.     * PERÍODO 2001-2006: dos alternativas de seguro
+.     * 2001-2002: iess y pe05; 2003-2006: iess y pe05b
+.     * 2001-2005: general = 2, campesino = 3, ISSFA/ISSPOL = 4
+.     * 2006: general = 2, voluntario = 3, campesino = 4, ISSFA/ISSPOL = 5
+.     *------------------------------------------------------------------------
+> --*
+.     if (inrange(`y', 2001, 2006)) {
+ 11.         if `y' <= 2002 local segundo_seguro pe05
+ 12.         else           local segundo_seguro pe05b
+ 13. 
+.         if `y' == 2006 {
+ 14.             replace affiliated = 1 if inlist(iess, 2, 3, 4, 5) ///
+>                 | inlist(`segundo_seguro', 2, 3, 4, 5)
+ 15.         }
+ 16.         else {
+ 17.             replace affiliated = 1 if inlist(iess, 2, 3, 4) ///
+>                 | inlist(`segundo_seguro', 2, 3, 4)
+ 18.         }
+ 19. 
+.         replace affiliated = . if (missing(iess) & missing(`segundo_seguro'))
+>  ///
+>             | !inrange(condact, 0, 4)
+ 20.     }
+ 21. 
+.     *------------------------------------------------------------------------
+> --*
+.     * PERÍODO 2007-2025: variables p05a y p05b
+.     * IESS general = 1, IESS voluntario = 2, IESS campesino = 3, ISSFA/ISSPOL
+>  = 4
+.     *------------------------------------------------------------------------
+> --*
+.     if (inrange(`y', 2007, 2025)) {
+ 22.                 
+.                 cap confirm variable condactn 
+ 23.                 if !_rc local condact_var condactn
+ 24.                 else    local condact_var condact
+ 25.                 
+.                 replace affiliated = 1 if inrange(p05a, 1, 4)
+ 26.                 replace affiliated = 1 if inrange(p05b, 1, 4)
+ 27.                 replace affiliated = . if (missing(p05a) & missing(p05b)) 
+> ///
+>                                                                   | inlist(`c
+> ondact_var', 0, 7, 8, 9)           
+ 28.     }
+ 29.     
+.     label define lbl_iess 1 "Tiene seguro" 0 "No tiene seguro", replace
+ 30.     label values affiliated lbl_iess
+ 31.     label variable affiliated "Tenencia de seguro (armonizado)"
+ 32.     
+.     * do "$gh/Generales/id_persona_loop.do"
+.     
+.         capture confirm variable area 
+ 33.         if  !_rc {
+ 34.                       local area_var area
+ 35.                           destring area, replace 
+ 36.                           
+.         }
+ 37.         else      local area_var 
+ 38.         
+.     keep id_persona $important_variable anio `area_var' fexp
+ 39.         
+.         append using `iess_acumulado'
+ 40.         
+.     keep id_persona $important_variable anio `area_var' fexp
+ 41.         
+.     save `iess_acumulado', replace
+ 42.     
+.     di "*************** `y' *****************"
+ 43.     
+.     count if id_persona == ""
+ 44.     local n = r(N)
+ 45.     
+.     if (`n' != 0) asd
+ 46. 
+. }
+*****************   1990   ************************
+  (all newnames==oldnames)
+(5,535 real changes made)
+(23,176 real changes made, 23,176 to missing)
+area: all characters numeric; replaced as byte
+(label peamsiu already defined)
+(label condact already defined)
+(label LABD already defined)
+(label otrosi already defined)
+(label jubil already defined)
+(label rentas already defined)
+(label formapag already defined)
+(label pertrabn already defined)
+(label catetrab already defined)
+(label tiemnot already defined)
+(label condina already defined)
+(label motnobus already defined)
+(label tiembus already defined)
+(label LABC already defined)
+(label trabn already defined)
+(label ratmeh already defined)
+(label pornot already defined)
+(label hortrasa already defined)
+(label actayuda already defined)
+(label cuanvic already defined)
+(label LABB already defined)
+(label nivinst already defined)
+(label sexo already defined)
+(label edad already defined)
+(label reljefe already defined)
+(label resumen already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1990 *****************
+  0
+*****************   1991   ************************
+  (all newnames==oldnames)
+(5,988 real changes made)
+(23,420 real changes made, 23,420 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1991 *****************
+  0
+*****************   1992   ************************
+  (all newnames==oldnames)
+(6,424 real changes made)
+(22,224 real changes made, 22,224 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1992 *****************
+  0
+*****************   1993   ************************
+  (all newnames==oldnames)
+(6,413 real changes made)
+(22,274 real changes made, 22,274 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1993 *****************
+  0
+*****************   1994   ************************
+  (all newnames==oldnames)
+(6,209 real changes made)
+(22,300 real changes made, 22,300 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1994 *****************
+  0
+*****************   1995   ************************
+  (all newnames==oldnames)
+(5,902 real changes made)
+(21,700 real changes made, 21,700 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1995 *****************
+  0
+*****************   1996   ************************
+  (all newnames==oldnames)
+(6,497 real changes made)
+(22,471 real changes made, 22,471 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1996 *****************
+  0
+*****************   1997   ************************
+  (all newnames==oldnames)
+(6,510 real changes made)
+(21,770 real changes made, 21,770 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1997 *****************
+  0
+*****************   1998   ************************
+  (all newnames==oldnames)
+(6,228 real changes made)
+(24,017 real changes made, 24,017 to missing)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1998 *****************
+  0
+*****************   1999   ************************
+  (all newnames==oldnames)
+(6,562 real changes made)
+(23,830 real changes made, 23,830 to missing)
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 1999 *****************
+  0
+*****************   2000   ************************
+  (all newnames==oldnames)
+(7,932 real changes made)
+(36,439 real changes made, 36,439 to missing)
+area already numeric; no replace
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2000 *****************
+  0
+*****************   2001   ************************
+  (all newnames==oldnames)
+(9,402 real changes made)
+(31,256 real changes made, 31,256 to missing)
+area already numeric; no replace
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2001 *****************
+  0
+*****************   2002   ************************
+  (all newnames==oldnames)
+(3,706 real changes made)
+(14,494 real changes made, 14,494 to missing)
+area already numeric; no replace
+(variable id_persona was str18, now str19 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2002 *****************
+  0
+*****************   2003   ************************
+  (all newnames==oldnames)
+(11,973 real changes made)
+(46,476 real changes made, 46,476 to missing)
+area already numeric; no replace
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2003 *****************
+  0
+*****************   2004   ************************
+  (all newnames==oldnames)
+(12,637 real changes made)
+(43,457 real changes made, 43,457 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2004 *****************
+  0
+*****************   2005   ************************
+  (all newnames==oldnames)
+(11,238 real changes made)
+(41,636 real changes made, 41,636 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2005 *****************
+  0
+*****************   2006   ************************
+  (all newnames==oldnames)
+(12,151 real changes made)
+(39,795 real changes made, 39,795 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2006 *****************
+  0
+*****************   2007   ************************
+  (all newnames==oldnames)
+(12,545 real changes made)
+(14 real changes made)
+(42,942 real changes made, 42,942 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2007 *****************
+  0
+*****************   2008   ************************
+  (all newnames==oldnames)
+(13,698 real changes made)
+(7 real changes made)
+(45,016 real changes made, 45,016 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label area already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2008 *****************
+  0
+*****************   2009   ************************
+  (all newnames==oldnames)
+(14,597 real changes made)
+(5 real changes made)
+(44,880 real changes made, 44,880 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label area already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2009 *****************
+  0
+*****************   2010   ************************
+  (all newnames==oldnames)
+(16,301 real changes made)
+(2 real changes made)
+(47,542 real changes made, 47,542 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label area already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2010 *****************
+  0
+*****************   2011   ************************
+  (all newnames==oldnames)
+(17,073 real changes made)
+(1 real change made)
+(39,764 real changes made, 39,764 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label area already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2011 *****************
+  0
+*****************   2012   ************************
+  (all newnames==oldnames)
+(22,703 real changes made)
+(4 real changes made)
+(41,893 real changes made, 41,893 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label area already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2012 *****************
+  0
+*****************   2013   ************************
+  (all newnames==oldnames)
+(27,957 real changes made)
+(4 real changes made)
+(47,400 real changes made, 47,400 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label area already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2013 *****************
+  0
+*****************   2014   ************************
+  (all newnames==oldnames)
+(44,262 real changes made)
+(7 real changes made)
+(65,249 real changes made, 65,249 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2014 *****************
+  0
+*****************   2015   ************************
+  (all newnames==oldnames)
+(42,954 real changes made)
+(2 real changes made)
+(63,003 real changes made, 63,003 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2015 *****************
+  0
+*****************   2016   ************************
+  (all newnames==oldnames)
+(42,521 real changes made)
+(1 real change made)
+(61,627 real changes made, 61,627 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2016 *****************
+  0
+*****************   2017   ************************
+  (all newnames==oldnames)
+(41,182 real changes made)
+(3 real changes made)
+(58,504 real changes made, 58,504 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label labels0 already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2017 *****************
+  0
+*****************   2018   ************************
+  (all newnames==oldnames)
+(23,336 real changes made)
+(0 real changes made)
+(31,153 real changes made, 31,153 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label labels0 already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2018 *****************
+  0
+*****************   2019   ************************
+  (all newnames==oldnames)
+(22,990 real changes made)
+(0 real changes made)
+(30,795 real changes made, 30,795 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label labels0 already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2019 *****************
+  0
+*****************   2020   ************************
+  (all newnames==oldnames)
+(10,971 real changes made)
+(0 real changes made)
+(16,238 real changes made, 16,238 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label labels0 already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2020 *****************
+  0
+*****************   2021   ************************
+  (all newnames==oldnames)
+(11,013 real changes made)
+(1 real change made)
+(15,202 real changes made, 15,202 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label labels0 already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2021 *****************
+  0
+*****************   2022   ************************
+  (all newnames==oldnames)
+(10,826 real changes made)
+(0 real changes made)
+(14,976 real changes made, 14,976 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label labels0 already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2022 *****************
+  0
+*****************   2023   ************************
+  (all newnames==oldnames)
+(10,384 real changes made)
+(0 real changes made)
+(14,633 real changes made, 14,633 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+(label labels0 already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2023 *****************
+  0
+*****************   2024   ************************
+  (all newnames==oldnames)
+(10,373 real changes made)
+(0 real changes made)
+(14,183 real changes made, 14,183 to missing)
+area already numeric; no replace
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2024 *****************
+  0
+*****************   2025   ************************
+  (all newnames==oldnames)
+(10,218 real changes made)
+(0 real changes made)
+(14,334 real changes made, 14,334 to missing)
+area already numeric; no replace
+(variable area was byte, now double to accommodate using data's values)
+(variable id_persona was str20, now str21 to accommodate using data's values)
+(label lbl_iess already defined)
+file /var/folders/v8/j2_3wzqd1rqc2l_95p5k_2l00000gn/T//St39869.000001 saved
+    as .dta format
+*************** 2025 *****************
+  0
+
+. 
+. save "$out/historico_iess_issfa_isspol.dta", replace
+file
+    /Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@fla
+    > cso.edu.ec/Mi unidad//Bases/ENEMDU/Procesadas/analisis
+    informalidad/Santiago/historico_iess_issfa_isspol.dta saved
+
+. 
+. use "$out/historico_iess_issfa_isspol.dta", clear
+
+. 
+. * Verificación
+. tab anio affiliated [iw = fexp], nofreq row missing
+
+           | Tenencia de seguro (armonizado)
+      anio | No tiene   Tiene seg          . |     Total
+-----------+---------------------------------+----------
+      1990 |     23.90      13.79      62.31 |    100.00 
+      1991 |     25.64      14.38      59.98 |    100.00 
+      1992 |     26.02      15.00      58.98 |    100.00 
+      1993 |     26.69      14.55      58.76 |    100.00 
+      1994 |     26.06      14.48      59.46 |    100.00 
+      1995 |     26.77      14.32      58.91 |    100.00 
+      1996 |     24.64      15.21      60.16 |    100.00 
+      1997 |     25.75      14.97      59.28 |    100.00 
+      1998 |     27.27      13.23      59.50 |    100.00 
+      1999 |     27.38      12.83      59.79 |    100.00 
+      2000 |     31.23      10.05      58.72 |    100.00 
+      2001 |     35.96      11.54      52.49 |    100.00 
+      2002 |     29.64      11.94      58.41 |    100.00 
+      2003 |     31.95      10.80      57.25 |    100.00 
+      2004 |     35.02      11.63      53.35 |    100.00 
+      2005 |     34.47      11.39      54.14 |    100.00 
+      2006 |     35.61      12.03      52.36 |    100.00 
+      2007 |     32.05      11.95      56.01 |    100.00 
+      2008 |     30.82      12.45      56.73 |    100.00 
+      2009 |     29.84      13.66      56.50 |    100.00 
+      2010 |     27.89      14.92      57.19 |    100.00 
+      2011 |     26.37      17.18      56.45 |    100.00 
+      2012 |     25.05      18.71      56.24 |    100.00 
+      2013 |     23.38      18.60      58.01 |    100.00 
+      2014 |     23.28      19.58      57.14 |    100.00 
+      2015 |     23.58      19.95      56.47 |    100.00 
+      2016 |     25.07      19.58      55.35 |    100.00 
+      2017 |     26.26      19.21      54.53 |    100.00 
+      2018 |     26.28      18.60      55.11 |    100.00 
+      2019 |     26.98      17.64      55.38 |    100.00 
+      2020 |     28.31      15.15      56.55 |    100.00 
+      2021 |     30.07      15.90      54.03 |    100.00 
+      2022 |     29.32      15.17      55.50 |    100.00 
+      2023 |     29.94      15.11      54.95 |    100.00 
+      2024 |     30.36      14.17      55.47 |    100.00 
+      2025 |     29.18      14.82      56.01 |    100.00 
+-----------+---------------------------------+----------
+     Total |     28.49      15.19      56.32 |    100.00 
+
+. tab anio affiliated [iw = fexp], nofreq row
+
+           |  Tenencia de seguro
+           |     (armonizado)
+      anio | No tiene   Tiene seg |     Total
+-----------+----------------------+----------
+      1990 |     63.42      36.58 |    100.00 
+      1991 |     64.07      35.93 |    100.00 
+      1992 |     63.43      36.57 |    100.00 
+      1993 |     64.72      35.28 |    100.00 
+      1994 |     64.28      35.72 |    100.00 
+      1995 |     65.14      34.86 |    100.00 
+      1996 |     61.83      38.17 |    100.00 
+      1997 |     63.24      36.76 |    100.00 
+      1998 |     67.34      32.66 |    100.00 
+      1999 |     68.10      31.90 |    100.00 
+      2000 |     75.66      24.34 |    100.00 
+      2001 |     75.70      24.30 |    100.00 
+      2002 |     71.28      28.72 |    100.00 
+      2003 |     74.74      25.26 |    100.00 
+      2004 |     75.07      24.93 |    100.00 
+      2005 |     75.16      24.84 |    100.00 
+      2006 |     74.74      25.26 |    100.00 
+      2007 |     72.84      27.16 |    100.00 
+      2008 |     71.22      28.78 |    100.00 
+      2009 |     68.60      31.40 |    100.00 
+      2010 |     65.15      34.85 |    100.00 
+      2011 |     60.56      39.44 |    100.00 
+      2012 |     57.24      42.76 |    100.00 
+      2013 |     55.69      44.31 |    100.00 
+      2014 |     54.32      45.68 |    100.00 
+      2015 |     54.16      45.84 |    100.00 
+      2016 |     56.15      43.85 |    100.00 
+      2017 |     57.76      42.24 |    100.00 
+      2018 |     58.56      41.44 |    100.00 
+      2019 |     60.47      39.53 |    100.00 
+      2020 |     65.14      34.86 |    100.00 
+      2021 |     65.41      34.59 |    100.00 
+      2022 |     65.90      34.10 |    100.00 
+      2023 |     66.45      33.55 |    100.00 
+      2024 |     68.18      31.82 |    100.00 
+      2025 |     66.32      33.68 |    100.00 
+-----------+----------------------+----------
+     Total |     65.22      34.78 |    100.00 
+
+. 
+. /*
+> 
+> 
+> preserve
+>     collapse (mean) $important_variable, by(anio area)
+>     list
+>     format $important_variable %9.2f
+>     keep if area == 1
+>     rename $important_variable ${important_variable}_urb
+>     tempfile urb
+>     save `urb'
+> restore
+> 
+> preserve
+>     collapse (mean) $important_variable, by(anio)
+>     format $important_variable %9.2f
+>     rename $important_variable ${important_variable}_nac
+>     merge 1:1 anio using `urb', nogen
+>     list
+> twoway (line ${important_variable}_nac anio)  ///
+>            (line ${important_variable}_urb anio if anio >= 2000), ///
+>            legend(order(1 "Nacional" 2 "Urbano"))  ///
+>            yscale(range(0 1)) ylabel(#5, format(%9.2f))
+> restore
+> 
+> graph export "$out_plot/historico_{$important_variable}_issfa_isspol.pdf", re
+> place
+> 
+> 
+> */
+. 
+end of do-file

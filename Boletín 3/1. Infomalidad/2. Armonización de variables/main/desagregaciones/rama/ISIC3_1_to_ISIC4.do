@@ -2,8 +2,8 @@ clear
 
 * Definicion de rutas globales para facilitar la portabilidad del codigo
 
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
-
+if "`c(username)'" == "vero" global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+else                         global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
 global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 
 
