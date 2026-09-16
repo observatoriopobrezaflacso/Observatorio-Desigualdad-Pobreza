@@ -69,8 +69,6 @@ twoway ///
     (scatter lbl_afro  anio, msymbol(none) mlabel(lbl_afro)  mlabposition(12) mlabcolor("227 66 52") mlabsize(vsmall)) ///
     (scatter lbl_total anio, msymbol(none) mlabel(lbl_total) mlabposition(6)  mlabcolor("80 80 80")   mlabsize(vsmall)) ///
     , ///
-    title("Tasa de homicidios de niños, niñas y adolescentes (NNA)" ///
-          "por cada 100.000, por etnia en Ecuador", size(medium)) ///
     subtitle("2014 – 2025", size(small)) ///
     ytitle("Tasa por 100.000") ///
     xtitle("") ///
@@ -116,8 +114,6 @@ twoway ///
     (scatter lbl_afro  anio, msymbol(none) mlabel(lbl_afro)  mlabposition(12) mlabcolor("227 66 52") mlabsize(vsmall)) ///
     (scatter lbl_total anio, msymbol(none) mlabel(lbl_total) mlabposition(6)  mlabcolor("80 80 80")   mlabsize(vsmall)) ///
     , ///
-    title("Tasa de homicidios de jóvenes" ///
-          "por cada 100.000, por etnia en Ecuador", size(medium)) ///
     subtitle("2014 – 2025", size(small)) ///
     ytitle("Tasa por 100.000") ///
     xtitle("") ///
