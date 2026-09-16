@@ -16,8 +16,12 @@ global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global variables_base "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global bases_armonizadas "$user_root/Bases/ENEMDU/Procesadas/analisis informalidad/Santiago"
-global out_results/Graficos "$user_root/Boletín 3/2. Armonización de variables/Gráficos de control"
+global out_control "$user_root/Boletín 3/2. Armonización de variables/Gráficos de control"
 global out_results "$user_root/Boletín 3/4. Resultados/informalidad"
+
+cap mkdir "$out_results"
+cap mkdir "$out_results/Graficos"
+cap mkdir "$out_results/Tablas"
 
 * Definición de variables importantes para análisis
 global important_variable informal1
@@ -36,7 +40,7 @@ replace area = 1 if area == .
 
 
 * Definir lista de variables relevantes para análisis de informalidad
-local vars affiliated adec tiene_ruc no_remunerado
+local vars affiliated adec institucion_formal no_remunerado
 
 * Generar tabulaciones de cada variable por año para control
 foreach var of local vars {
@@ -49,7 +53,7 @@ foreach var of local vars {
 
 keep if edad >= 15
 
-foreach var of varlist affiliated adec* no_remunerado tiene_ruc {
+foreach var of varlist affiliated adec* no_remunerado institucion_formal {
 *	cap gen `var'_a = `var'
 *	replace `var'_a = . if inrange(condact, 5, 8) & anio <= 2006
 *	replace `var'_a = . if inlist(condactn, 0, 7, 8, 9) & anio >= 2007
@@ -83,8 +87,10 @@ replace informal1_sim = . if inlist(., affiliated, adec_sim, no_remunerado)
 gen informal2 =  affiliated    == 0 | ///
 				 adec               == 0 | ///
 				 no_remunerado      == 1 | ///
-				 (tiene_ruc == 0) 
-replace informal2 = . if inlist(., affiliated, adec,  tiene_ruc, no_remunerado)
+				 (institucion_formal == 0) 
+replace informal2 = . if inlist(., affiliated, adec,  institucion_formal, no_remunerado)
+
+
 
 * ============================================================
 **#  INFORMALIDAD 2 SIM
@@ -93,8 +99,8 @@ gen informal2_sim =  ///
 				 affiliated        == 0 | ///
 				 adec_sim               == 0 | ///
 				 no_remunerado          == 1 | ///
-				 (tiene_ruc == 0) 
-replace informal2_sim = . if inlist(., affiliated, adec_sim,  tiene_ruc, no_remunerado)
+				 (institucion_formal == 0) 
+replace informal2_sim = . if inlist(., affiliated, adec_sim,  institucion_formal, no_remunerado)
 
 * ===============================================================
 **# INFORMALIDAD CON Y SIN RUC 
@@ -127,7 +133,7 @@ preserve
            xtitle("") ///
            xline(2000, lpattern(dash) lcolor(gray)) ///
            name(informal_con_y_sin_ruc, replace)
-    graph export "$out_results/Graficos/informal_con_y_sin_ruc.png", replace
+    graph export "$out_results/Graficos/informal_con_y_sin_ruc.png", replace width(3000)
 restore
 
 
@@ -146,7 +152,7 @@ restore
 gen     comp_no_iess     = (affiliated == 0) * 100 if !missing(affiliated)
 gen     comp_no_adec     = (adec == 0)             * 100 if !missing(adec)
 gen     comp_no_remun    = (no_remunerado == 1)    * 100 if !missing(no_remunerado)
-gen     comp_no_ruc      = (tiene_ruc == 0)        * 100 if !missing(tiene_ruc)
+gen     comp_no_ruc      = (institucion_formal == 0)        * 100 if !missing(institucion_formal)
 
 label var comp_no_iess  "No afiliado al IESS"
 label var comp_no_adec  "No tiene condiciones adecuadas (adec=0)"
@@ -225,7 +231,6 @@ preserve
     graph export "$out_results/Graficos/Informalidad_y_componentes.pdf", replace
 restore
 
-* s   // stop de depuración: cortaba el master antes de las figuras siguientes
 
 * ===============================================================
 **# INFORMALIDAD  Y SUS COMPONENTES POR SEXO
@@ -449,15 +454,15 @@ preserve
 restore
 
 
-* s   // stop de depuración: cortaba el master antes de las figuras siguientes
+
 
 *------------------------------------------------------------------*
 * Gráfico: Número de condiciones de informalidad cumplidas over time
 *------------------------------------------------------------------*
 * Contar cuántas condiciones de informalidad cumple cada persona
 * Condiciones: (1) no afiliado IESS, (2) no adec, (3) no remunerado, (4) no tiene RUC
-gen n_cond = (affiliated == 0) + (adec == 0) + (no_remunerado == 1) + (tiene_ruc == 0) ///
-             if !missing(affiliated) & !missing(adec) & !missing(no_remunerado) & !missing(tiene_ruc)
+gen n_cond = (affiliated == 0) + (adec == 0) + (no_remunerado == 1) + (institucion_formal == 0) ///
+             if !missing(affiliated) & !missing(adec) & !missing(no_remunerado) & !missing(institucion_formal)
 * Generar dummies para cada número de condiciones (1, 2, 3, 4)
 forvalues i = 1/4 {
     gen cond_`i' = (n_cond == `i') * 100 if !missing(n_cond)
@@ -500,7 +505,7 @@ keep if inrange(anio, 2001, 2025)
         note("Fuente: ENEMDU. Elaboración propia.") ///
         name(n_conds, replace)
 		
-    graph export "$out_results/Graficos/n_condiciones_informalidad.png", replace
+    graph export "$out_results/Graficos/n_condiciones_informalidad.png", replace width(3000)
 restore
  
 
@@ -550,7 +555,7 @@ preserve
            ytitle("Informalidad (%)") ///
            xscale(range(2001 2024)) xlabel(2001(3)2024) ///
            name(informal1_nac_urb, replace)
-    graph export "$out_results/informal1_nac_urb.png", replace
+    graph export "$out_results/informal1_nac_urb.png", replace width(3000)
 restore
 
 */
@@ -597,16 +602,13 @@ preserve
     format lbl_nac lbl_urb lbl_rur %9.1f
 
     twoway ///
-        (rarea ub_nac lb_nac anio,   sort color(navy%35)) ///
         (connected informal2_nac anio,   sort lcolor(navy)         mcolor(navy)         lwidth(medium)) ///
-        (rarea ub1 lb1 anio,         sort color(maroon%35)) ///
         (connected informal21 anio,  sort lcolor(maroon)       mcolor(maroon)       lwidth(medium)) ///
-        (rarea ub2 lb2 anio,         sort color(forest_green%35)) ///
         (connected informal22 anio,  sort lcolor(forest_green) mcolor(forest_green) lwidth(medium)) ///
         (scatter lbl_nac anio, msymbol(none) mlabel(lbl_nac) mlabposition(6)  mlabcolor(navy)         mlabsize(vsmall)) ///
         (scatter lbl_urb anio, msymbol(none) mlabel(lbl_urb) mlabposition(12) mlabcolor(maroon)       mlabsize(vsmall)) ///
         (scatter lbl_rur anio, msymbol(none) mlabel(lbl_rur) mlabposition(6)  mlabcolor(forest_green) mlabsize(vsmall)), ///
-        legend(order(2 "Nacional" 4 "Urbano" 6 "Rural") position(6) rows(1) size(small)) ///
+        legend(order(1 "Nacional" 2 "Urbano" 3 "Rural") position(6) rows(1) size(small)) ///
         yscale(range(50 100)) ylabel(50(10)100, format(%9.0f)) ///
         ytitle("Informalidad (%)") ///
         xtitle("") ///
@@ -614,7 +616,7 @@ preserve
         graphregion(color(white)) ///
         name(informal2_area, replace)
 		
-    graph export "$out_results/informal2_area.png", replace
+    graph export "$out_results/informal2_area.png", replace width(3000)
 restore
 
 * ============================================================
@@ -658,13 +660,11 @@ preserve
     format lbl_h lbl_m %9.1f
 
     twoway ///
-        (rarea ub_h lb_h anio, sort color(navy%35)) ///
         (connected informal21 anio, sort lcolor(navy) mcolor(navy) lwidth(medium)) ///
-        (rarea ub_m lb_m anio, sort color(maroon%35)) ///
         (connected informal22 anio, sort lcolor(maroon) mcolor(maroon) lwidth(medium)) ///
         (scatter lbl_h anio, msymbol(none) mlabel(lbl_h) mlabposition(6)  mlabcolor(navy)   mlabsize(vsmall)) ///
         (scatter lbl_m anio, msymbol(none) mlabel(lbl_m) mlabposition(12) mlabcolor(maroon) mlabsize(vsmall)), ///
-        legend(order(2 "Hombre" 4 "Mujer") position(6) rows(1) size(small)) ///
+        legend(order(1 "Hombre" 2 "Mujer") position(6) rows(1) size(small)) ///
         xlabel(2001(2)2025, angle(90)) ///
         ylabel(50(10)100, format(%9.0f)) ///
         ytitle("Informalidad (%)") ///
@@ -672,6 +672,7 @@ preserve
 		xtitle("") ///
         graphregion(color(white)) ///
         name(informal2_sexo, replace)
+    graph export "$out_results/Graficos/informal2_sexo.png", replace width(3000)
 restore
 
 	 
@@ -1079,23 +1080,20 @@ preserve
     format lbl_1 lbl_2 lbl_3 %9.1f
 
     twoway ///
-        (rarea ub_1 lb_1 anio, sort color(navy%30)) ///
         (connected informal21 anio, sort lcolor(navy) mcolor(navy) lwidth(medium)) ///
-        (rarea ub_2 lb_2 anio, sort color(maroon%30)) ///
         (connected informal22 anio, sort lcolor(maroon) mcolor(maroon) lwidth(medium)) ///
-        (rarea ub_3 lb_3 anio, sort color(forest_green%30)) ///
         (connected informal23 anio, sort lcolor(forest_green) mcolor(forest_green) lwidth(medium)) ///
         (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(12) mlabcolor(navy)         mlabsize(vsmall)) ///
         (scatter lbl_2 anio, msymbol(none) mlabel(lbl_2) mlabposition(12) mlabcolor(maroon)       mlabsize(vsmall)) ///
         (scatter lbl_3 anio, msymbol(none) mlabel(lbl_3) mlabposition(6)  mlabcolor(forest_green) mlabsize(vsmall)), ///
-        legend(order(2 "18-29" 4 "30-64" 6 "65+") position(6) rows(1) size(small)) ///
+        legend(order(1 "18-29" 2 "30-64" 3 "65+") position(6) rows(1) size(small)) ///
         xlabel(2001(2)2025, angle(90)) ///
         ylabel(50(10)100, format(%9.0f)) ///
         yscale(range(50 100)) ///
 		xtitle("") ///
         graphregion(color(white)) ///
         name(informal2_edad, replace)
-    graph export "$out_results/informal2_edad_IC.png", replace
+    graph export "$out_results/informal2_edad.png", replace width(3000)
 restore
 
 /*
@@ -1204,16 +1202,13 @@ preserve
     format lbl_1 lbl_2 lbl_3 %9.1f
 
     twoway ///
-        (rarea ub_1 lb_1 anio, sort color(green%30)) ///
         (connected informal21 anio, sort lcolor(green) mcolor(green) lwidth(medium)) ///
-        (rarea ub_2 lb_2 anio, sort color(blue%30)) ///
         (connected informal22 anio, sort lcolor(blue) mcolor(blue) lwidth(medium)) ///
-        (rarea ub_3 lb_3 anio, sort color(orange%30)) ///
         (connected informal23 anio, sort lcolor(orange) mcolor(orange) lwidth(medium)) ///
         (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(12) mlabcolor(green)  mlabsize(vsmall)) ///
         (scatter lbl_2 anio, msymbol(none) mlabel(lbl_2) mlabposition(12) mlabcolor(blue)   mlabsize(vsmall)) ///
         (scatter lbl_3 anio, msymbol(none) mlabel(lbl_3) mlabposition(6)  mlabcolor(orange) mlabsize(vsmall)), ///
-        legend(order(2 "Indígena" 4 "Afroecuatoriano" 6 "Blanco/Mestizo") ///
+        legend(order(1 "Indígena" 2 "Afroecuatoriano" 3 "Blanco/Mestizo") ///
 		position(6) rows(1)) ///
         xlabel(2003(2)2025, angle(45)) ///
 		xtitle("") ///
@@ -1223,9 +1218,9 @@ preserve
         graphregion(color(white)) bgcolor(white) ///
         title("Informalidad por etnia (Nacional)", size(med)) ///
         name(informal2_etnia, replace)
-    *graph export "$out_results/informal2_etnia_nac_IC.png", replace 
+    graph export "$out_results/Graficos/informal2_etnia.png", replace width(3000)
 restore 
-* s   // stop de depuración: cortaba el master antes de las figuras siguientes
+
 /*
 
 * Urbano — desde 2003
@@ -1323,13 +1318,11 @@ preserve
     format lbl_0 lbl_1 %9.1f
 
     twoway ///
-        (rarea ub_0 lb_0 anio, sort color(navy%30)) ///
         (connected informal20 anio, sort lcolor(navy) mcolor(navy) lwidth(medium)) ///
-        (rarea ub_1 lb_1 anio, sort color(maroon%30)) ///
         (connected informal21 anio, sort lcolor(maroon) mcolor(maroon) lwidth(medium)) ///
         (scatter lbl_0 anio, msymbol(none) mlabel(lbl_0) mlabposition(12) mlabcolor(navy)   mlabsize(vsmall)) ///
         (scatter lbl_1 anio, msymbol(none) mlabel(lbl_1) mlabposition(6)  mlabcolor(maroon) mlabsize(vsmall)), ///
-        legend(order(2 "No universitaria" 4 "Universitaria") position(6) rows(1)) ///
+        legend(order(1 "No universitaria" 2 "Universitaria") position(6) rows(1)) ///
         xlabel(2001(2)2025, angle(90)) ///
         xtitle("") ///
         ylabel(20(10)100, format(%9.0f)) ///
@@ -1338,7 +1331,7 @@ preserve
         graphregion(color(white)) bgcolor(white) ///
         title("Informalidad por educación (Nacional)", size(med)) ///
         name(informal2_educ, replace)
-*    graph export "$out_results/informal2_educ_nac_IC.png", replace
+    graph export "$out_results/Graficos/informal2_educ.png", replace width(3000)
 restore
 
 /*
@@ -1456,7 +1449,7 @@ preserve
         graphregion(color(white)) bgcolor(white) ///
         title("Informalidad por deciles de ingreso (Nacional)", size(med)) ///
         name(informal2_decil, replace)
-*    graph export "$out_results/informal2_decil_nac.png", replace
+    graph export "$out_results/Graficos/informal2_decil.png", replace width(3000)
 restore
 
 
