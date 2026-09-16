@@ -5,7 +5,7 @@
 
 
 * Definición de rutas globales para facilitar la portabilidad del código
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
+global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/"
 global bases "$user_root/Bases"
 global raw "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
@@ -29,7 +29,7 @@ foreach y of numlist 1990(1)2025 {
     use "$raw/empleo`y'.dta", clear 
     
     rename *, lower
-    
+ 
     *gen anio = `y'
     
     gen affiliated = 0
@@ -39,22 +39,34 @@ foreach y of numlist 1990(1)2025 {
     *--------------------------------------------------------------------------*
     if (inrange(`y', 1990, 2000)) {
             replace affiliated = 1 if iess == 1
-            replace affiliated = . if missing(iess) | inrange(condact, 5, 8)
+            replace affiliated = . if missing(iess) | !inrange(condact, 0, 4)
     }
     
     *--------------------------------------------------------------------------*
-    * PERÍODO 2001-2006: 'iess' multicategórica
-    * IESS general = 2, IESS campesino = 3, ISSFA/ISSPOL = 4
+    * PERÍODO 2001-2006: dos alternativas de seguro
+    * 2001-2002: iess y pe05; 2003-2006: iess y pe05b
+    * 2001-2005: general = 2, campesino = 3, ISSFA/ISSPOL = 4
+    * 2006: general = 2, voluntario = 3, campesino = 4, ISSFA/ISSPOL = 5
     *--------------------------------------------------------------------------*
     if (inrange(`y', 2001, 2006)) {
-	
-            replace affiliated = 1 if inlist(iess, 2, 3, 4)
-            replace affiliated = . if missing(iess) | inrange(condact, 5, 8)
-			
+        if `y' <= 2002 local segundo_seguro pe05
+        else           local segundo_seguro pe05b
+
+        if `y' == 2006 {
+            replace affiliated = 1 if inlist(iess, 2, 3, 4, 5) ///
+                | inlist(`segundo_seguro', 2, 3, 4, 5)
+        }
+        else {
+            replace affiliated = 1 if inlist(iess, 2, 3, 4) ///
+                | inlist(`segundo_seguro', 2, 3, 4)
+        }
+
+        replace affiliated = . if (missing(iess) & missing(`segundo_seguro')) ///
+            | !inrange(condact, 0, 4)
     }
-    
+
     *--------------------------------------------------------------------------*
-    * PERÍODO 2007-2024: variables p05a y p05b
+    * PERÍODO 2007-2025: variables p05a y p05b
     * IESS general = 1, IESS voluntario = 2, IESS campesino = 3, ISSFA/ISSPOL = 4
     *--------------------------------------------------------------------------*
     if (inrange(`y', 2007, 2025)) {

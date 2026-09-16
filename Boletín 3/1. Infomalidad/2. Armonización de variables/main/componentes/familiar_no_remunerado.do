@@ -30,7 +30,7 @@ foreach y of numlist 1990(1)2025 {
     gen no_remunerado = 0
     
     *--------------------------------------------------------------------------*
-    * PERÍODO 1990-2000: variable 'catetrab' (y a veces 'cates')
+    * PERÍODO 1990-2000: 'catetrab'; desde 1991 también 'cates'
     * Código 5 = trabajador familiar no remunerado
     *--------------------------------------------------------------------------*
     if (inrange(`y', 1990, 2000)) {
@@ -39,8 +39,17 @@ foreach y of numlist 1990(1)2025 {
         capture confirm variable cates
         local has_cates = !_rc
         
-		replace no_remunerado = 1 if catetrab == 5		
-		replace no_remunerado = 0 if !missing(catetrab) & catetrab != 5
+        replace no_remunerado = 1 if catetrab == 5
+        if `y' >= 1991 & `has_cates' {
+            replace no_remunerado = 1 if cates == 5
+        }
+
+        * Desde 1991, usar ambas ocupaciones con el mismo criterio de 2001 en adelante.
+        * Una ocupación remunerada impide clasificar a la persona como no remunerada.
+        replace no_remunerado = 0 if !missing(catetrab) & catetrab != 5
+        if `y' >= 1991 & `has_cates' {
+            replace no_remunerado = 0 if !missing(cates) & cates != 5
+        }
 		
         if `has_catetrab' & `has_cates' {
             replace no_remunerado = . if missing(catetrab) & missing(cates)
@@ -63,6 +72,10 @@ foreach y of numlist 1990(1)2025 {
         local has_catetrab = !_rc
         capture confirm variable cates
         local has_cates = !_rc
+
+        * En 2001, cates = 0 también indica secundaria no aplicable.
+        * No debe interpretarse como una categoría ocupacional remunerada.
+        if `has_cates' replace cates = . if cates == 0
         
 		replace no_remunerado = 1 if inlist(catetrab, 6, 11)
 		replace no_remunerado = 1 if inlist(cates, 6, 11)
@@ -91,6 +104,10 @@ foreach y of numlist 1990(1)2025 {
         local has_catetrab = !_rc
         capture confirm variable cates
         local has_cates = !_rc
+
+        * En 2002, cates = 0 no es una categoría ocupacional válida.
+        * Tratar la secundaria no aplicable como faltante para que no anule la principal.
+        if `has_cates' replace cates = . if cates == 0
         
 		replace no_remunerado = 1 if inlist(catetrab, 6, 11)
 		replace no_remunerado = 1 if inlist(cates, 6, 11)
