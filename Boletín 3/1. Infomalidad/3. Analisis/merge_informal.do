@@ -132,7 +132,11 @@ forval y = 2001(2)2025 {
 
 *local vars affiliated adec adec_sim no_remunerado tamano_armonizado mi_pea tiene_ruc cuenta_propia cuenta_base condact*
 
-local vars affiliated adec adec_sim no_remunerado  tiene_ruc  tiene_ruc2 institucion_formal mi_pea   condact* id_persona
+* tiene_ruc2 era la versión anterior de la variable de RUC y ya no la genera
+* armonizacion_institucion_formal.do: pedirla aquí rompe el keep con r(111) en
+* cuanto se regenera historico_ruc.dta. La informalidad se calcula sobre
+* institucion_formal, que sí sigue en la lista.
+local vars affiliated adec adec_sim no_remunerado  tiene_ruc  institucion_formal mi_pea   condact* id_persona
 
 
 keep `vars' fexp sexo edad provincia educ_univ etnia_arm anio area ingrl rama1 ///
