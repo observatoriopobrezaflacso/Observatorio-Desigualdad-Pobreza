@@ -149,7 +149,8 @@ replace area = 1 if area == .
 
 save "$bases_armonizadas/base_trabajo.dta", replace
 
-s
+* s   // stop de depuración: la base ya está guardada, pero el comando cortaba
+*        el do-file con r(199) y el master marcaba la armonización como fallida.
 /*
 s
 
