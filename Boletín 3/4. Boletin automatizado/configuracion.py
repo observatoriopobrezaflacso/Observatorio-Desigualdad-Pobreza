@@ -87,7 +87,10 @@ _DIR_HOMICIDIOS_COD = _DIR_BOLETIN / "3. homicidios_nna"
 ETAPAS_STATA = {
     "diseno": [_DIR_ARMONIZACION / "componentes" / "diseno_muestral.do"],
     "merge": [_DIR_ANALISIS / "merge_informal.do"],
-    "analisis": [_DIR_ANALISIS / "analisis_descriptivo.do"],
+    "analisis": [
+        _DIR_ANALISIS / "analisis_descriptivo.do",
+        _DIR_ANALISIS / "cuidado_horas_sexo.do",
+    ],
     "ic": [_DIR_ANALISIS / "analisis_descriptivo_ic.do"],
     # run_all.do encadena por su cuenta las cinco etapas de pobreza laboral.
     "pobreza": [_DIR_POBREZA_COD / "run_all.do"],
@@ -181,6 +184,18 @@ FUENTES = [
         col_casos="N",
         escala=100,
         series={"informal2": "inf_sexo"},
+    ),
+    # Razón "cuidado de un familiar" para no querer trabajar más horas.
+    # La pregunta (p29a) entró al cuestionario en 2022, así que esta serie
+    # es más corta que las demás. La produce 3. Analisis/cuidado_horas_sexo.do
+    # leyendo la ENEMDU original, no las variables base armonizadas.
+    dict(
+        archivo="Tablas/razon_cuidado_horas_sexo.xlsx",
+        col_anio="anio",
+        col_grupo="sexo",
+        col_casos="N",
+        escala=1,
+        series={"porcentaje": "cuida_sexo"},
     ),
     dict(
         archivo="Tablas/Informalidad_y_componentes_sexo.xlsx",
