@@ -344,7 +344,8 @@ GRAFICOS = {
         elaboracion=ELABORACION,
         nota=(
             "Notas: El universo de análisis lo componen los ocupados en edad de "
-            "trabajar. Es decir, se deja fuera a los inactivos, desempleados y "
+            "trabajar y con casos completos en cada uno de los componentes de "
+            "informalidad. Es decir, se deja fuera a los inactivos, desempleados y "
             "menores de 15 años. Los datos de antes del 2000 corresponden "
             "únicamente al sector urbano. Además, en este periodo el indicador de "
             "informalidad no incluye al trabajo en organizaciones sin RUC como "
