@@ -54,13 +54,14 @@ BASES_FIGURAS = {
 
 # Nota al pie del título: advertencia sobre las correcciones de septiembre.
 NOTA_TITULO = (
-    "En septiembre de 2026 se corrigieron errores de código que (1) cambiaron "
-    "sustancialmente la serie de empleo adecuado de los 90s, solo presente en el "
+    "En septiembre de 2026 se corrigieron errores de código que, respecto a la "
+    "versión de junio del mismo año: (1) cambiaron sustancialmente la serie de "
+    "empleo adecuado de los 90s, solo presente en el "
     "Gráfico 1, (2) modificaron levemente las tasas de no tenencia de RUC desde "
-    "2007 en adelante y de no afiliación a la seguridad social en el periodo "
-    "2003-2006, (3) eliminaron el 2001 del análisis por razones explicadas en la "
-    "nota del gráfico 1 y (4) extendieron el análisis de la desagregación por "
-    "etnia a 2025."
+    "2007 en adelante, de no afiliación a la seguridad social en el periodo "
+    "2003-2006 y las de pobreza laboral, (3) eliminaron el 2001 del análisis por "
+    "razones explicadas en la nota del gráfico 1 y (4) extendieron el análisis de "
+    "la desagregación por etnia a 2025."
 )
 
 ARCHIVO_SALIDA = DIR_REDACCION / "Boletin_3_automatizado.docx"
