@@ -181,10 +181,20 @@ label var comp_no_ruc   "No tiene RUC"
 * ===============================================================
 
 preserve
+    * El Grafico 1 es el unico lugar donde 2001 sobrevive. Los componentes de
+    * empleo no adecuado, trabajo no remunerado y falta de afiliacion se miden
+    * bien ese anio, asi que se muestran en el Panel B. Lo que no se puede usar
+    * es el RUC: en 2001 la pregunta solo se le hizo a patronos y cuenta propia,
+    * de modo que ese componente y la serie del Panel A, que lo incorpora, se
+    * dejan en missing. En el resto del script 2001 sigue excluido por completo.
     collapse (mean) comp_no_adec comp_no_remun comp_no_iess comp_no_ruc ///
-             informal1 informal2 [iw=fexp] if !inlist(anio, 2001, 2002), by(anio)
+             informal1 informal2 [iw=fexp] if anio != 2002, by(anio)
     replace informal1 = informal1 * 100
     replace informal2 = informal2 * 100
+
+    replace comp_no_ruc = . if anio == 2001
+    replace informal2   = . if anio == 2001
+
     export excel using "$out_results/Tablas/Informalidad_y_componentes.xlsx", firstrow(var) replace
 
     * Create a single combined series
