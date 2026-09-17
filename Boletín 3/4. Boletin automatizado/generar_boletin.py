@@ -190,7 +190,7 @@ def generar(args):
         tipo = bloque["tipo"]
 
         if tipo == "titulo":
-            doc.titulo(texto(bloque["texto"]))
+            doc.titulo(texto(bloque["texto"]), nota=getattr(cfgmod, "NOTA_TITULO", None))
         elif tipo == "seccion":
             doc.seccion(texto(bloque["texto"]))
         elif tipo == "subseccion":
