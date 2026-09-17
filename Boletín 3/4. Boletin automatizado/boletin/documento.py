@@ -10,8 +10,11 @@ try:
     from docx import Document
     from docx.enum.table import WD_TABLE_ALIGNMENT
     from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from docx.opc.packuri import PackURI
+    from docx.opc.part import Part
+    from docx.oxml import OxmlElement, parse_xml
+    from docx.oxml.ns import nsmap, qn
     from docx.shared import Cm, Pt
 except ImportError:  # pragma: no cover
     raise SystemExit(
@@ -134,13 +137,97 @@ class Documento:
         _escribir(p, texto, self.cfg, tamano, negrita)
         return p
 
-    def titulo(self, texto):
-        return self.parrafo(
+    def titulo(self, texto, nota=None):
+        p = self.parrafo(
             texto,
             tamano=self.cfg["tamano_pt"] + 4,
             negrita=True,
             alineacion=WD_ALIGN_PARAGRAPH.CENTER,
         )
+        if nota:
+            self.nota_al_pie(p, nota)
+        return p
+
+    # -- Notas al pie ----------------------------------------------------
+    # python-docx no las soporta, asi que se arma la parte word/footnotes.xml
+    # a mano y se le cuelga la referencia al parrafo.
+    def nota_al_pie(self, parrafo, texto, tamano=None):
+        indice = self._asegurar_footnotes()
+
+        cuerpo = OxmlElement("w:footnote")
+        cuerpo.set(qn("w:id"), str(indice))
+        pf = OxmlElement("w:p")
+        ppr = OxmlElement("w:pPr")
+        jc = OxmlElement("w:jc"); jc.set(qn("w:val"), "both")
+        ppr.append(jc)
+        pf.append(ppr)
+
+        # marca del numero dentro de la nota
+        r_marca = OxmlElement("w:r")
+        rpr_m = OxmlElement("w:rPr")
+        va = OxmlElement("w:vertAlign"); va.set(qn("w:val"), "superscript")
+        sz_m = OxmlElement("w:sz"); sz_m.set(qn("w:val"), str(int((tamano or self.cfg["tamano_nota_pt"]) * 2)))
+        rpr_m.append(va); rpr_m.append(sz_m)
+        r_marca.append(rpr_m)
+        r_marca.append(OxmlElement("w:footnoteRef"))
+        pf.append(r_marca)
+
+        r_txt = OxmlElement("w:r")
+        rpr_t = OxmlElement("w:rPr")
+        sz_t = OxmlElement("w:sz"); sz_t.set(qn("w:val"), str(int((tamano or self.cfg["tamano_nota_pt"]) * 2)))
+        rf = OxmlElement("w:rFonts")
+        rf.set(qn("w:ascii"), self.cfg["fuente"]); rf.set(qn("w:hAnsi"), self.cfg["fuente"])
+        rpr_t.append(rf); rpr_t.append(sz_t)
+        r_txt.append(rpr_t)
+        t = OxmlElement("w:t")
+        t.set(qn("xml:space"), "preserve")
+        t.text = " " + texto
+        r_txt.append(t)
+        pf.append(r_txt)
+
+        cuerpo.append(pf)
+        self._footnotes.append(cuerpo)
+
+        # referencia en el texto
+        run = parrafo.add_run()
+        rpr = run._r.get_or_add_rPr()
+        va2 = OxmlElement("w:vertAlign"); va2.set(qn("w:val"), "superscript")
+        rpr.append(va2)
+        ref = OxmlElement("w:footnoteReference")
+        ref.set(qn("w:id"), str(indice))
+        run._r.append(ref)
+        return indice
+
+    def _asegurar_footnotes(self):
+        """Crea word/footnotes.xml la primera vez y devuelve el proximo id."""
+        if getattr(self, "_footnotes", None) is not None:
+            self._siguiente_nota += 1
+            return self._siguiente_nota
+
+        ns = " ".join(f'xmlns:{k}="{v}"' for k, v in nsmap.items())
+        base = (
+            f'<w:footnotes {ns}>'
+            '<w:footnote w:type="separator" w:id="-1"><w:p><w:pPr>'
+            '<w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>'
+            '<w:r><w:separator/></w:r></w:p></w:footnote>'
+            '<w:footnote w:type="continuationSeparator" w:id="0"><w:p><w:pPr>'
+            '<w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>'
+            '<w:r><w:continuationSeparator/></w:r></w:p></w:footnote>'
+            '</w:footnotes>'
+        )
+        self._footnotes = parse_xml(base)
+        self._siguiente_nota = 1
+
+        parte = Part(
+            PackURI("/word/footnotes.xml"),
+            "application/vnd.openxmlformats-officedocument"
+            ".wordprocessingml.footnotes+xml",
+            b"",
+            self.doc.part.package,
+        )
+        self._parte_footnotes = parte
+        self.doc.part.relate_to(parte, RT.FOOTNOTES)
+        return 1
 
     def seccion(self, texto):
         p = self.parrafo(
@@ -289,5 +376,10 @@ class Documento:
     def guardar(self, ruta: Path):
         ruta = Path(ruta)
         ruta.parent.mkdir(parents=True, exist_ok=True)
+        if getattr(self, "_footnotes", None) is not None:
+            from lxml import etree
+            self._parte_footnotes._blob = etree.tostring(
+                self._footnotes, xml_declaration=True,
+                encoding="UTF-8", standalone=True)
         self.doc.save(str(ruta))
         return ruta

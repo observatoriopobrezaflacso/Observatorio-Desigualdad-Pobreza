@@ -52,6 +52,17 @@ BASES_FIGURAS = {
     "homicidios": DIR_HOMICIDIOS,
 }
 
+# Nota al pie del título: advertencia sobre las correcciones de septiembre.
+NOTA_TITULO = (
+    "En septiembre de 2026 se corrigieron errores de código que (1) cambiaron "
+    "sustancialmente la serie de empleo adecuado de los 90s, solo presente en el "
+    "Gráfico 1, (2) modificaron levemente las tasas de no tenencia de RUC desde "
+    "2007 en adelante y de no afiliación a la seguridad social en el periodo "
+    "2003-2006, (3) eliminaron el 2001 del análisis por razones explicadas en la "
+    "nota del gráfico 1 y (4) extendieron el análisis de la desagregación por "
+    "etnia a 2025."
+)
+
 ARCHIVO_SALIDA = DIR_REDACCION / "Boletin_3_automatizado.docx"
 
 # Código y contenido (dentro del repositorio).
@@ -338,7 +349,7 @@ GRAFICOS = {
             "informalidad no incluye al trabajo en organizaciones sin RUC como "
             "criterio, y el componente de seguridad social no contempla la "
             "afiliación al ISSFA o al ISSPOL. Los años 2001 y 2002 quedan fuera "
-            "de la serie: 2002 por el tamaño reducido de su muestra, y 2001 porque la pregunta sobre el RUC sólo se le hizo a patronos y trabajadores por "
+            "de la serie: 2002 porque sólo incluye al sector urbano, y 2001 porque la pregunta sobre el RUC sólo se le hizo a patronos y trabajadores por "
             "cuenta propia, de modo que ese criterio no puede evaluarse en el "
             "resto de los ocupados. La serie que incorpora el RUC arranca, por "
             "lo tanto, en 2003. Solo desde 2007 en adelante el "
