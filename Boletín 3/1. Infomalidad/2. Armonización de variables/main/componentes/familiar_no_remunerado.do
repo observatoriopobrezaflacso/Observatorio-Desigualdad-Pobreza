@@ -33,10 +33,13 @@ foreach y of numlist 1990(1)2025 {
     gen no_remunerado = 0
     
     *--------------------------------------------------------------------------*
-    * PERÍODO 1990-2000: 'catetrab'; desde 1991 también 'cates'
+    * PERÍODO 1990-1999: 'catetrab'; desde 1991 también 'cates'
     * Código 5 = trabajador familiar no remunerado
+    *
+    * OJO: el corte va en 1999, no en 2000. El año 2000 ya trae la codificación
+    * de 2001 y se procesa más abajo (ver la nota de esa rama).
     *--------------------------------------------------------------------------*
-    if (inrange(`y', 1990, 2000)) {
+    if (inrange(`y', 1990, 1999)) {
         capture confirm variable catetrab
         local has_catetrab = !_rc
         capture confirm variable cates
@@ -66,11 +69,25 @@ foreach y of numlist 1990(1)2025 {
     }
     
     *--------------------------------------------------------------------------*
-    * PERÍODO 2001: 'catetrab' / 'cates' con nueva codificación
+    * PERÍODO 2000-2001: 'catetrab' / 'cates' con nueva codificación
     * Código 6 = trab. fam. no remunerado
     * Código 11 = trab. fam. agrop. no remunerado
+    *
+    * El año 2000 entra aquí, y no en la rama de los noventa, porque su
+    * 'catetrab' ya viene con esta codificación aunque conserve pegada la
+    * etiqueta de valores vieja (que sólo define los códigos 3-9). Procesarlo
+    * con la regla de los noventa ("código 5") marcaba como no remunerados a
+    * los CUENTA PROPIA, que en esta codificación son justamente el 5: el
+    * indicador saltaba al 21,8% en 2000 frente al 4,9% de 1999 y el 8,6% de
+    * 2003. Con esta rama baja al 9,7%, que es lo que corresponde.
+    *
+    * La evidencia está en componentes/verificacion_catetrab_2000.do:
+    *   - en 2000 los códigos 1, 2, 10, 11 y 12 no tienen etiqueta (14.876 obs);
+    *   - su distribución calca la de 2001 y no la de 1999;
+    *   - el 93,8% del código 5 declara ingreso laboral (o sea, es remunerado),
+    *     mientras que los que no declaran ingreso son los códigos 6 y 11.
     *--------------------------------------------------------------------------*
-    if (`y' == 2001) {
+    if (inlist(`y', 2000, 2001)) {
         capture confirm variable catetrab
         local has_catetrab = !_rc
         capture confirm variable cates
@@ -78,6 +95,7 @@ foreach y of numlist 1990(1)2025 {
 
         * En 2001, cates = 0 también indica secundaria no aplicable.
         * No debe interpretarse como una categoría ocupacional remunerada.
+        * (En 2000 no hay ceros, así que la línea no lo toca.)
         if `has_cates' replace cates = . if cates == 0
         
 		replace no_remunerado = 1 if inlist(catetrab, 6, 11)
