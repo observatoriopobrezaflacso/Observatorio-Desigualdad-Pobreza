@@ -119,7 +119,8 @@ use "$out/historico_iess_issfa_isspol.dta", clear
 * Verificación
 tab anio affiliated [iw = fexp], nofreq row missing
 tab anio affiliated [iw = fexp], nofreq row
-
+tab anio affiliated [iw = fexp] , nofreq row
+s
 /*
 
 
