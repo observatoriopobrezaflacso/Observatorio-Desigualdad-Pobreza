@@ -2,22 +2,24 @@
 * BRECHAS SALARIALES POR GRUPO SOCIAL
 * ENEMDU de diciembre, ámbito nacional. Ingreso laboral individual.
 *
-* Alimenta la hoja "brechas" del libro plots_sources_graficos.xlsx
-* (Gráficos 12 y 13 del paper).
+* Alimenta la hoja "brechas" de Iconos_resultados.xlsx (la arma
+* consolidar_excel.do), que dibuja el Gráfico 12 del paper.
 *
 * Razones calculadas, todas sobre medias ponderadas del ingreso laboral:
 *   Calificados = universitaria o más / hasta secundaria
 *   Publico     = sector público / sector privado
 *   Sexo        = hombres / mujeres
 *   Etnia       = no indígenas / indígenas
-* y los dos niveles de ingreso que grafica el Gráfico 13:
-*   Ing_no Univ, Ing_Univ, en dólares constantes de 2015.
+* y los dos niveles de ingreso, sin y con universidad, en dólares de 2015.
 *
-* Réplica del método de los Ind_<año>.do del Boletín 1.
+* Mismo método que los Ind_<año>.do del Boletín 1, pero siempre sobre la ENEMDU
+* de diciembre: los Ind_2019/2021/2023.do usan la ENEMDU anual (todos los meses
+* juntos), así que sus valores de esos años no son comparables con éstos.
 *
 * Fuente: Bases/ENEMDU/Procesadas/ingresos_pc/Nacional
 *
-* VALIDACIÓN: al final compara contra los valores que ya están en el libro.
+* COMPARACIÓN: al final compara con la hoja "brechas" de la última corrida
+* (Iconos_resultados.xlsx), para ver qué cambió.
 *==============================================================================*
 
 clear all
@@ -33,10 +35,10 @@ set more off
 set varabbrev off
 
 global nac "$gd/Bases/ENEMDU/Procesadas/ingresos_pc/Nacional"
-global out "$gd/Papers/Íconos/outputs/brechas"
+global brechas_out "$gd/Papers/Íconos/outputs/brechas"
 
 capture mkdir "$gd/Papers/Íconos/outputs"
-capture mkdir "$out"
+capture mkdir "$brechas_out"
 
 *------------------------------------------------------------------------------
 * IPC nacional de diciembre, base 2015 = 104,046.
@@ -52,7 +54,7 @@ matrix IPC = (2000, 46.246818 \ 2001, 56.624021 \ 2002, 61.921629 \ ///
               2015, 104.045817 \ 2016, 105.210913 \ 2017, 105.003963 \ ///
               2018, 105.283452 \ 2019, 105.214667 \ 2020, 104.233025 \ ///
               2021, 106.255853 \ 2022, 110.227317 \ 2023, 111.715101 \ ///
-              2024, 112.306264 \ 2025, 114.810000)
+              2024, 112.306264 \ 2025, 114.456850)
 scalar ipc_base = 104.045817          // diciembre de 2015
 
 *==============================================================================*
@@ -64,6 +66,15 @@ tempfile res
 postfile `pf' int anio double(ing_no_univ ing_univ calificados publico ///
     sexo etnia N) using "`res'", replace
 
+* 2025 se mantiene, pero está distorsionado. En 2025 el Gobierno adelantó el
+* décimo tercer sueldo del sector público al 11-14 de noviembre (Acuerdo
+* MDT-2025-164), y la ENEMDU de diciembre pregunta por el ingreso del mes
+* anterior: una parte de los empleados públicos declaró noviembre más el
+* décimo. Su salario mediano sube 49 % sin que suban los descuentos al IESS
+* (el décimo no aporta), y el 20 % declara el doble de la base implícita en
+* sus descuentos (0,1-0,4 % en 2022-2024). La brecha público/privado salta a
+* 2,47 (1,8-1,9 en los años previos) y la de calificados también se infla.
+* El paper lo advierte en una nota bajo el Gráfico 12.
 forvalues y = 2001/2025 {
 
     local f "$nac/ing_perca_`y'_nac_precios2000.dta"
@@ -75,13 +86,12 @@ forvalues y = 2001/2025 {
 
     *--------------------------------------------------------------------------
     * Nombres de variables según el formulario del año.
-    *   hasta 2006: nivinst / sexo / pe14 / catetrab, ingreso en ing_lab
-    *   desde 2007: p10a / p02 / p15 / p42,          ingreso en ingrl
+    *   hasta 2006: nivinst / sexo / pe14 / catetrab
+    *   desde 2007: p10a / p02 / p15 / p42
     * Autoidentificación indígena: pe14==3 en el formulario viejo, p15==1 en el
     * nuevo. Verificado contra los valores del libro (2001 y 2011).
     *--------------------------------------------------------------------------
     local hasp10a  : list posof "p10a"  in vl
-    local hasingrl : list posof "ingrl" in vl
 
     if (`hasp10a') {
         local educvar p10a
@@ -93,8 +103,17 @@ forvalues y = 2001/2025 {
         else if (`y' == 2002) local univc "inlist(nivinst,7,8)"
         else                  local univc "inlist(nivinst,9,10)"
     }
-    if (`hasingrl') local iv ingrl
-    else            local iv ing_lab
+
+    * Ingreso laboral: ing_lab en todos los años, que existe en todas las bases.
+    * Antes se tomaba ingrl cuando la base lo traía, pero 2006 es la única base
+    * previa a 2010 que lo trae, y con los códigos de no respuesta de ese año sin
+    * limpiar (999, 9999, 22150, 99999): la serie cambiaba de variable en 2006 y
+    * volvía a ing_lab en 2007, con un salto falso (calificados 2,54 en vez de
+    * 2,77). De 2010 en adelante las dos variables coinciden salvo en 1-19
+    * personas por año: las que sólo tienen ingreso en especie (p68b, p70b) o
+    * retiro de bienes del negocio (p64b), que ingrl deja en missing e ing_lab
+    * cuenta. Sólo se nota en 2020-2021, con muestras chicas (hasta 0,02).
+    local iv ing_lab
 
     * Las demás se resuelven por presencia: el nombre cambia de año a año y no
     * siempre acompaña al cambio de formulario.
@@ -138,9 +157,17 @@ forvalues y = 2001/2025 {
     gen byte univ  = `univc'
     if ("`etnvar'" != "") gen byte indig = (`etnvar' == `indigc') if !missing(`etnvar')
     else                  gen byte indig = .
+    * Sector privado: empleado privado (código 2). En el formulario de 2001 los
+    * asalariados agrícolas tienen código propio (7, "trab. agrop. a sueldo");
+    * desde 2003 esa categoría desaparece y quedan dentro del 2. Se suman en
+    * 2001 para que el grupo sea el mismo en toda la serie. OJO: desde 2003 el
+    * código 7 es "cuenta propia", por eso la regla va sólo para 2001.
+    if (`y' == 2001) local privc "inlist(`catvar', 2, 7)"
+    else             local privc "`catvar' == 2"
+
     gen byte publico = .
     qui replace publico = 1 if `catvar' == 1      // empleado del Estado
-    qui replace publico = 0 if `catvar' == 2      // empleado privado
+    qui replace publico = 0 if `privc'            // empleado privado
 
     * deflactor del año a dólares de 2015
     local fac = .
@@ -200,52 +227,73 @@ format calificados publico sexo etnia %5.3f
 sort anio
 list, noobs
 
-save "$out/brechas_salariales.dta", replace
-export excel using "$out/brechas_salariales.xlsx", ///
+save "$brechas_out/brechas_salariales.dta", replace
+export excel using "$brechas_out/brechas_salariales.xlsx", ///
     sheet("brechas") firstrow(varlabels) replace
 
 *==============================================================================*
-* 3. VALIDACIÓN CONTRA EL LIBRO DE GRÁFICOS
+* 3. COMPARACIÓN CON LA ÚLTIMA CORRIDA
+*
+* Compara las cuatro razones con la hoja "brechas" de Iconos_resultados.xlsx,
+* el libro que armó consolidar_excel.do en la corrida anterior del master. No
+* es una validación contra una fuente externa: sirve para ver qué años
+* cambiaron desde la última vez. Si el libro no existe, se omite.
 *==============================================================================*
 
 di as res _n "{hline 78}"
-di as res "VALIDACIÓN — hoja 'brechas' del libro"
+di as res "COMPARACIÓN — hoja 'brechas' de Iconos_resultados.xlsx (corrida anterior)"
 di as res "{hline 78}"
 
-* año, no_univ, univ, calificados, publico, sexo, etnia (valores del libro)
-matrix REF = (2001, 280.7743, 757.9556, 2.70, 1.28, 1.49, 1.63 \ ///
-              2003, 246.7743, 702.1032, 2.85, 1.59, 1.39, 1.61 \ ///
-              2005, 308.3318, 845.2156, 2.74, 1.64, 1.32, 1.78 \ ///
-              2007, 370.3691, 1057.4845, 2.86, 1.97, 1.37, 1.91 \ ///
-              2009, 392.2498, 949.4302, 2.42, 2.05, 1.28, 1.69 \ ///
-              2011, 465.2606, 997.1162, 2.14, 2.02, 1.25, 1.67 \ ///
-              2013, 518.6021, 1306.9920, 2.52, 1.79, 1.26, 1.66 \ ///
-              2023, 443.4144, 990.9869, 2.23, 1.98, 1.18, 1.60)
+local libro "$gd/Papers/Íconos/outputs/Iconos_resultados.xlsx"
+capture confirm file "`libro'"
+if _rc di as txt "No existe `libro': se omite la comparación."
+else {
+    * Stata no abre .xlsx directamente sobre Google Drive (r(603)): se copia a
+    * disco local primero, igual que en consolidar_excel.do.
+    tempfile tlib
+    local libro_loc "`tlib'.xlsx"
+    qui copy "`libro'" "`libro_loc'", replace
+    capture import excel "`libro_loc'", sheet("brechas") firstrow clear
+    if _rc di as txt "El libro no tiene la hoja 'brechas': se omite la comparación."
+    else {
+        * Columnas por posición, porque los encabezados son las etiquetas de
+        * variable: 1 año, 4 calificados, 5 público, 6 sexo, 7 etnia.
+        unab todas : _all
+        local va : word 1 of `todas'
+        local vc : word 4 of `todas'
+        local vp : word 5 of `todas'
+        local vs : word 6 of `todas'
+        local ve : word 7 of `todas'
+        keep `va' `vc' `vp' `vs' `ve'
+        rename (`va' `vc' `vp' `vs' `ve') ///
+               (anio calificados_ant publico_ant sexo_ant etnia_ant)
+        tempfile ant
+        qui save `ant'
 
-di as txt "  año   calif c/l    publico c/l    sexo c/l     etnia c/l"
-forvalues i = 1/`=rowsof(REF)' {
-    local y = REF[`i',1]
-    qui su calificados if anio==`y'
-    local c1 = cond(r(N)>0, r(mean), .)
-    qui su publico if anio==`y'
-    local c2 = cond(r(N)>0, r(mean), .)
-    qui su sexo if anio==`y'
-    local c3 = cond(r(N)>0, r(mean), .)
-    qui su etnia if anio==`y'
-    local c4 = cond(r(N)>0, r(mean), .)
-    di as txt "  " %4.0f `y' "  " %5.2f `c1' "/" %4.2f REF[`i',4] ///
-        "   " %5.2f `c2' "/" %4.2f REF[`i',5] ///
-        "   " %5.2f `c3' "/" %4.2f REF[`i',6] ///
-        "   " %5.2f `c4' "/" %4.2f REF[`i',7]
+        use "$brechas_out/brechas_salariales.dta", clear
+        qui merge 1:1 anio using `ant'
+
+        gen double dmax = 0
+        foreach v in calificados publico sexo etnia {
+            qui replace dmax = max(dmax, abs(`v' - `v'_ant)) if _merge == 3
+        }
+        format *_ant %5.3f
+
+        qui count if _merge == 3 & dmax > 0.005
+        local n_cambio = r(N)
+        qui count if _merge != 3
+        local n_solo = r(N)
+        if (`n_cambio' + `n_solo' == 0) {
+            di as txt "Sin cambios: las cuatro razones coinciden en todos los años."
+        }
+        else {
+            di as txt "Años que cambiaron (diferencia > 0,005) o que están en una sola corrida:"
+            list anio calificados calificados_ant publico publico_ant ///
+                 sexo sexo_ant etnia etnia_ant _merge ///
+                 if dmax > 0.005 | _merge != 3, noobs abbrev(14) sep(0)
+            di as txt "_merge: 1 = sólo en esta corrida, 2 = sólo en la anterior."
+        }
+    }
 }
 
-di as err _n "NOTA sobre los NIVELES de ingreso (columnas Ing_no Univ e Ing_Univ):"
-di as err "no coinciden con el libro, y la diferencia es un error del libro."
-di as err "Allí cada fila se deflactó con el factor de la fila correspondiente de"
-di as err "la tabla anual de factores, que empieza en 2000, mientras que la serie"
-di as err "de brechas es bienal y empieza en 2001. Resultado: 2001 quedó con el"
-di as err "factor de 2000, 2003 con el de 2001, 2005 con el de 2002, y así."
-di as err "Este do-file aplica a cada año su propio factor. Las cuatro razones no"
-di as err "se ven afectadas porque el factor se cancela."
-
-di as res _n "Salidas en: $out"
+di as res _n "Salidas en: $brechas_out"

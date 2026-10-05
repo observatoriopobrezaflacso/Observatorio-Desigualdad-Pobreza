@@ -44,21 +44,22 @@
 *------------------------------------------------------------------------------*
 *
 * p21 - ACTIVIDAD QUE REALIZÓ PARA AYUDAR EN SU HOGAR:
-*   1991/1995: 10 categorías (3-12) → 12 = "no realizó ninguna actividad"
-*   2005:      11 categorías (1-11) → 11 = "no realizó ninguna actividad"
-*   2015:      12 categorías (1-12) → 12 = "no realizó ninguna actividad"
+*   1991-2000: 10 categorías (3-12) → 12 = "no realizó ninguna actividad"
+*              (2000 conserva la lista de los noventa; la larga empieza en 2001)
+*   2001-2006: 11 categorías (1-11) → 11 = "no realizó ninguna actividad"
+*   2007+:     12 categorías (1-12) → 12 = "no realizó ninguna actividad"
 *   AJUSTE:
-*     - 2000-2006: realizó actividad = p21 <= 10; no realizó = p21 == 11
-*     - 1990s/2007+: realizó actividad = p21 <= 11; no realizó = p21 == 12
+*     - 2001-2006: realizó actividad = p21 <= 10; no realizó = p21 == 11
+*     - 1991-2000 y 2007+: realizó actividad = p21 <= 11; no realizó = p21 == 12
 *
 * p25 - RAZÓN POR LA QUE TRABAJÓ MENOS DE 40 HORAS:
-*   1991:      2 categorías → 2 = "no desea trabajar más horas"
-*   1993-1999: 3 categorías → 3 = "no desea trabajar más horas"
+*   1991-1992: 2 categorías → 2 = "no desea trabajar más horas"
+*   1993-2000: 3 categorías → 3 = "no desea trabajar más horas"
 *   2005:      8 categorías → NO existe "no desea"
 *   2015:      9 categorías → 9 = "no desea o no necesita"
 *   AJUSTE en d_d:
 *     - 1991-1992: d_d = 0 si p25 == 2
-*     - 1993-1999: d_d = 0 si p25 == 3
+*     - 1993-2000: d_d = 0 si p25 == 3
 *     - 2007+: d_d = 0 si p25 == 9
 *
 * p27 - DESEA TRABAJAR MÁS HORAS:
@@ -145,7 +146,7 @@
 *   - p27: sí desea = p27 == 1; no desea = p27 == 2
 *   - p32: sí buscó = p32 == 1; no buscó = p32 == 2
 *   - p34: desempleo oculto = p34 <= 7 & p34 != 4
-*   - p28: no existe (se asume disponibilidad si p35 == 1)
+*   - p28: no existe (se asume disponibilidad si desea: p27 == 1)
 *
 * PERÍODO 1990-2000:
 *   - p21: realizó actividad = p21 <= 11; no realizó = p21 == 12
@@ -165,17 +166,21 @@ capture log close
 * 0. RUTAS Y OPCIONES
 *------------------------------------------------------------------------------*
 
-* Raíz del Google Drive: Windows (H:) o macOS.
-if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
+* Raíz del Google Drive: Windows (H:) o macOS. La respeta si ya viene
+* definida por el master.
+if "$gd" == "" {
+    if "`c(os)'" == "Windows" global gd "H:/Mi unidad"
+    else global gd "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+}
 
 global bases    "$gd/Bases"
 global raw      "$bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 global salarios "$bases/Salarios"
 global ipc      "$bases/IPC"
-global out      "$gd/Papers/Íconos/outputs/empleo adecuado"
+global adec_out "$gd/Papers/Íconos/outputs/empleo adecuado"
 
 capture mkdir "$gd/Papers/Íconos/outputs"
-capture mkdir "$out"
+capture mkdir "$adec_out"
 
 global anio_ini 1991
 global anio_fin 2025
@@ -187,7 +192,7 @@ global horas_legacy 0
 *     serie respecto de la clasificación oficial en 2022-2025.
 global ajuste_condact 1
 
-global excel "$out/serie_empleo_adecuado_${anio_ini}_${anio_fin}.xlsx"
+global excel "$adec_out/serie_empleo_adecuado_${anio_ini}_${anio_fin}.xlsx"
 
 scalar edadmin = 15
 
@@ -296,7 +301,7 @@ use `sbu_usd', clear
 append using `sbu_sucres'
 merge 1:1 anio using `ipc_tmp', keep(2 3) nogen
 sort anio
-keep if inrange(anio, $anio_ini, $anio_fin)
+keep if inrange(anio, $anio_ini, $anio_fin) & anio != 2002
 
 gen str8 moneda = cond(anio < 2000, "sucres", "USD")
 
@@ -352,6 +357,10 @@ postfile `P' int anio str3 muestra str8 moneda                          ///
         using `resultados', replace
 
 foreach y of numlist $anio_ini/$anio_fin {
+
+    * 2002 queda fuera: la tasa nacional salta a 57,6 % (40,3 % en 2001 y 41,9 %
+    * en 2003), un nivel que no es comparable con el resto de la serie.
+    if `y' == 2002 continue
 
     di as txt _n "{hline 60}"
     di as txt "  `y'"
@@ -796,7 +805,7 @@ di as txt _n "Máxima diferencia |armonizada - oficial| en 2007-2025: " ///
       as res %8.5f `maxdif' as txt " pp"
 if `maxdif' > 0.01 di as error "  ATENCIÓN: la serie ya no empata con la oficial."
 
-save "$out/serie_empleo_adecuado_${anio_ini}_${anio_fin}.dta", replace
+save "$adec_out/serie_empleo_adecuado_${anio_ini}_${anio_fin}.dta", replace
 
 preserve
     keep  anio muestra moneda smin smin_real2025 adec adec_of dif_oficial n_pea pea_exp
@@ -838,7 +847,7 @@ di as txt _n "Excel guardado en: $excel"
 * 5. GRÁFICO
 *==============================================================================*
 
-use "$out/serie_empleo_adecuado_${anio_ini}_${anio_fin}.dta", clear
+use "$adec_out/serie_empleo_adecuado_${anio_ini}_${anio_fin}.dta", clear
 keep anio muestra adec
 reshape wide adec, i(anio) j(muestra) string
 
@@ -855,5 +864,5 @@ twoway (line adecurb anio, lcolor(navy)) ///
          size(vsmall)) ///
     graphregion(color(white)) plotregion(color(white))
 
-capture mkdir "$out/graficos"
-graph export "$out/graficos/empleo_adecuado_armonizado.pdf", replace
+capture mkdir "$adec_out/graficos"
+graph export "$adec_out/graficos/empleo_adecuado_armonizado.pdf", replace
