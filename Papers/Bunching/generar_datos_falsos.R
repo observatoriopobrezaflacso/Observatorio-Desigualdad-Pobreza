@@ -16,16 +16,16 @@
 invisible(Sys.setlocale("LC_ALL", "en_US.UTF-8"))
 suppressMessages({library(haven); library(dplyr); library(tibble); library(purrr); library(stringr)})
 proc <- "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/SRI/Procesamiento"
-out  <- "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Datos_falsos"
+out  <- "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Falso/Datos_falsos"
 n_obs    <- 50000
 keep_all <- FALSE   # TRUE = generar las 858 variables (archivos mucho más grandes)
 source(file.path(proc, "Codigos/Fake data/Synthetic.R"))
 source(file.path(proc, "Codigos/Fake data/descriptives_yaml.R"))
 
-# Variables usadas por arreglar_ids_falsos.do, construir_ingreso_dina_falso.do,
-# inyectar_bunching_falso.do y bunching_renta.do
+# Variables del F102 y F107 que usan limpiar_F102.do y construccion_ingreso_DINA.do
+# (Papers/Desigualdad ingreso), a las que bunching_renta.do accede por ingreso_dina
 vars_keep <- list(
-  "2" = c("CEDULA_PK", "base_imponible_3480",
+  "2" = c("CEDULA_PK", "RUC_PK", "base_imponible_3480",
           "suj_reg_rimpe_4896", "bas_imp_grav_reg_rimpe_5687",
           "ing_syo_trabajo_rde_3240", "ded_syo_trabajo_rde_3250",
           "utilidad_neta_ejercicio_2800", "perdida_ejercicio_2810",
@@ -40,7 +40,8 @@ vars_keep <- list(
           "img_herencias_leg_don_3420", "ipa_herencias_leg_don_3410",
           "ing_lot_rifas_apuestas_3400", "ipa_lot_rifas_apuestas_3390",
           "ing_pensiones_jubilares_3450", "imp_renta_causado_3490"),
-  "7" = c("CEDULA_PK_empleado", "RUC_PK_empleador", "base_imponible",
+  "7" = c("CEDULA_PK_empleado", "RUC_PK_empleado", "RUC_PK_empleador", "base_imponible",
+          "ingreso_grav_otr_empleador",
           "ingresos_liq_pagados", "sob_suel_com_remu", "partic_utilidades",
           "decimo_tercero", "decimo_cuarto", "fondo_reserva",
           "aporte_iess_empleado", "imp_renta_causado")

@@ -8,15 +8,20 @@
 *   (b) la línea de USD 20.000 del RIMPE (negocios populares/emprendedores),
 *       desde 2022.
 *
-* Punto de partida: ingreso pre-impuesto (PreTaxHHI) construido por
-*   SRI/Procesamiento/Codigos/Renta/construccion_ingreso_DINA.do
-*   (archivos ingreso_dina_YYYY.dta, valores nominales por declarante).
+* Datos: solo ingreso_dina_YYYY.dta (valores nominales, una fila por
+*   declarante), construidos por Papers/Desigualdad ingreso/
+*   construccion_ingreso_DINA.do. Traen el ingreso pre-impuesto (PreTaxHHI) y
+*   las variables del F102 y F107 del análisis (base102, base107_sum,
+*   n_emp_107, rimpe, rimpe_bruto, emp_bruto); no se leen los formularios.
 *
 * BASE IMPONIBLE (variable de prueba)
-*   - Con 2+ empleadores en el F107: siempre la del F102 (el impuesto se debe
-*     sobre la base conjunta y están obligados a declarar). Sin F102: se
-*     excluyen (se reporta cuántos).
-*   - Con un empleador: la del F102 si la hay y es > 0; si no, la del F107.
+*   - Con 2+ empleadores en el F107: la del F102 si lo presentan (el impuesto
+*     se debe sobre la base conjunta). Sin F102: la suma de las bases de
+*     todos sus F107 (base107_sum). Indicación del SRI: ingreso_grav_otr_
+*     empleador no entra en base_imponible, así que sumar no duplica.
+*     Decisión 10 del registro (reemplaza a la 9).
+*   - Con un empleador: la del F102 si la hay y es > 0; si no, la del F107
+*     (varios F107 del mismo empleador se suman).
 *   Placebo: PreTaxHHI (ingreso bruto; no tiene kinks en estos valores).
 *
 * GRUPOS
@@ -31,7 +36,25 @@
 *              F107, presenten o no F102. Los empleadores reportan a todos sus
 *              trabajadores, así que esta muestra no está seleccionada por la
 *              obligación de declarar en el umbral 1 (fracción básica).
-*   f107solo   asalariados con un solo empleador que no presentan F102
+*   f107solo   asalariados con un solo empleador que no presentan F102: la
+*              población "solo F107, un empleador", sin mezcla con la base
+*              del F102 ni con la suma de varios empleadores
+*   f107priv   f107 sin servidores públicos (publico_107 = 0), base del F107
+*   f107pub    f107 solo servidores públicos (publico_107 = 1), base del F107
+*   todospriv  todos sin servidores públicos
+*   Servidor público (publico_107, de construccion_ingreso_DINA.do): tasa de
+*   aporte personal al IESS de algún F107 cerca de 11,45% (privado: 9,45%).
+*   Sin F107 o sin tasa se cuenta como no público.
+*
+* ESCALAS SALARIALES DEL SECTOR PÚBLICO ($scale_ctrl = 1)
+*   Los grandes picos de la base imponible son servidores públicos y docentes
+*   en la escala congelada: base = 12 x w x (1 - 0,1145); en el placebo
+*   (ingreso bruto) 14 x w + SBU. En 2022, además, los valores de transición
+*   de la homologación docente. Los conteos marcan los bins que contienen el
+*   valor de cada grado (misma regla que el redondeo). Fuera de la ventana
+*   excluida, cada bin de escala tiene su propia dummy en el contrafactual;
+*   dentro, su exceso se mide con los servidores públicos del bin (n_pub
+*   menos la mediana de sus vecinos) y se descuenta en b_sin_escalas.
 *
 * ESTIMADOR (Chetty et al. 2011; Kleven y Waseem 2013)
 *   1. Declarantes en bins de ancho $delta centrados en el umbral.
@@ -85,6 +108,18 @@
 *   bunching_rimpe20000.dta         línea de 20.000 del RIMPE
 *   bunching_resultados.xlsx        hojas kinks, reforma_2022, rimpe_20000
 *   Graficos/ (archivos png)        histograma + contrafactual
+*
+* ESTRUCTURA (cada sección se puede correr sola después de las secciones 0-2,
+* que solo definen globals; la primera línea de cada sección dice qué
+* archivos de secciones anteriores necesita)
+*   0-2  Parámetros, rutas, tablas del impuesto y ventanas por año y kink
+*   3    Bases por año y conteos por bin         -> $dir_tmp/cnt_*, rim_*, casos_anual
+*   4    Conteos agrupados de los umbrales       -> $dir_tmp/cnt_pool_*, casos_agrupado
+*   5    Conteos de la línea de 20.000 (RIMPE)   -> $dir_tmp/rim_pool_*, casos_rimpe
+*   6    Estimación de cada caso (+ gráficos)    -> $dir_tmp/casos, estimaciones
+*   7    Resultados finales y exportación        -> $dir_out
+*   Un "caso" es un histograma (conteos por bin) a estimar; la lista de casos
+*   guarda todo lo necesario para estimarlo y reportarlo.
 *******************************************************************************/
 
 clear all
@@ -96,8 +131,7 @@ set seed 20260928
 * 0. PARÁMETROS
 * ============================================================================
 
-global code_dir     "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/Papers/Bunching"   // carpeta de este código
-global real_data    0        // 0 = bases falsas (Mac);  1 = bases reales (servidor SRI)
+global real_data    1        // 0 = bases falsas (Mac);  1 = bases reales (servidor SRI)
 global years        "2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024"  // los que no existan se omiten
 
 global delta        50       // ancho del bin (USD)
@@ -105,9 +139,32 @@ global maxwin       2000     // semiancho máximo de la ventana de análisis (US
 global excl_bins    4        // bins excluidos a cada lado del umbral
 global poly         5        // orden del polinomio contrafactual
 global reps         200      // repeticiones del bootstrap de residuos
+global boot_personas 1       // 1 = también bootstrap de personas (EE se_b_pers; sección 6.4b)
+
+* Robustez (sección 6.0 y 7.6): se reestiman los casos de la base imponible
+* (variable base) de los grupos $rob_grupos, anuales y agrupados todo/pre/post,
+* cambiando UN parámetro a la vez desde la especificación principal ($poly,
+* $excl_bins, $maxwin). Solo bootstrap de residuos. Salida:
+* bunching_robustez.dta y hoja "robustez".
+global robustez     1        // 1 = estimar la robustez; 0 = no
+global rob_poly     "3 5 7"            // orden del polinomio
+global rob_excl     "2 4 6"            // bins excluidos a cada lado
+global rob_maxwin   "1500 2000 2500"   // semiancho máximo de la ventana (USD)
+global rob_grupos   "todos f102 f107 f107solo f107priv f107pub todospriv"
 global minobs       100      // mínimo de observaciones en la ventana para estimar
 global make_graphs  1        // 1 = exportar gráficos
 global round_bases  "500 1000"   // dummies de números redondos ("" = sin control)
+
+* Picos: bins con muchos más declarantes que sus vecinos en un valor que no es
+* redondo (p. ej. escalas salariales de un mismo empleador). Un bin es pico si
+* n > $pico_ratio x la mediana de sus $pico_vec vecinos a cada lado. Los picos
+* fuera de la ventana excluida reciben su propia dummy en el contrafactual; los
+* de dentro se reportan (no se pueden separar del bunching). Solo se evalúan
+* bins cuyos vecinos tienen una mediana de al menos $pico_min declarantes.
+global pico_ratio   3
+global pico_vec     5
+global pico_min     20       // mediana mínima de los vecinos (con pocos casos el ruido parece pico)
+global pico_emp     0.5      // pico de "escala salarial": un empleador tiene más de esta parte del bin
 
 global reform_year  2022     // gastos personales pasan de deducción a rebaja
 global rimpe_start  2022     // primer ejercicio del RIMPE
@@ -119,37 +176,199 @@ global rimpe_K      30       // bins a cada lado (+/- 3.000)
 global rimpe_lo     5        // bins excluidos a la izquierda (USD 500)
 global rimpe_hi     10       // bins excluidos a la derecha (USD 1.000)
 
-* Si un año no tiene tabla propia en la sección 2, usar la del 2026 (1) o
-* omitir el año (0). Con 1 se aplican umbrales 2026 NOMINALES: solo para pruebas.
+* Si un año no tiene tabla propia en tablas_impuesto_renta.do, usar la del 2026
+* (1) o omitir el año (0). Con 1 se aplican umbrales 2026 NOMINALES: solo para
+* pruebas.
 global fallback2026 0
+
+* Grupos: condición de muestra (gc_) y variable de base imponible (gv_)
+global groups       "todos f102 f102gen f102rimpe f107 f107solo f107priv f107pub todospriv"
+global gc_todos     "1 == 1"
+global gc_f102      "has102 == 1"
+global gc_f102gen   "has102 == 1 & rimpe == 0"
+global gc_f102rimpe "has102 == 1 & rimpe == 1"
+global gc_f107      "n_emp == 1"
+global gc_f107solo  "has102 == 0 & n_emp == 1"
+global gc_f107priv  "n_emp == 1 & publico == 0"
+global gc_f107pub   "n_emp == 1 & publico == 1"
+global gc_todospriv "publico == 0"
+global gv_todos     "base_imp"
+global gv_f102      "base_imp"
+global gv_f102gen   "base_imp"
+global gv_f102rimpe "base_imp"
+global gv_f107      "base107"
+global gv_f107solo  "base_imp"
+global gv_f107priv  "base107"
+global gv_f107pub   "base107"
+global gv_todospriv "base_imp"
+
+* Escalas salariales del sector público: dummies en los bins que contienen un
+* valor conocido de la escala (sección 3.4) y exceso de los servidores públicos
+* en los de la ventana excluida (sección 6). 1 = con control, 0 = sin control
+* (resultados iguales a la versión sin escalas).
+global scale_ctrl   1
+
+* Escala general de remuneraciones mensuales unificadas (LOSEP, 20 grados;
+* USD nominales). Grados y valores en el mismo orden. Para otra escala en un
+* año, global escala_YYYY con los 20 valores en el mismo orden; si no, se usa
+* $escala. Fuentes (búsqueda del 02/10/2026):
+*   - 2012 en adelante: Acuerdo Ministerial MRL No. 22 (R.O. 133, 27/01/2012):
+*     S1-S2 527 553, A1-A4 585 622 675 733, SP1-SP10 817 ... 2.308 y
+*     SP11-SP14 2.472 2.641 2.967 3.542 (copia del acuerdo en slideshare
+*     "losep-art-sueldo-unificado-servidores-publicos"; tabla "Escala-20-grados"
+*     del GAD Montúfar). Los grados 1-16 siguen iguales en 2023-2024 (rol LOTAIP
+*     de la Supercias, julio 2023; tabla del MDT 2024). Verificados con los
+*     datos (picos en 2023 y 2024): SP1-SP6.
+*   - 2010-2011: Acuerdos MRL-2010-00022 y MRL-2011-000020 (tabla del SRI,
+*     biblioteca alfresco): 500 525 555 590 640 695, SP1-SP10 775 855 935 1.030
+*     1.150 1.340 1.590 1.670 1.930 2.190, SP11-SP13 2.345 2.505 2.815; sin
+*     SP14 (se pone 0, que no cae en ninguna ventana). Sin verificar con los
+*     datos.
+*   - Valores reducidos de SP11-SP14 (2.358 2.408 2.670 3.188): en el rol de
+*     la Supercias (julio 2023) SP12 y SP13 aparecen con los dos valores
+*     (2.641 y 2.408; 2.967 y 2.670), marcados "DCTO 135" (Decreto Ejecutivo
+*     135, septiembre 2017, austeridad): al parecer, los puestos nuevos con el
+*     valor reducido y los antiguos con el anterior. No se encontró el acuerdo
+*     del MDT ni la fecha exacta (fines de 2017 o 2018). Por eso se usan LAS
+*     DOS: $escala (todos los años) y los grados reducidos $escala2 desde
+*     $escala2_desde. SP15 3.848 y SP16 4.500 no aparecen en ninguna tabla
+*     oficial de 20 grados (probablemente grados del nivel jerárquico
+*     superior); no se usan. Solo afectan bases de más de USD 25.000.
+global escala_grados "S1 S2 A1 A2 A3 A4 SP1 SP2 SP3 SP4 SP5 SP6 SP7 SP8 SP9 SP10 SP11 SP12 SP13 SP14"
+global escala        "527 553 585 622 675 733 817 901 986 1086 1212 1412 1676 1760 2034 2308 2472 2641 2967 3542"
+global escala_2010   "500 525 555 590 640 695 775 855 935 1030 1150 1340 1590 1670 1930 2190 2345 2505 2815 0"
+global escala_2011   "$escala_2010"
+* Grados con el valor reducido del Decreto 135 (desde $escala2_desde; "" en
+* escala2_grados = sin ellos)
+global escala2_grados "SP11b SP12b SP13b SP14b"
+global escala2        "2358 2408 2670 3188"
+global escala2_desde  2018
+
+* Aporte personal al IESS del sector público (11,45%; privado: 9,45%).
+* Base imponible de un servidor sin otros ingresos = 12 x w x (1 - $iess_pub)
+* (décimos y fondo de reserva no se gravan). Ingreso bruto (placebo,
+* PreTaxHHI) = 12 x w + décimo tercero (w) + décimo cuarto (SBU) + fondo de
+* reserva (w) = 14 x w + SBU.
+global iess_pub     0.1145
+
+* Bandas de la tasa de aporte personal al IESS para el diagnóstico de la
+* sección 3.1b. La pública debe ser la misma de construccion_ingreso_DINA.do
+* (bloque 3.2b, iess_pub_lo/hi), que es la que define publico_107.
+global iess_pub_lo  0.110
+global iess_pub_hi  0.119
+global iess_priv_lo 0.090
+global iess_priv_hi 0.099
+
+* Militares y policías (ISSFA, ISSPOL). Ley de Fortalecimiento de los
+* Regímenes de Seguridad Social de las FF.AA. y la Policía Nacional (R.O. S.
+* 867, 21/10/2016): aporte personal 11,45% para los que ingresan desde la
+* reforma (ya caen en la banda pública) y 23% (FF.AA.) / 23,10% (Policía)
+* para los anteriores (antes de 2016, todos). SIN VERIFICAR: si el F107
+* reporta esos aportes en el campo de aporte personal al IESS (no se encontró
+* en el instructivo del SRI). Si los reporta, los antiguos no son públicos
+* con la banda de 11,45%. fuerzas_107 = 1 los suma a publico con la tasa
+* del F107 de la base más alta (tasa_iess_107) en [$fuerzas_lo, $fuerzas_hi].
+* Por defecto 0; revisar antes la hoja diag_iess (pico cerca de 23%).
+global fuerzas_107  0
+global fuerzas_lo   0.225
+global fuerzas_hi   0.236
+
+* Salario básico unificado (USD mensuales) por año
+global sbu_2010 240
+global sbu_2011 264
+global sbu_2012 292
+global sbu_2013 318
+global sbu_2014 340
+global sbu_2015 354
+global sbu_2016 366
+global sbu_2017 375
+global sbu_2018 386
+global sbu_2019 394
+global sbu_2020 400
+global sbu_2021 400
+global sbu_2022 425
+global sbu_2023 450
+global sbu_2024 460
+
+* Docentes: homologación salarial con efecto desde los últimos 3 días de
+* octubre de 2022. Salario anterior -> nuevo por categoría (A-J). En $doc_anio
+* un docente cobró ~$doc_m_viejo meses con el salario anterior y
+* ~$doc_m_nuevo con el nuevo: base = (9,9 x viejo + 2,1 x nuevo) x
+* (1 - $iess_pub); ingreso bruto = W x 14/12 + SBU con W = 9,9 x viejo +
+* 2,1 x nuevo. Son posiciones adicionales solo en $doc_anio. Desde 2023 los
+* salarios nuevos coinciden con la escala general y antes de 2022 los
+* anteriores también (ya están en $escala).
+global doc_anio     2022
+global doc_cat      "A B C D E F G H I J"
+global doc_viejo    "1676 1412 1212 1086 986 901 817 733 675 527"
+global doc_nuevo    "2034 1760 1676 1412 1212 1086 986 817 817 817"
+global doc_m_viejo  9.9
+global doc_m_nuevo  2.1
+
+* Nombres de las dummies de escala: esc_<grado> y doc_<categoría>
+global evars ""
+foreach gr in $escala_grados $escala2_grados {
+    global evars "$evars esc_`gr'"
+}
+foreach ct of global doc_cat {
+    global evars "$evars doc_`ct'"
+}
+
+* Series de la línea de 20.000: condición de muestra (sc_), variable (sv_)
+* y años en que existe (sy_: post = desde $rimpe_start, pre = antes)
+global series        "rimpe plac_post plac_pre"
+global sc_rimpe      "has102 == 1 & rimpe == 1"
+global sc_plac_post  "has102 == 1 & rimpe == 0"
+global sc_plac_pre   "has102 == 1"
+global sv_rimpe      "rimpe_bruto"
+global sv_plac_post  "emp_bruto"
+global sv_plac_pre   "emp_bruto"
+global sy_rimpe      "post"
+global sy_plac_post  "post"
+global sy_plac_pre   "pre"
+
+* Dummies de redondeo: una variable rR por base R (el bin contiene un
+* múltiplo de R USD)
+global rvars ""
+foreach R of global round_bases {
+    global rvars "$rvars r`R'"
+}
+
+* Variables de la lista de casos (una fila por histograma a estimar):
+*   tipo kink/rimpe; serie (solo RIMPE); anio (0 = agrupado); periodo;
+*   grupo; variable; kink; round_z; zstar, t0, t1, delta, nwin (se reportan);
+*   K = semiancho en bins; [-lo, hi] = ventana excluida (bins);
+*   z_graf = centro del eje x del gráfico; archivo = conteos por bin;
+*   grafico ("" = sin gráfico), titulo y xtitulo del gráfico.
+global casos_vars str6(tipo) str10(serie) int(anio) str8(periodo)            ///
+    str10(grupo) str8(variable) byte(kink round_z) double(zstar t0 t1 delta) ///
+    long(nwin) int(K lo hi) double(z_graf) str500(archivo grafico)          ///
+    str100(titulo xtitulo)
 
 * ============================================================================
 * 1. RUTAS
 * ============================================================================
 
+* dir_merged: carpeta con ingreso_dina_YYYY.dta (construccion_ingreso_DINA.do,
+* Papers/Desigualdad ingreso), que ya trae todas las variables del F102 y del
+* F107 que usa este análisis. No se leen los formularios originales.
 if $real_data == 0 {
-    global bunch_dir  "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching"   // datos y resultados: Google Drive (no van a GitHub)
-    global dir_f107   "$bunch_dir/Datos_falsos/F107"
-    global dir_f102   "$bunch_dir/Datos_falsos/F102"
-    global f107_stub  "F107_"
-    global f102_stub  "F102_"
-    * F102 con bunching inyectado (inyectar_bunching_falso.do); solo trae
-    * CEDULA_PK y base_imponible_3480. Para datos sin inyección: dir_f102
-    global dir_base102 "$bunch_dir/Datos_falsos/F102_bunching"
-    * Salida de construir_ingreso_dina_falso.do (o de construccion_ingreso_DINA.do)
-    global dir_merged "$bunch_dir/Datos_falsos/Merged_DINA"
+    global code_dir   "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/Papers/Bunching"   // carpeta de este código
+    global bunch_dir  "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Falso"   // datos y resultados falsos: Google Drive (no van a GitHub)
+    global dir_out    "$bunch_dir/Resultados"
+    * Salida de construir_ingreso_dina_falso.do
+    global dir_merged "$bunch_dir/SRI/03 BDD/SRI/IR/Merged/ingreso_dina"
 }
 else {
-    global sri_dir    "D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Ruthy Intriago"
-    global dir_f107   "$sri_dir/03 BDD/F107"
-    global dir_f102   "$sri_dir/03 BDD/F102"
-    global f107_stub  "F107_anonimizada_"
-    global f102_stub  "F102_anonimizada_"
-    global dir_base102 "$dir_f102"
-    global dir_merged "D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/Merged_DINA"
+    * Mismas rutas que construccion_ingreso_DINA.do en el servidor
+    global sri_dir    "D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso"
+    global dir_merged "$sri_dir/03 BDD/SRI/IR/Merged/ingreso_dina"
+    * Proyecto en el servidor (resultados de la corrida del 29/09/2026)
+    global proy_dir   "$sri_dir/Proyectos/Bunching"
+    global code_dir   "$proy_dir"          // carpeta con bunching_renta.do y tablas_impuesto_renta.do
+    global dir_out    "$proy_dir/Resultados"
 }
 
-global dir_out  "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Resultados"
 global dir_graf "$dir_out/Graficos"
 global dir_tmp  "`c(tmpdir)'/bunching_conteos"   // temporal, fuera de Drive
 
@@ -157,241 +376,57 @@ capture mkdir "$dir_out"
 capture mkdir "$dir_graf"
 capture mkdir "$dir_tmp"
 
-* Borrar conteos de corridas anteriores (no mezclar parámetros distintos)
-local oldfiles : dir "$dir_tmp" files "*.dta"
-foreach f of local oldfiles {
-    erase "$dir_tmp/`f'"
-}
-
 capture log close
 log using "$dir_out/bunching_renta.log", replace text
 
-* Dummies de redondeo: nombres de variables y opción para bunch_bin
-local rvars ""
-foreach R of global round_bases {
-    local rvars "`rvars' r`R'"
-}
-local ropt = cond("$round_bases" == "", "", "round($round_bases)")
-
 * ============================================================================
-* 2. TABLAS DEL IMPUESTO A LA RENTA (locals thr_YYYY y rate_YYYY)
-*    Ver tablas_impuesto_renta.do (umbrales 2010-2026, con fuentes).
+* 2. TABLAS DEL IMPUESTO A LA RENTA Y VENTANAS POR AÑO Y KINK
 * ============================================================================
 
+* --- 2.1 Tablas: globals thr_YYYY, rate_YYYY, r8, r9 (umbrales 2010-2026,
+*         con fuentes, en tablas_impuesto_renta.do) ---
 include "$code_dir/tablas_impuesto_renta.do"
 
-* ============================================================================
-* 3. PROGRAMA MATA: ESTIMADOR DE BUNCHING
-* ============================================================================
-
-capture mata: mata drop bunch_X() bunch_stats() bunch_run()
-
-mata:
-
-real matrix bunch_X(real colvector ks, real scalar poly)
-{
-    real matrix X
-    real scalar p
-    X = J(rows(ks), 1, 1)
-    for (p = 1; p <= poly; p++) X = X, ks:^p
-    return(X)
-}
-
-// (B, c0, b, B_izq, B_der) dado el observado n, el contrafactual cf (con
-// redondeo) y su parte suave cs (solo polinomio).
-real rowvector bunch_stats(real colvector n, real colvector cf, real colvector cs,
-                           real colvector exi, real colvector exl, real colvector exr)
-{
-    real scalar B, c0, Bl, Br
-    B  = sum(n[exi] - cf[exi])
-    c0 = mean(cs[exi])
-    Bl = sum(n[exl] - cf[exl])
-    Br = sum(cf[exr] - n[exr])
-    return((B, c0, B / c0, Bl, Br))
-}
-
-// Ajusta el contrafactual (polinomio + dummies de redondeo rvars) fuera de la
-// ventana [-lo, hi] (en bins) y calcula el exceso de masa con errores estándar
-// por bootstrap de residuos. Guarda cf en cfvar y en la matriz resname:
-// (B, c0, b, B_izq, B_der, se_B, se_c0, se_b, se_B_izq, se_B_der).
-void bunch_run(string scalar nvar, string scalar kvar, string scalar cfvar,
-               string scalar rvars, real scalar lo, real scalar hi,
-               real scalar poly, real scalar reps, string scalar resname)
-{
-    real colvector n, k, ks, cf, cs, res, fitfull, nstar, e, bb, b0
-    real colvector inwin, exi, ne, exl, exr
-    real matrix X, Xne, XXi, S
-    real rowvector st, se
-    real scalar K, np, r, m
-
-    n  = st_data(., nvar)
-    k  = st_data(., kvar)
-    K  = max(abs(k))
-    ks = k :/ K
-    X  = bunch_X(ks, poly)
-    np = cols(X)
-    if (rvars != "") X = X, st_data(., rvars)
-
-    inwin = (k :>= -lo) :& (k :<= hi)
-    exi   = selectindex(inwin)
-    ne    = selectindex(!inwin)
-    exl   = selectindex(inwin :& (k :<= 0))
-    exr   = selectindex(inwin :& (k :> 0))
-
-    Xne = X[ne, .]
-    XXi = invsym(cross(Xne, Xne))
-    b0  = XXi * cross(Xne, n[ne])
-    cf  = X * b0
-    cs  = X[., 1..np] * b0[1..np]
-    st  = bunch_stats(n, cf, cs, exi, exl, exr)
-
-    // Bootstrap de residuos: ajustado completo = cf fuera de la ventana y
-    // observado dentro (conserva el exceso); residuos = los de fuera.
-    res     = n[ne] - cf[ne]
-    fitfull = cf
-    fitfull[exi] = n[exi]
-    m = rows(ne)
-    S = J(reps, 5, .)
-    for (r = 1; r <= reps; r++) {
-        e     = res[1 :+ floor(runiform(rows(n), 1) :* m)]
-        nstar = fitfull + e
-        bb    = XXi * cross(Xne, nstar[ne])
-        S[r, .] = bunch_stats(nstar, X * bb, X[., 1..np] * bb[1..np], exi, exl, exr)
-    }
-    se = J(1, 5, .)
-    if (reps > 1) se = sqrt(diagonal(variance(S)))'
-
-    st_store(., cfvar, cf)
-    st_matrix(resname, (st, se))
-}
-end
-
-* ============================================================================
-* 4. PROGRAMAS STATA
-* ============================================================================
-
-* bunch_bin: cuenta declarantes por bin de distancia al umbral (k = 0 en z*).
-*            Guarda la grilla completa k = -K..K con n (0 si vacío) y, con
-*            round(), una dummy rR por base R: el bin contiene un múltiplo de R.
-capture program drop bunch_bin
-program define bunch_bin, rclass
-    syntax varname [if], ZSTAR(real) DELTA(real) K(integer) OUTFILE(string) ///
-        [ROUND(numlist)]
-    marksample touse, novarlist
-    preserve
-    quietly {
-        keep if `touse' & `varlist' > 0 & !missing(`varlist')
-        gen long k = round((`varlist' - `zstar') / `delta')
-        keep if abs(k) <= `k'
-        gen long n = 1
-        local nwin = _N
-        if `nwin' > 0 {
-            collapse (sum) n, by(k)
-        }
-        else {
-            clear
-            set obs 1
-            gen long k = .
-            gen long n = 0
-        }
-        tempfile cnt
-        save `cnt'
-        clear
-        set obs `=2*`k'+1'
-        gen long k = _n - `k' - 1
-        merge 1:1 k using `cnt', nogen
-        drop if missing(k)
-        replace n = 0 if missing(n)
-        gen double x = `zstar' + k * `delta'
-        foreach R of local round {
-            gen byte r`R' = ceil((x - `delta' / 2) / `R') * `R' < x + `delta' / 2
-        }
-        drop x
-        save "`outfile'", replace
-    }
-    restore
-    return scalar nwin = `nwin'
-end
-
-* bunch_fit: lee conteos por bin, estima bunching, (opcional) grafica.
-*            Resultados en r() y matriz R_bunch.
-capture program drop bunch_fit
-program define bunch_fit, rclass
-    syntax using/, K(integer) LO(integer) HI(integer) POLY(integer) REPS(integer) ///
-        [RVARS(string) ZSTAR(real 0) DELTA(real 1) GRAPHFILE(string) ///
-         TITLE(string) XTITLE(string)]
-    preserve
-    quietly {
-        use "`using'", clear
-        keep if abs(k) <= `k'
-        gen double cf = .
-        mata: bunch_run("n", "k", "cf", "`rvars'", `lo', `hi', `poly', `reps', "R_bunch")
-    }
-    return scalar B     = R_bunch[1,1]
-    return scalar c0    = R_bunch[1,2]
-    return scalar b     = R_bunch[1,3]
-    return scalar Bl    = R_bunch[1,4]
-    return scalar Br    = R_bunch[1,5]
-    return scalar se_B  = R_bunch[1,6]
-    return scalar se_b  = R_bunch[1,8]
-    return scalar se_Bl = R_bunch[1,9]
-    return scalar se_Br = R_bunch[1,10]
-
-    if "`graphfile'" != "" {
-        local bs  = string(R_bunch[1,3], "%5.2f")
-        local ses = string(R_bunch[1,8], "%5.2f")
-        gen double x = `zstar' + k * `delta'
-        local xl = `zstar' - (`lo' + 0.5) * `delta'
-        local xr = `zstar' + (`hi' + 0.5) * `delta'
-        quietly twoway                                                        ///
-            (bar n x, barwidth(`delta') fcolor(gs13) lcolor(gs11))            ///
-            (line cf x, lcolor(cranberry) lwidth(medthick)),                  ///
-            xline(`xl' `xr', lpattern(dash) lcolor(gs7))                      ///
-            xline(`zstar', lcolor(navy))                                      ///
-            title(`"`title'"', size(medsmall))                                ///
-            xtitle(`"`xtitle'"') ytitle("Declarantes por bin")                ///
-            legend(order(1 "Observado" 2 "Contrafactual (con redondeo)") rows(1) position(6)) ///
-            note("Exceso de masa b = `bs' (EE = `ses'). Lineas discontinuas: ventana excluida.") ///
-            graphregion(color(white))
-        quietly graph export "`graphfile'", replace width(1600)
-    }
-end
-
-* ============================================================================
-* 5. PRE-PASO: UMBRALES, TASAS Y VENTANAS POR AÑO Y KINK
-*
+* --- 2.2 Umbral, tasas y ventana de cada año y kink ---
+*   Globals por año:        nk_YYYY (número de umbrales), skip_YYYY (1 = sin tabla)
+*   Globals por año y kink: zs_ (umbral), t0_ y t1_ (tasas debajo y encima),
+*                           rz_ (1 = múltiplo de 5.000), K_ (semiancho en bins)
 *   La ventana de cada kink se limita al 45% de la distancia al umbral vecino
 *   más cercano para no mezclar kinks. Kpool_j = ventana común de los
 *   agrupados (la más angosta entre años).
-* ============================================================================
 
 forvalues j = 1/9 {
-    local Kpool_`j' = 9999
+    global Kpool_`j' = 9999
+    foreach m of global rob_maxwin {
+        global Km_0_`j'_`m' = 9999
+    }
 }
 
 foreach yr of global years {
 
+    global skip_`yr' 0
     local ty `yr'
-    if "`thr_`yr''" == "" {
+    if "${thr_`yr'}" == "" {
         if $fallback2026 == 1 {
             local ty 2026
             di as error "  ADVERTENCIA: sin tabla propia para `yr'; se usan umbrales 2026 nominales."
         }
         else {
             di as error "  Año `yr' omitido: no hay tabla en la sección 2 (fallback2026 = 0)."
-            local skip_`yr' 1
+            global skip_`yr' 1
             continue
         }
     }
 
-    local nk : word count `thr_`ty''
-    local nk_`yr' = `nk'
+    local nk : word count ${thr_`ty'}
+    global nk_`yr' = `nk'
 
     forvalues j = 1/`nk' {
-        local z`j' : word `j' of `thr_`ty''
+        local z`j' : word `j' of ${thr_`ty'}
     }
 
     forvalues j = 1/`nk' {
+        * Distancia al umbral vecino más cercano (el primero se compara con 0)
         local gap = `z`j''
         if `j' > 1 {
             local jm = `j' - 1
@@ -402,172 +437,203 @@ foreach yr of global years {
             local gap = min(`gap', `z`jp'' - `z`j'')
         }
         local jn = `j' + 1
-        local K_`yr'_`j'  = floor(min($maxwin, 0.45 * `gap') / $delta)
-        local zs_`yr'_`j' = `z`j''
-        local rz_`yr'_`j' = mod(`z`j'', 5000) == 0
-        local t0_`yr'_`j' : word `j'  of `rate_`ty''
-        local t1_`yr'_`j' : word `jn' of `rate_`ty''
-        local Kpool_`j' = min(`Kpool_`j'', `K_`yr'_`j'')
-    }
-}
+        global K_`yr'_`j'  = floor(min($maxwin, 0.45 * `gap') / $delta)
+        global zs_`yr'_`j' = `z`j''
+        global rz_`yr'_`j' = mod(`z`j'', 5000) == 0
+        global t0_`yr'_`j' : word `j'  of ${rate_`ty'}
+        global t1_`yr'_`j' : word `jn' of ${rate_`ty'}
+        global Kpool_`j' = min(${Kpool_`j'}, ${K_`yr'_`j'})
 
-* ============================================================================
-* 6. LOOP PRINCIPAL: AÑO x GRUPO x VARIABLE x KINK
-* ============================================================================
-
-local groups "todos f102 f102gen f102rimpe f107 f107solo"
-local gc_todos     "1 == 1"
-local gc_f102      "has102 == 1"
-local gc_f102gen   "has102 == 1 & rimpe == 0"
-local gc_f102rimpe "has102 == 1 & rimpe == 1"
-local gc_f107      "n_emp == 1"
-local gc_f107solo  "has102 == 0 & n_emp == 1"
-local gv_todos     "base_imp"
-local gv_f102      "base_imp"
-local gv_f102gen   "base_imp"
-local gv_f102rimpe "base_imp"
-local gv_f107      "base107"
-local gv_f107solo  "base_imp"
-
-* Acumuladores para el umbral promedio (ponderado) de cada agrupado
-foreach g of local groups {
-    foreach rvlab in base placebo {
-        forvalues j = 1/9 {
-            foreach p in todo pre post {
-                local zw_`g'_`rvlab'_`j'_`p' = 0
-                local nw_`g'_`rvlab'_`j'_`p' = 0
+        * Robustez de la ventana: Km_YYYY_j_m = semiancho con maxwin = m;
+        * Km_0_j_m = el de los agrupados (el más angosto entre años).
+        * Kc_YYYY_j = semiancho de los conteos de la base (sección 3.4): el
+        * más ancho de los dos, para estimar todas las ventanas con los
+        * mismos archivos sin recontar (la sección 6 corta en K)
+        global Kc_`yr'_`j' = ${K_`yr'_`j'}
+        if $robustez == 1 {
+            foreach m of global rob_maxwin {
+                global Km_`yr'_`j'_`m' = floor(min(`m', 0.45 * `gap') / $delta)
+                global Kc_`yr'_`j' = max(${Kc_`yr'_`j'}, ${Km_`yr'_`j'_`m'})
+                global Km_0_`j'_`m' = min(${Km_0_`j'_`m'}, ${Km_`yr'_`j'_`m'})
             }
         }
     }
 }
 
-tempname bh
-tempfile res_file
-postfile `bh'                                                            ///
-    int(anio) str8(periodo) str10(grupo) str8(variable) byte(kink round_z) ///
-    double(zstar t0 t1 delta) long(nwin)                                 ///
-    double(B c0 b se_b zstat pval_pos pval_two B_izq B_der dz elast se_elast) ///
-    using "`res_file'", replace
+* Kc_0_j = semiancho de los conteos agrupados de la base (sección 4)
+forvalues j = 1/9 {
+    global Kc_0_`j' = ${Kpool_`j'}
+    if $robustez == 1 {
+        foreach m of global rob_maxwin {
+            if ${Km_0_`j'_`m'} < 9999 global Kc_0_`j' = max(${Kc_0_`j'}, ${Km_0_`j'_`m'})
+        }
+    }
+}
 
-local years_done ""
+* --- 2.3 Placebo "base_ant": umbrales del año anterior ---
+*   Se prueba la base imponible del año en los umbrales de la tabla del año
+*   anterior. Si el bunching responde a la tabla vigente, no debería haber
+*   exceso ahí. Solo cuando el umbral anterior está lejos de todos los umbrales
+*   vigentes: ventana = 45% de la distancia al umbral vigente más cercano, y al
+*   menos $excl_bins + 15 bins (en la práctica, 2022 y 2023, cuando la tabla
+*   cambió de estructura).
+*   Globals: pnk_YYYY (umbrales del año anterior), pz_ (umbral), pK_ (ventana;
+*   . = no se usa), prz_ (múltiplo de 5.000), pt0_/pt1_ (tasas), pKpool_j.
+
+forvalues j = 1/9 {
+    global pKpool_`j' = 9999
+}
 
 foreach yr of global years {
 
-    if "`skip_`yr''" == "1" continue
+    global pnk_`yr' = 0
+    if ${skip_`yr'} continue
+    local ya = `yr' - 1
+    if "${thr_`ya'}" == "" continue
+    local ty = cond("${thr_`yr'}" == "", 2026, `yr')
+
+    local nka : word count ${thr_`ya'}
+    global pnk_`yr' = `nka'
+
+    forvalues j = 1/`nka' {
+        local zp : word `j' of ${thr_`ya'}
+        local dmin = .
+        foreach zc of global thr_`ty' {
+            local dmin = min(`dmin', abs(`zp' - `zc'))
+        }
+        local Kp = floor(min($maxwin, 0.45 * `dmin') / $delta)
+        local jn = `j' + 1
+        global pz_`yr'_`j'  = `zp'
+        global pK_`yr'_`j'  = cond(`Kp' >= $excl_bins + 15, `Kp', .)
+        global prz_`yr'_`j' = mod(`zp', 5000) == 0
+        global pt0_`yr'_`j' : word `j'  of ${rate_`ya'}
+        global pt1_`yr'_`j' : word `jn' of ${rate_`ya'}
+        if ${pK_`yr'_`j'} < . global pKpool_`j' = min(${pKpool_`j'}, ${pK_`yr'_`j'})
+    }
+}
+
+* ============================================================================
+* 3. BASES POR AÑO Y CONTEOS POR BIN
+*
+*   Para cada año: arma la base imponible, cuenta declarantes por bin
+*   alrededor de cada umbral (grupo x variable x kink) y alrededor de la línea
+*   de 20.000 del RIMPE. Cada conteo es la grilla completa k = -K..K de bins
+*   de ancho delta centrados en el umbral (k = 0; bins vacíos con n = 0), más
+*   las dummies de redondeo. Los conteos de los umbrales se registran como
+*   casos en $dir_tmp/casos_anual.dta.
+*   Requiere: secciones 0-2 y $dir_merged/ingreso_dina_YYYY.dta.
+* ============================================================================
+
+* Borrar conteos de corridas anteriores (no mezclar parámetros distintos)
+local oldfiles : dir "$dir_tmp" files "*.dta"
+foreach f of local oldfiles {
+    erase "$dir_tmp/`f'"
+}
+
+capture postclose h_casos
+postfile h_casos $casos_vars using "$dir_tmp/casos_anual.dta", replace
+capture postclose h_iess
+postfile h_iess int(anio) str24(tramo) double(desde hasta) long(n) double(share) ///
+    using "$dir_tmp/diag_iess.dta", replace
+
+foreach yr of global years {
+
+    if ${skip_`yr'} continue
 
     capture confirm file "$dir_merged/ingreso_dina_`yr'.dta"
     if _rc {
         di as error "  `yr': no existe $dir_merged/ingreso_dina_`yr'.dta (correr construccion_ingreso_DINA.do); se omite."
         continue
     }
-    capture confirm file "$dir_base102/${f102_stub}`yr'.dta"
-    local rc1 = _rc
-    capture confirm file "$dir_f102/${f102_stub}`yr'.dta"
-    local rc2 = _rc
-    capture confirm file "$dir_f107/${f107_stub}`yr'.dta"
-    if `rc1' | `rc2' | _rc {
-        di as error "  `yr': faltan F102/F107 crudos para la base imponible; se omite."
-        continue
-    }
 
     di as result _n "===== Bunching `yr' ====="
 
     * ------------------------------------------------------------------
-    * 6.1  F102: base general, RIMPE e ingresos empresariales brutos
+    * 3.1  Variables del análisis (todas vienen de ingreso_dina)
+    *   base102        base imponible del F102
+    *   base107_sum    suma de las bases imponibles de todos los F107
+    *   n_emp_107      número de empleadores distintos en el F107
+    *   rimpe          sujeto a RIMPE; rimpe_bruto, emp_bruto: ingresos brutos
+    *   _merge         1 = solo F107, 2 = solo F102, 3 = ambos
+    *   RUC_PK_empleador1  empleador (con un solo empleador)
+    *   publico_107    servidor público (aporte personal IESS ~11,45%)
     * ------------------------------------------------------------------
 
-    use CEDULA_PK base_imponible_3480 using "$dir_base102/${f102_stub}`yr'.dta", clear
-    capture destring base_imponible_3480, replace force
-    drop if CEDULA_PK == ""
-    collapse (max) base102 = base_imponible_3480, by(CEDULA_PK)
-    tempfile b102
-    save `b102'
+    use CEDULA_PK PreTaxHHI _merge base102 base107_sum n_emp_107 ///
+        rimpe rimpe_bruto emp_bruto RUC_PK_empleador1 publico_107  ///
+        tasa_iess_107 using "$dir_merged/ingreso_dina_`yr'.dta", clear
 
-    * Las variables RIMPE solo existen en algunos años: tomar las disponibles
-    quietly describe using "$dir_f102/${f102_stub}`yr'.dta", varlist
-    local avail `r(varlist)'
-    local want suj_reg_rimpe_4896 bas_imp_grav_reg_rimpe_5687 ingresos_aem_rie_1280
-    local get : list want & avail
-    use CEDULA_PK `get' using "$dir_f102/${f102_stub}`yr'.dta", clear
-    drop if CEDULA_PK == ""
+    * Empleador (un solo empleador): para medir si un pico viene de un mismo
+    * empleador (escala salarial)
+    gen str40 emp_id = RUC_PK_empleador1 if n_emp_107 == 1
+    replace emp_id = "" if missing(emp_id)
 
-    gen byte rimpe = 0
-    capture confirm variable suj_reg_rimpe_4896
-    if !_rc {
-        capture confirm string variable suj_reg_rimpe_4896
-        if !_rc replace rimpe = upper(strtrim(suj_reg_rimpe_4896)) == "SI"
-        else    replace rimpe = suj_reg_rimpe_4896 == 1
-    }
-    if `yr' < $rimpe_start replace rimpe = 0
-    foreach v in bas_imp_grav_reg_rimpe_5687 ingresos_aem_rie_1280 {
-        capture confirm variable `v'
-        if _rc gen double `v' = .
-        capture destring `v', replace force
-    }
-    collapse (max) rimpe rimpe_bruto = bas_imp_grav_reg_rimpe_5687 ///
-        emp_bruto = ingresos_aem_rie_1280, by(CEDULA_PK)
-    merge 1:1 CEDULA_PK using `b102', nogen
-    gen byte has102 = 1
-    save `b102', replace
+    gen byte has102 = inlist(_merge, 2, 3)
+    gen int  n_emp  = n_emp_107
+    replace n_emp = 0 if missing(n_emp)
+    replace rimpe = 0 if missing(rimpe) | `yr' < $rimpe_start
+    gen double base107 = base107_sum if n_emp == 1
+    * Servidor público: sin F107 o sin tasa de aporte se cuenta como no público
+    gen byte publico = publico_107 == 1
+    if $fuerzas_107 == 1 replace publico = 1 if inrange(tasa_iess_107, $fuerzas_lo, $fuerzas_hi)
+
+    quietly count if publico == 1
+    di as text "  Servidores públicos (F107): " r(N)
 
     * ------------------------------------------------------------------
-    * 6.2  F107: número de empleadores y base con un solo empleador
+    * 3.1b Diagnóstico de la tasa de aporte personal al IESS (tasa_iess_107,
+    *      del F107 con la base más alta): conteos en bins de 0,005 entre 0
+    *      y 0,25, y participación en la banda pública [$iess_pub_lo,
+    *      $iess_pub_hi] (publico_107, construccion_ingreso_DINA.do), en la
+    *      privada [$iess_priv_lo, $iess_priv_hi] (9,45%) y en la de
+    *      ISSFA/ISSPOL (sin verificar). Sirve para revisar la banda en el
+    *      servidor: si la pública no tiene un pico claro en 11,45%, o hay
+    *      masa cerca de los bordes, hay que moverla. share = sobre los que
+    *      tienen tasa. -> $dir_tmp/diag_iess.dta (hoja diag_iess)
+    * ------------------------------------------------------------------
+    quietly {
+        count if !missing(tasa_iess_107)
+        local ntasa = r(N)
+        gen int _bt = floor(tasa_iess_107 / 0.005 + 1e-9) if !missing(tasa_iess_107)
+        forvalues bb = 0/49 {
+            count if _bt == `bb'
+            post h_iess (`yr') ("bin") (`bb' * 0.005) ((`bb' + 1) * 0.005) (r(N)) (r(N) / `ntasa')
+        }
+        count if tasa_iess_107 >= 0.25 & !missing(tasa_iess_107)
+        post h_iess (`yr') ("mayor_0.25") (0.25) (.) (r(N)) (r(N) / `ntasa')
+        count if tasa_iess_107 < 0
+        post h_iess (`yr') ("negativa") (.) (0) (r(N)) (r(N) / `ntasa')
+        count if inrange(tasa_iess_107, $iess_pub_lo, $iess_pub_hi)
+        post h_iess (`yr') ("banda_publica") ($iess_pub_lo) ($iess_pub_hi) (r(N)) (r(N) / `ntasa')
+        count if inrange(tasa_iess_107, $iess_priv_lo, $iess_priv_hi)
+        post h_iess (`yr') ("banda_privada_9.45") ($iess_priv_lo) ($iess_priv_hi) (r(N)) (r(N) / `ntasa')
+        count if inrange(tasa_iess_107, $fuerzas_lo, $fuerzas_hi)
+        post h_iess (`yr') ("banda_issfa_isspol") ($fuerzas_lo) ($fuerzas_hi) (r(N)) (r(N) / `ntasa')
+        count if publico_107 == 1
+        post h_iess (`yr') ("publico_107") (.) (.) (r(N)) (r(N) / `ntasa')
+        post h_iess (`yr') ("con_tasa") (.) (.) (`ntasa') (1)
+        count if missing(tasa_iess_107)
+        post h_iess (`yr') ("sin_tasa") (.) (.) (r(N)) (.)
+        drop _bt
+    }
+
+    * ------------------------------------------------------------------
+    * 3.2  Base imponible: un empleador -> F102 si > 0, si no F107.
+    *      2+ empleadores -> F102; sin F102, la suma de sus F107
+    *      (base107_sum).
     * ------------------------------------------------------------------
 
-    quietly describe using "$dir_f107/${f107_stub}`yr'.dta", varlist
-    local avail `r(varlist)'
-    local has_ruc : list posof "RUC_PK_empleador" in avail
-    if `has_ruc' {
-        use CEDULA_PK_empleado RUC_PK_empleador base_imponible ///
-            using "$dir_f107/${f107_stub}`yr'.dta", clear
-        capture tostring RUC_PK_empleador, replace
-    }
-    else {
-        di as error "  `yr': F107 sin RUC_PK_empleador; cada registro cuenta como un empleador."
-        use CEDULA_PK_empleado base_imponible using "$dir_f107/${f107_stub}`yr'.dta", clear
-        gen str20 RUC_PK_empleador = ""
-    }
-    rename CEDULA_PK_empleado CEDULA_PK
-    capture destring base_imponible, replace force
-    drop if CEDULA_PK == ""
-    replace RUC_PK_empleador = "sin_ruc_" + string(_n) if inlist(RUC_PK_empleador, "", ".")
-
-    * Un registro por persona y empleador (sustitutivas: el máximo)
-    collapse (max) base_imponible, by(CEDULA_PK RUC_PK_empleador)
-    bysort CEDULA_PK: gen int n_emp = _N
-    collapse (max) base107 = base_imponible n_emp, by(CEDULA_PK)
-    replace base107 = . if n_emp > 1
-
-    merge 1:1 CEDULA_PK using `b102', nogen
-    replace has102 = 0 if missing(has102)
-    replace rimpe  = 0 if missing(rimpe)
-    replace n_emp  = 0 if missing(n_emp)
-
-    * Base imponible: 2+ empleadores -> F102; un empleador -> F102 si > 0,
-    * si no F107. 2+ empleadores sin F102 quedan en missing (excluidos).
     gen double base_imp = .
     replace base_imp = base102 if has102 == 1 & ///
         (n_emp > 1 | (base102 > 0 & !missing(base102)))
     replace base_imp = base107 if missing(base_imp) & n_emp == 1
+    gen byte base_multi = missing(base_imp) & n_emp > 1 & !missing(base107_sum)
+    replace base_imp = base107_sum if base_multi == 1
 
     quietly count if n_emp > 1
     local nmult = r(N)
-    quietly count if n_emp > 1 & has102 == 0
-    di as text "  Con 2+ empleadores: `nmult'  (sin F102, excluidos: " r(N) ")"
-
-    keep CEDULA_PK base_imp base107 n_emp has102 rimpe rimpe_bruto emp_bruto
-    tempfile tb
-    save `tb'
-
-    * ------------------------------------------------------------------
-    * 6.3  Ingreso pre-impuesto (DINA) + bases
-    * ------------------------------------------------------------------
-
-    use CEDULA_PK PreTaxHHI using "$dir_merged/ingreso_dina_`yr'.dta", clear
-    merge m:1 CEDULA_PK using `tb', keep(1 3) nogen
-    foreach v in has102 rimpe n_emp {
-        replace `v' = 0 if missing(`v')
-    }
+    quietly count if base_multi == 1
+    di as text "  Con 2+ empleadores: `nmult'  (sin F102, suma de sus F107: " r(N) ")"
 
     quietly count if base_imp > 0 & !missing(base_imp)
     di as text "  Declarantes con base imponible > 0: " r(N)
@@ -576,268 +642,758 @@ foreach yr of global years {
         di as text "  Sujetos RIMPE: " r(N)
     }
 
-    local years_done "`years_done' `yr'"
-    local nkyr = `nk_`yr''
-    local per  = cond(`yr' < $reform_year, "pre", "post")
-
     * ------------------------------------------------------------------
-    * 6.4  Estimación por grupo, variable y kink
+    * 3.4  Conteos por bin alrededor de cada umbral: grupo x variable x kink
+    *      (variable: base = base imponible del grupo en los umbrales
+    *       vigentes; placebo = PreTaxHHI; base_ant = base imponible en los
+    *       umbrales del año anterior, sección 2.3)
     * ------------------------------------------------------------------
 
-    foreach g of local groups {
+    foreach g of global groups {
 
         if "`g'" == "f102rimpe" & `yr' < $rimpe_start continue
 
-        foreach rvlab in base placebo {
+        foreach rvlab in base placebo base_ant {
 
-            local rv = cond("`rvlab'" == "base", "`gv_`g''", "PreTaxHHI")
+            local rv = cond("`rvlab'" == "placebo", "PreTaxHHI", "${gv_`g'}")
+            local nkv = cond("`rvlab'" == "base_ant", ${pnk_`yr'}, ${nk_`yr'})
 
-            forvalues j = 1/`nkyr' {
+            forvalues j = 1/`nkv' {
 
-                local Kj = `K_`yr'_`j''
-                local zs = `zs_`yr'_`j''
-                local t0 = `t0_`yr'_`j''
-                local t1 = `t1_`yr'_`j''
-                local rz = `rz_`yr'_`j''
-
-                if `Kj' < $excl_bins + 15 {
-                    di as text "  kink `j' `yr': ventana muy angosta; se omite."
-                    continue
+                if "`rvlab'" == "base_ant" {
+                    local K  = ${pK_`yr'_`j'}
+                    local zs = ${pz_`yr'_`j'}
+                    local rz = ${prz_`yr'_`j'}
+                    local t0 ${pt0_`yr'_`j'}
+                    local t1 ${pt1_`yr'_`j'}
+                    if `K' == . continue
+                }
+                else {
+                    local K  = ${K_`yr'_`j'}
+                    local zs = ${zs_`yr'_`j'}
+                    local rz = ${rz_`yr'_`j'}
+                    local t0 ${t0_`yr'_`j'}
+                    local t1 ${t1_`yr'_`j'}
+                    if `K' < $excl_bins + 15 {
+                        if "`rvlab'" == "base" di as text "  kink `j' `yr': ventana muy angosta; se omite."
+                        continue
+                    }
                 }
 
                 local cnt "$dir_tmp/cnt_`yr'_`g'_`rvlab'_`j'.dta"
 
-                bunch_bin `rv' if `gc_`g'', zstar(`zs') delta($delta) ///
-                    k(`Kj') outfile("`cnt'") `ropt'
-                local nwin = r(nwin)
+                * Semiancho de los conteos: K, salvo la base con robustez de
+                * la ventana (Kc >= K, sección 2.2); nwin se cuenta en K
+                local Kc = `K'
+                if "`rvlab'" == "base" local Kc = ${Kc_`yr'_`j'}
 
-                if !`rz' {
-                    foreach p in todo `per' {
-                        local zw_`g'_`rvlab'_`j'_`p' = `zw_`g'_`rvlab'_`j'_`p'' + `zs' * `nwin'
-                        local nw_`g'_`rvlab'_`j'_`p' = `nw_`g'_`rvlab'_`j'_`p'' + `nwin'
+                preserve
+                quietly {
+                    keep if ${gc_`g'} & `rv' > 0 & !missing(`rv')
+                    gen long k = round((`rv' - `zs') / $delta)
+                    count if abs(k) <= `K'
+                    local nwin = r(N)
+                    keep if abs(k) <= `Kc'
+                    local nobs = _N
+
+                    * Un bin vacío (n = 0) por cada k de la grilla, y sumar.
+                    * top_emp = participación del empleador más frecuente del
+                    * bin (con un solo empleador); n_pub = servidores públicos
+                    keep k emp_id publico
+                    gen long n = 1
+                    set obs `=`nobs' + 2 * `Kc' + 1'
+                    replace k = _n - `nobs' - `Kc' - 1 if _n > `nobs'
+                    replace n = 0 if _n > `nobs'
+                    replace publico = 0 if _n > `nobs'
+                    bysort k emp_id: gen long ne = cond(emp_id != "", _N, 0)
+                    collapse (sum) n n_pub = publico (max) top_emp = ne, by(k)
+                    replace top_emp = cond(n > 0, top_emp / n, .)
+
+                    * Dummies de redondeo: el bin contiene un múltiplo de R
+                    gen double x = `zs' + k * $delta
+                    foreach R of global round_bases {
+                        gen byte r`R' = ceil((x - $delta / 2) / `R') * `R' < x + $delta / 2
                     }
-                }
 
-                if `nwin' < $minobs {
-                    post `bh' (`yr') ("anual") ("`g'") ("`rvlab'") (`j') (`rz') ///
-                        (`zs') (`t0') (`t1') ($delta) (`nwin')                  ///
-                        (.) (.) (.) (.) (.) (.) (.) (.) (.) (.) (.) (.)
-                    continue
+                    * Dummies de escala: el bin [x - delta/2, x + delta/2)
+                    * contiene el valor anual del grado (misma regla que el
+                    * redondeo). base y base_ant: 12 x w x (1 - $iess_pub);
+                    * placebo: 14 x w + SBU. Docentes: valores de transición
+                    * solo en $doc_anio (en los demás años doc_* = 0).
+                    local esc "$escala"
+                    if "${escala_`yr'}" != "" local esc "${escala_`yr'}"
+                    local ig 0
+                    foreach gr of global escala_grados {
+                        local ++ig
+                        local w : word `ig' of `esc'
+                        local v = 12 * `w' * (1 - $iess_pub)
+                        if "`rvlab'" == "placebo" local v = 14 * `w' + ${sbu_`yr'}
+                        gen byte esc_`gr' = `v' >= x - $delta / 2 & `v' < x + $delta / 2
+                    }
+                    * Grados reducidos (Decreto 135), solo desde $escala2_desde
+                    local ig 0
+                    foreach gr of global escala2_grados {
+                        local ++ig
+                        local w : word `ig' of $escala2
+                        local v = 12 * `w' * (1 - $iess_pub)
+                        if "`rvlab'" == "placebo" local v = 14 * `w' + ${sbu_`yr'}
+                        gen byte esc_`gr' = `v' >= x - $delta / 2 & `v' < x + $delta / 2 & `yr' >= $escala2_desde
+                    }
+                    local ig 0
+                    foreach ct of global doc_cat {
+                        local ++ig
+                        local wv : word `ig' of $doc_viejo
+                        local wn : word `ig' of $doc_nuevo
+                        local W = $doc_m_viejo * `wv' + $doc_m_nuevo * `wn'
+                        local v = `W' * (1 - $iess_pub)
+                        if "`rvlab'" == "placebo" local v = `W' * 14 / 12 + ${sbu_`yr'}
+                        gen byte doc_`ct' = `v' >= x - $delta / 2 & `v' < x + $delta / 2 & `yr' == $doc_anio
+                    }
+                    drop x
+                    save "`cnt'", replace
                 }
+                restore
 
+                * Registrar el caso (gráficos solo para todos: base y base_ant)
                 local gf ""
+                local tit "`yr' - umbral `j': USD `zs' (tasa `t0' a `t1')"
+                if "`rvlab'" == "base_ant" {
+                    local tit "`yr' - placebo: umbral `j' de `=`yr'-1' (USD `zs')"
+                }
                 if $make_graphs == 1 & "`g'" == "todos" & "`rvlab'" == "base" {
                     local gf "$dir_graf/bunch_`yr'_kink`j'.png"
                 }
-
-                bunch_fit using "`cnt'", k(`Kj') lo($excl_bins) hi($excl_bins) ///
-                    poly($poly) reps($reps) rvars(`rvars') zstar(`zs')         ///
-                    delta($delta) graphfile("`gf'")                            ///
-                    title("`yr' - umbral `j': USD `zs' (tasa `t0' a `t1')")    ///
-                    xtitle("Base imponible (USD nominales)")
-
-                local b   = r(b)
-                local seb = r(se_b)
-                local zst = `b' / `seb'
-                local den = `zs' * ln((1 - `t0') / (1 - `t1'))
-
-                post `bh' (`yr') ("anual") ("`g'") ("`rvlab'") (`j') (`rz')      ///
-                    (`zs') (`t0') (`t1') ($delta) (`nwin')                      ///
-                    (r(B)) (r(c0)) (`b') (`seb') (`zst')                        ///
-                    (1 - normal(`zst')) (2 * (1 - normal(abs(`zst'))))          ///
-                    (r(Bl)) (r(Br)) (`b' * $delta)                              ///
-                    (`b' * $delta / `den') (`seb' * $delta / `den')
+                if $make_graphs == 1 & "`g'" == "todos" & "`rvlab'" == "base_ant" {
+                    local gf "$dir_graf/bunch_`yr'_kink`j'_umbral_anterior.png"
+                }
+                post h_casos ("kink") ("") (`yr') ("anual") ("`g'") ("`rvlab'")  ///
+                    (`j') (`rz') (`zs') (`t0') (`t1') ($delta) (`nwin')          ///
+                    (`K') ($excl_bins) ($excl_bins) (`zs') ("`cnt'") ("`gf'")    ///
+                    ("`tit'") ("Base imponible (USD nominales)")
             }
         }
     }
 
     * ------------------------------------------------------------------
-    * 6.5  RIMPE: conteos alrededor de la línea de 20.000
+    * 3.5  Conteos por bin alrededor de la línea de 20.000 del RIMPE
+    *      (se registran como casos en la sección 5)
     * ------------------------------------------------------------------
 
-    if `yr' >= $rimpe_start {
-        bunch_bin rimpe_bruto if has102 == 1 & rimpe == 1, zstar($rimpe_z) ///
-            delta($rimpe_delta) k($rimpe_K) outfile("$dir_tmp/rim_`yr'_rimpe.dta") `ropt'
-        bunch_bin emp_bruto if has102 == 1 & rimpe == 0, zstar($rimpe_z) ///
-            delta($rimpe_delta) k($rimpe_K) outfile("$dir_tmp/rim_`yr'_plac_post.dta") `ropt'
-    }
-    else {
-        bunch_bin emp_bruto if has102 == 1, zstar($rimpe_z) ///
-            delta($rimpe_delta) k($rimpe_K) outfile("$dir_tmp/rim_`yr'_plac_pre.dta") `ropt'
+    foreach s of global series {
+
+        if "${sy_`s'}" == "post" & `yr' <  $rimpe_start continue
+        if "${sy_`s'}" == "pre"  & `yr' >= $rimpe_start continue
+
+        local rv ${sv_`s'}
+
+        preserve
+        quietly {
+            keep if ${sc_`s'} & `rv' > 0 & !missing(`rv')
+            gen long k = round((`rv' - $rimpe_z) / $rimpe_delta)
+            keep if abs(k) <= $rimpe_K
+            local nwin = _N
+
+            * Un bin vacío (n = 0) por cada k de la grilla, y sumar
+            keep k
+            gen long n = 1
+            set obs `=`nwin' + 2 * $rimpe_K + 1'
+            replace k = _n - `nwin' - $rimpe_K - 1 if _n > `nwin'
+            replace n = 0 if _n > `nwin'
+            collapse (sum) n, by(k)
+
+            * Dummies de redondeo: el bin contiene un múltiplo de R
+            gen double x = $rimpe_z + k * $rimpe_delta
+            foreach R of global round_bases {
+                gen byte r`R' = ceil((x - $rimpe_delta / 2) / `R') * `R' < x + $rimpe_delta / 2
+            }
+            drop x
+            save "$dir_tmp/rim_`yr'_`s'.dta", replace
+        }
+        restore
     }
 }
 
+postclose h_casos
+postclose h_iess
+
 * ============================================================================
-* 7. AGRUPADOS (anio = 0): años apilados en distancia al umbral
-*    periodo: todo (todos los años), pre (< reforma), post (>= reforma)
+* 4. CONTEOS AGRUPADOS DE LOS UMBRALES (anio = 0): años apilados en
+*    distancia al umbral. periodo: todo (todos los años), pre (< reforma),
+*    post (>= reforma). Los umbrales múltiplos de 5.000 no entran.
+*    Requiere: $dir_tmp/casos_anual.dta y los conteos cnt_* (sección 3).
 * ============================================================================
 
 di as result _n "===== Bunching agrupado ====="
 
-foreach g of local groups {
-    foreach rvlab in base placebo {
+capture postclose h_casos
+postfile h_casos $casos_vars using "$dir_tmp/casos_agrupado.dta", replace
+
+foreach g of global groups {
+    foreach rvlab in base placebo base_ant {
         forvalues j = 1/9 {
 
-            local Kp = `Kpool_`j''
-            if `Kp' < $excl_bins + 15 continue
+            local K = cond("`rvlab'" == "base_ant", ${pKpool_`j'}, ${Kpool_`j'})
+            if `K' < $excl_bins + 15 | `K' == 9999 continue
             local jn = `j' + 1
-            local t0 : word `j'  of `r9'
-            local t1 : word `jn' of `r9'
+            local t0 : word `j'  of $r9
+            local t1 : word `jn' of $r9
 
             foreach p in todo pre post {
 
-                local have 0
-                tempfile acc
-                foreach yr of local years_done {
-                    if "`p'" == "pre"  & `yr' >= $reform_year continue
-                    if "`p'" == "post" & `yr' <  $reform_year continue
-                    if `j' > `nk_`yr'' continue
-                    if `rz_`yr'_`j'' continue
-                    local cnt "$dir_tmp/cnt_`yr'_`g'_`rvlab'_`j'.dta"
-                    capture confirm file "`cnt'"
-                    if _rc continue
-                    use "`cnt'", clear
-                    keep if abs(k) <= `Kp'
-                    if `have' append using `acc'
-                    save `acc', replace
-                    local have 1
-                }
-                if `have' == 0 continue
+                * Años que entran: casos anuales del mismo grupo, variable y kink
+                use "$dir_tmp/casos_anual.dta", clear
+                quietly keep if grupo == "`g'" & variable == "`rvlab'" & kink == `j' & round_z == 0
+                if "`p'" == "pre"  quietly keep if anio <  $reform_year
+                if "`p'" == "post" quietly keep if anio >= $reform_year
+                if _N == 0 continue
 
-                * Redondeo: en el agrupado cada dummy cuenta en cuántos años
-                * el bin contiene un número redondo
-                collapse (sum) n `rvars', by(k)
-                quietly summarize n, meanonly
+                * Umbral promedio, ponderado por declarantes en la ventana anual
+                quietly gen double zn = zstar * nwin
+                quietly summarize zn, meanonly
+                local zw = r(sum)
+                quietly summarize nwin, meanonly
+                local zbar = cond(r(sum) > 0, `zw' / r(sum), .)
+
+                local files ""
+                forvalues i = 1/`=_N' {
+                    local files `"`files' "`=archivo[`i']'""'
+                }
+
+                * Apilar los conteos anuales en la ventana común. Redondeo y
+                * escalas: en el agrupado cada dummy cuenta en cuántos años el
+                * bin contiene un número redondo o el valor del grado; n_pub
+                * suma los servidores públicos
+                * Semiancho de los conteos: K, salvo la base con robustez de
+                * la ventana (Kc_0_j >= K, sección 2.2); nwin se cuenta en K
+                local Kc = `K'
+                if "`rvlab'" == "base" local Kc = ${Kc_0_`j'}
+                clear
+                quietly append using `files'
+                quietly keep if abs(k) <= `Kc'
+                collapse (sum) n n_pub $rvars $evars, by(k)
+                quietly summarize n if abs(k) <= `K', meanonly
                 local nwin = r(sum)
                 local pfile "$dir_tmp/cnt_pool_`p'_`g'_`rvlab'_`j'.dta"
                 save "`pfile'", replace
-
-                local zbar = .
-                if `nw_`g'_`rvlab'_`j'_`p'' > 0 {
-                    local zbar = `zw_`g'_`rvlab'_`j'_`p'' / `nw_`g'_`rvlab'_`j'_`p''
-                }
-
-                if `nwin' < $minobs {
-                    post `bh' (0) ("`p'") ("`g'") ("`rvlab'") (`j') (0) (`zbar') ///
-                        (`t0') (`t1') ($delta) (`nwin')                          ///
-                        (.) (.) (.) (.) (.) (.) (.) (.) (.) (.) (.) (.)
-                    continue
-                }
 
                 local gf ""
                 if $make_graphs == 1 & "`rvlab'" == "base" {
                     local gf "$dir_graf/bunch_agrupado_`p'_`g'_kink`j'.png"
                 }
-
-                bunch_fit using "`pfile'", k(`Kp') lo($excl_bins) hi($excl_bins) ///
-                    poly($poly) reps($reps) rvars(`rvars') zstar(0)             ///
-                    delta($delta) graphfile("`gf'")                             ///
-                    title("Agrupado `p' (`g') - umbral `j'")                    ///
-                    xtitle("Distancia al umbral (USD nominales)")
-
-                local b   = r(b)
-                local seb = r(se_b)
-                local zst = `b' / `seb'
-                local den = `zbar' * ln((1 - `t0') / (1 - `t1'))
-
-                post `bh' (0) ("`p'") ("`g'") ("`rvlab'") (`j') (0) (`zbar')     ///
-                    (`t0') (`t1') ($delta) (`nwin')                              ///
-                    (r(B)) (r(c0)) (`b') (`seb') (`zst')                         ///
-                    (1 - normal(`zst')) (2 * (1 - normal(abs(`zst'))))           ///
-                    (r(Bl)) (r(Br)) (`b' * $delta)                               ///
-                    (`b' * $delta / `den') (`seb' * $delta / `den')
+                if $make_graphs == 1 & "`rvlab'" == "base_ant" & "`p'" == "todo" {
+                    local gf "$dir_graf/bunch_agrupado_todo_`g'_kink`j'_umbral_anterior.png"
+                }
+                post h_casos ("kink") ("") (0) ("`p'") ("`g'") ("`rvlab'")      ///
+                    (`j') (0) (`zbar') (`t0') (`t1') ($delta) (`nwin')           ///
+                    (`K') ($excl_bins) ($excl_bins) (0) ("`pfile'") ("`gf'")     ///
+                    ("Agrupado `p' (`g') - umbral `j'`=cond("`rvlab'"=="base_ant"," del año anterior","")'") ///
+                    ("Distancia al umbral (USD nominales)")
             }
         }
     }
 }
 
-postclose `bh'
+postclose h_casos
 
 * ============================================================================
-* 8. RIMPE: LÍNEA DE 20.000
+* 5. CONTEOS DE LA LÍNEA DE 20.000 DEL RIMPE
 *    series: rimpe (sujetos RIMPE, 2022+), plac_post (F102 sin RIMPE, 2022+),
-*    plac_pre (todos los F102, antes de 2022). anio = 0: agrupado.
+*    plac_pre (todos los F102, antes de 2022). Casos: por año (solo la serie
+*    rimpe, con al menos $minobs declarantes) y agrupado (anio = 0).
+*    Requiere: los conteos rim_* (sección 3).
 * ============================================================================
 
 di as result _n "===== RIMPE: línea de 20.000 ====="
 
-tempname rh
-tempfile rim_file
-postfile `rh' str10(serie) int(anio) long(nwin)                          ///
-    double(B c0 b se_b b_izq se_b_izq pval_izq b_der se_b_der pval_der)  ///
-    using "`rim_file'", replace
+capture postclose h_casos
+postfile h_casos $casos_vars using "$dir_tmp/casos_rimpe.dta", replace
 
-foreach s in rimpe plac_post plac_pre {
+foreach s of global series {
 
-    * Por año (solo la serie RIMPE) y agrupado
-    local have 0
-    tempfile acc
-    foreach yr of local years_done {
+    local xt = cond("`s'" == "rimpe", "Ingresos brutos RIMPE (USD)", ///
+                                      "Ingresos empresariales brutos (USD)")
+    local files ""
+
+    foreach yr of global years {
         local cnt "$dir_tmp/rim_`yr'_`s'.dta"
         capture confirm file "`cnt'"
         if _rc continue
+        local files `"`files' "`cnt'""'
 
+        * Por año: solo la serie RIMPE
         if "`s'" == "rimpe" {
             use "`cnt'", clear
             quietly summarize n, meanonly
-            local nwy = r(sum)
-            if `nwy' >= $minobs {
-                bunch_fit using "`cnt'", k($rimpe_K) lo($rimpe_lo) hi($rimpe_hi) ///
-                    poly($poly) reps($reps) rvars(`rvars')
-                local c0 = r(c0)
-                post `rh' ("`s'") (`yr') (`nwy') (r(B)) (`c0') (r(b)) (r(se_b)) ///
-                    (r(Bl) / `c0') (r(se_Bl) / `c0') (1 - normal(r(Bl) / r(se_Bl))) ///
-                    (r(Br) / `c0') (r(se_Br) / `c0') (1 - normal(r(Br) / r(se_Br)))
+            local nwin = r(sum)
+            if `nwin' >= $minobs {
+                post h_casos ("rimpe") ("`s'") (`yr') ("anual") ("") ("")     ///
+                    (.) (.) ($rimpe_z) (.) (.) ($rimpe_delta) (`nwin')      ///
+                    ($rimpe_K) ($rimpe_lo) ($rimpe_hi) ($rimpe_z) ("`cnt'") ///
+                    ("") ("") ("")
             }
         }
-
-        use "`cnt'", clear
-        if `have' append using `acc'
-        save `acc', replace
-        local have 1
     }
-    if `have' == 0 continue
+    if `"`files'"' == "" continue
 
-    collapse (sum) n `rvars', by(k)
+    * Agrupado: sumar los conteos de todos los años
+    clear
+    quietly append using `files'
+    collapse (sum) n $rvars, by(k)
     quietly summarize n, meanonly
     local nwin = r(sum)
     local pfile "$dir_tmp/rim_pool_`s'.dta"
     save "`pfile'", replace
 
-    if `nwin' < $minobs {
-        post `rh' ("`s'") (0) (`nwin') (.) (.) (.) (.) (.) (.) (.) (.) (.) (.)
-        continue
-    }
-
     local gf ""
     if $make_graphs == 1 local gf "$dir_graf/rimpe20000_`s'.png"
-    local xt = cond("`s'" == "rimpe", "Ingresos brutos RIMPE (USD)", ///
-                                      "Ingresos empresariales brutos (USD)")
-
-    bunch_fit using "`pfile'", k($rimpe_K) lo($rimpe_lo) hi($rimpe_hi)   ///
-        poly($poly) reps($reps) rvars(`rvars') zstar($rimpe_z)             ///
-        delta($rimpe_delta) graphfile("`gf'")                              ///
-        title("Linea de 20.000 del RIMPE - `s' (agrupado)") xtitle("`xt'")
-
-    local c0 = r(c0)
-    post `rh' ("`s'") (0) (`nwin') (r(B)) (`c0') (r(b)) (r(se_b))            ///
-        (r(Bl) / `c0') (r(se_Bl) / `c0') (1 - normal(r(Bl) / r(se_Bl)))    ///
-        (r(Br) / `c0') (r(se_Br) / `c0') (1 - normal(r(Br) / r(se_Br)))
+    post h_casos ("rimpe") ("`s'") (0) ("todo") ("") ("")                ///
+        (.) (.) ($rimpe_z) (.) (.) ($rimpe_delta) (`nwin')               ///
+        ($rimpe_K) ($rimpe_lo) ($rimpe_hi) ($rimpe_z) ("`pfile'") ("`gf'") ///
+        ("Linea de 20.000 del RIMPE - `s' (agrupado)") ("`xt'")
 }
 
-postclose `rh'
+postclose h_casos
 
 * ============================================================================
-* 9. GUARDAR, DIFERENCIAS Y EXPORTAR
+* 6. ESTIMACIÓN DE CADA CASO (Chetty et al. 2011; Kleven y Waseem 2013)
+*    Requiere: $dir_tmp/casos_anual, casos_agrupado y casos_rimpe (secciones
+*    3-5) y sus conteos.
+*
+*   Con los conteos n por bin k = -K..K (ventana excluida: -lo <= k <= hi):
+*   0. Picos: bin con n > $pico_ratio x la mediana de sus $pico_vec vecinos a
+*      cada lado. Fuera de la ventana: una dummy propia por pico. Dentro: se
+*      reportan (número, exceso sobre la mediana de sus vecinos y participación
+*      del empleador más frecuente; si es alta, es una escala salarial y no
+*      bunching).
+*   0b. Escalas salariales ($scale_ctrl = 1; solo conteos de los umbrales):
+*      bins de escala = bins con alguna dummy esc_* o doc_* > 0 (sección 3.4).
+*      Fuera de la ventana: una dummy por bin de escala en el contrafactual
+*      (como las de picos; en los agrupados el tamaño del pico de un grado
+*      cambia entre años, ver 6.2a); esos bins no reciben además dummy de
+*      pico. Dentro: exceso de escala =
+*      n_pub - mediana de n_pub en sus $pico_vec vecinos a cada lado (sin el
+*      propio bin, como la regla de picos), sumado en los bins de escala de la
+*      ventana (B_esc_pub; puede ser negativo por ruido, no se trunca).
+*      b_sin_escalas = (B - B_escalas) / c0, con B_escalas = B_esc_pub + exceso
+*      de los picos de la ventana que NO son bins de escala y en los que un
+*      empleador tiene más de $pico_emp del bin (regla general para picos que
+*      no están en la escala). Así ningún bin se descuenta dos veces. Con
+*      $scale_ctrl = 0: sin dummies de escala y B_escalas = exceso de los picos
+*      de un solo empleador (versión anterior).
+*   1. Contrafactual: regresión de n en un polinomio de orden $poly en k/K,
+*      las dummies de redondeo, las de picos y las de escala (fuera), solo con
+*      los bins fuera de la ventana. cf = predicción (con redondeo, picos y
+*      escalas); cs = parte suave (solo polinomio).
+*   2. En la ventana: B = suma(n - cf); c0 = promedio de cs; b = B / c0;
+*      B_izq = suma(n - cf) con k <= 0; B_der = suma(cf - n) con k > 0.
+*   3. Bootstrap de residuos ($reps repeticiones): ajustado completo = cf
+*      fuera de la ventana y n dentro (conserva el exceso). En cada
+*      repetición se sortea con reposición un residuo de los bins de fuera
+*      para cada bin, nstar = ajustado + residuo, se reestima el contrafactual
+*      con los bins de fuera y se recalculan los cinco estadísticos.
+*      EE = desviación estándar entre repeticiones.
+*   Casos con menos de $minobs declarantes: se reportan sin estimación.
 * ============================================================================
 
-* --- 9.1 Umbrales ---
-use "`res_file'", clear
+use "$dir_tmp/casos_anual.dta", clear
+append using "$dir_tmp/casos_agrupado.dta" "$dir_tmp/casos_rimpe.dta"
+* pol = orden del polinomio del caso; spec/valor = especificación de robustez
+* (base = principal)
+gen int pol = $poly
+gen str8 spec = "base"
+gen double valor = .
+gen long id = _n
+save "$dir_tmp/casos.dta", replace
+
+* --- 6.0 Casos de robustez (tipo = "rob"; $robustez = 1) ---
+*   Copias de los casos de la base imponible de $rob_grupos (anuales y
+*   agrupados todo/pre/post) con UN parámetro cambiado:
+*   poly   -> pol (mismos conteos)
+*   excl   -> lo = hi = valor (mismos conteos); se omiten si K < valor + 15
+*   maxwin -> K = Km_YYYY_j_m (anual) o Km_0_j_m (agrupado), sección 2.2.
+*             Los conteos de la base ya cubren la ventana más ancha (Kc,
+*             secciones 3.4 y 4), así que no se recuenta: la sección 6 corta
+*             en K. En los agrupados zstar y los años que entran son los de
+*             la ventana principal; nwin se recalcula (nwin_e).
+*   Se agregan al final de la lista: los ids de los casos principales no
+*   cambian. Sin gráficos ni bootstrap de personas.
+if $robustez == 1 {
+    keep if tipo == "kink" & variable == "base" & inlist(periodo, "anual", "todo", "pre", "post")
+    gen byte _sel = 0
+    foreach g of global rob_grupos {
+        replace _sel = 1 if grupo == "`g'"
+    }
+    keep if _sel == 1
+    drop _sel
+    replace grafico = ""
+    replace tipo = "rob"
+    save "$dir_tmp/rob_src.dta", replace
+    global nrob 0
+    foreach sp in poly excl maxwin {
+        local v0 = cond("`sp'" == "poly", $poly, cond("`sp'" == "excl", $excl_bins, $maxwin))
+        foreach v of global rob_`sp' {
+            if `v' == `v0' continue
+            use "$dir_tmp/rob_src.dta", clear
+            replace spec  = "`sp'"
+            replace valor = `v'
+            if "`sp'" == "poly" replace pol = `v'
+            if "`sp'" == "excl" {
+                replace lo = `v'
+                replace hi = `v'
+                drop if K < `v' + 15
+            }
+            if "`sp'" == "maxwin" {
+                forvalues r = 1/`=_N' {
+                    local a  = anio[`r']
+                    local kk = kink[`r']
+                    quietly replace K = ${Km_`a'_`kk'_`v'} in `r'
+                }
+                drop if K < $excl_bins + 15 | K >= 9999
+            }
+            global nrob = $nrob + 1
+            save "$dir_tmp/rob_$nrob.dta", replace
+        }
+    }
+    use "$dir_tmp/casos.dta", clear
+    forvalues r = 1/$nrob {
+        append using "$dir_tmp/rob_`r'.dta"
+    }
+    replace id = _n
+    save "$dir_tmp/casos.dta", replace
+    quietly count if tipo == "rob"
+    di as result "  Casos de robustez: " r(N)
+}
+local ncasos = _N
+timer clear 1
+timer on 1
+
+capture postclose h_est
+postfile h_est long(id) double(B c0 b B_izq B_der se_B se_c0 se_b se_B_izq se_B_der) ///
+    double(se_bse se_b_pers se_bse_pers se_B_izq_pers se_B_der_pers) long(nwin_e)    ///
+    int(n_pic_fuera n_pic_dentro n_esc_fuera n_esc_dentro)                        ///
+    double(B_picos top_emp_dentro B_escalas B_esc_pub)                            ///
+    using "$dir_tmp/estimaciones.dta", replace
+
+forvalues i = 1/`ncasos' {
+
+    * --- 6.1 Parámetros del caso ---
+    use "$dir_tmp/casos.dta" in `i', clear
+    if nwin[1] < $minobs continue
+    foreach v in id K lo hi z_graf delta archivo grafico titulo xtitulo pol tipo {
+        local `v' = `v'[1]
+    }
+
+    use "`archivo'", clear
+    * Declarantes en la ventana K (igual a nwin, salvo robustez de maxwin)
+    quietly keep if abs(k) <= `K'
+    quietly summarize n, meanonly
+    local nwin_e = r(sum)
+    if `nwin_e' < $minobs continue
+
+    quietly {
+
+        * --- 6.2 Picos: mediana de los vecinos (sin el propio bin) ---
+        keep if abs(k) <= `K'
+        sort k
+        gen byte dentro = inrange(k, -`lo', `hi')
+        forvalues d = 1/$pico_vec {
+            gen double _vm`d' = n[_n - `d']
+            gen double _vp`d' = n[_n + `d']
+        }
+        egen double ref = rowmedian(_vm* _vp*)
+        drop _vm* _vp*
+        gen byte pico = n > $pico_ratio * ref & ref >= $pico_min & !missing(ref)
+        capture confirm variable top_emp
+        if _rc gen double top_emp = .
+
+        * --- 6.2a Escalas salariales: esc = bin con algún valor de la escala
+        *     (los conteos de la línea del RIMPE no tienen dummies de escala).
+        *     Fuera de la ventana, una dummy por bin de escala. En un caso
+        *     anual es lo mismo que una dummy por grado (cada grado cae en un
+        *     solo bin). En los agrupados, una dummy por grado con el número de
+        *     años (como el redondeo) obligaría a un mismo tamaño del pico en
+        *     todos los años, y no lo es (p. ej. docentes en 2022 en los
+        *     valores de transición): los residuos de esos bins inflaban el EE
+        *     bootstrap. Por eso cada bin de escala tiene su propia dummy ---
+        gen byte esc = 0
+        if $scale_ctrl == 1 {
+            foreach v of global evars {
+                capture confirm variable `v'
+                if _rc continue
+                replace esc = 1 if `v' > 0
+            }
+        }
+        local escs ""
+        levelsof k if esc & !dentro, local(kesc)
+        local ie 0
+        foreach kk of local kesc {
+            local ++ie
+            gen byte ek`ie' = k == `kk'
+            local escs "`escs' ek`ie'"
+        }
+        count if esc & !dentro
+        local n_esc_fuera = r(N)
+        count if esc & dentro
+        local n_esc_dentro = r(N)
+
+        * Exceso de los servidores públicos en los bins de escala de la
+        * ventana: n_pub menos la mediana de n_pub de sus vecinos
+        gen double exc_esc = .
+        capture confirm variable n_pub
+        if !_rc & `n_esc_dentro' > 0 {
+            forvalues d = 1/$pico_vec {
+                gen double _vm`d' = n_pub[_n - `d']
+                gen double _vp`d' = n_pub[_n + `d']
+            }
+            egen double ref_pub = rowmedian(_vm* _vp*)
+            drop _vm* _vp*
+            replace exc_esc = n_pub - ref_pub if esc & dentro
+        }
+        summarize exc_esc, meanonly
+        local B_esc_pub = cond(r(N) > 0, r(sum), 0)
+
+        * Una dummy por pico fuera de la ventana (salvo bins de escala, que ya
+        * tienen la suya)
+        local pks ""
+        levelsof k if pico & !dentro & !esc, local(kpicos)
+        local ip 0
+        foreach kk of local kpicos {
+            local ++ip
+            gen byte pk`ip' = k == `kk'
+            local pks "`pks' pk`ip'"
+        }
+        count if pico & !dentro & !esc
+        local n_pic_fuera = r(N)
+        count if pico & dentro
+        local n_pic_dentro = r(N)
+        gen double exc_pico = n - ref if pico & dentro
+        summarize exc_pico, meanonly
+        local B_picos = cond(r(N) > 0, r(sum), 0)
+        summarize top_emp if pico & dentro, meanonly
+        local top_emp_dentro = cond(r(N) > 0, r(max), .)
+        * Exceso de los picos de un solo empleador que no son bins de escala
+        * (regla general) más el exceso de escala de los servidores públicos
+        summarize exc_pico if top_emp > $pico_emp & !missing(top_emp) & !esc, meanonly
+        local B_escalas = cond(r(N) > 0, r(sum), 0) + `B_esc_pub'
+
+        * --- 6.2b Contrafactual con los bins fuera de la ventana ---
+        forvalues p = 1/`pol' {
+            gen double p`p' = (k / `K')^`p'
+        }
+        local xextra = strtrim("$rvars `pks' `escs'")
+
+        regress n p1-p`pol' `xextra' if !dentro
+        predict double cf, xb
+        gen double cs = cf
+        foreach R of local xextra {
+            replace cs = cs - _b[`R'] * `R'
+        }
+
+        * --- 6.3 Exceso de masa en la ventana ---
+        gen double dif = n - cf
+        summarize dif if dentro, meanonly
+        local B = r(sum)
+        summarize cs if dentro, meanonly
+        local c0 = r(mean)
+        local b = `B' / `c0'
+        summarize dif if dentro & k <= 0, meanonly
+        local B_izq = r(sum)
+        summarize dif if dentro & k > 0, meanonly
+        local B_der = -r(sum)
+
+        * --- 6.4 Bootstrap (Mata en línea, solo por velocidad) ---
+        * Mismo cálculo que 6.2-6.3 repetido $reps veces, todas las
+        * repeticiones a la vez (una columna por repetición). En Mata:
+        *   Xp = polinomio y constante; X = Xp y dummies de redondeo y picos
+        *   fuera/ein/eiz/ede = bins fuera de la ventana / en la ventana /
+        *                       en la ventana con k <= 0 / con k > 0
+        *   NS = conteos simulados (NP: de servidores públicos); CF =
+        *   contrafactual; CS = su parte suave; BE = B_escalas recalculado
+        *   S = una fila por repetición: B, c0, b, B_izq, B_der, b_sin_escalas
+        * 6.4a Residuos (res): nstar = ajuste + residuo sorteado de los bins
+        *   de fuera; NP = n_pub x nstar / n (misma participación pública).
+        * 6.4b Personas (pers, $boot_personas = 1; no en robustez): se
+        *   remuestrean con reposición los declarantes de la ventana, lo que
+        *   equivale exactamente a sortear los conteos de un multinomial con
+        *   probabilidades n/N. Celdas = bin x (público, no público), así n_pub
+        *   se remuestrea junto con n. Multinomial por binomiales sucesivas:
+        *   celda c ~ Bin(restantes, q_c / suma(q_c..q_fin)).
+        *   El estado del generador se restaura después, así que el bootstrap
+        *   de residuos (se_b) es el mismo con y sin $boot_personas.
+        * B_escalas en cada repetición: con los mismos bins (picos de un solo
+        *   empleador y de escala, elegidos con los datos), exceso sobre la
+        *   mediana de los vecinos recalculada con NS (picos) y NP (escala).
+        gen double ajuste = cond(dentro, n, cf)
+        gen double res = n - cf
+        gen byte izq = dentro & k <= 0
+        gen byte der = dentro & k > 0
+        gen byte uno = 1
+        capture confirm variable n_pub
+        if _rc gen double npb = 0
+        else   gen double npb = n_pub
+        gen double shp = cond(n > 0, npb / n, 0)
+        gen long _fila = _n
+        local nb = _N
+        local tesc ""
+        capture confirm variable n_pub
+        if !_rc & `n_esc_dentro' > 0 levelsof _fila if esc & dentro, local(tesc)
+        levelsof _fila if pico & dentro & top_emp > $pico_emp & !missing(top_emp) & !esc, local(tpic)
+
+        mata: Xp = st_data(., "p1-p`pol' uno"); np = cols(Xp)
+        if "`xextra'" != "" mata: X = Xp, st_data(., "`xextra'")
+        else                mata: X = Xp
+        mata: fuera = selectindex(st_data(., "dentro") :== 0); ein = selectindex(st_data(., "dentro"))
+        mata: eiz = selectindex(st_data(., "izq")); ede = selectindex(st_data(., "der"))
+        mata: aj = st_data(., "ajuste"); rs = st_data(fuera, "res"); m = rows(fuera); nb = rows(aj)
+
+        local boots "res"
+        if $boot_personas == 1 & "`tipo'" != "rob" local boots "res pers"
+        foreach bt of local boots {
+            if "`bt'" == "res" {
+                mata: NS = aj :+ colshape(rs[1 :+ floor(runiform(nb * $reps, 1) :* m)], $reps)
+                mata: NP = st_data(., "shp") :* NS
+            }
+            else {
+                local rngs = c(rngstate)
+                local nq = 2 * `nb'
+                mata: Q = st_data(., "npb") \ (st_data(., "n") - st_data(., "npb")); T = runningsum(Q[`nq'::1]); T = T[`nq'::1]
+                mata: REM = J(1, $reps, T[1]); D = J(`nq', $reps, 0)
+                forvalues c = 1/`nq' {
+                    mata: pc = Q[`c'] / max((T[`c'], 1)); D[`c', .] = (pc >= 1 ? REM : (pc <= 0 ? J(1, $reps, 0) : rbinomial(1, 1, REM :+ (REM :== 0), pc) :* (REM :> 0))); REM = REM - D[`c', .]
+                }
+                mata: NP = D[1::nb, .]; NS = NP + D[(nb + 1)::`nq', .]
+                set rngstate `rngs'
+            }
+            mata: BB = invsym(cross(X[fuera, .], X[fuera, .])) * cross(X[fuera, .], NS[fuera, .])
+            mata: CF = X * BB; CS = Xp * BB[1..np, .]
+            mata: sB = colsum(NS[ein, .] - CF[ein, .]); sc0 = mean(CS[ein, .])
+            * B_escalas de cada repetición (mediana de los vecinos sin el bin)
+            mata: BE = J(1, $reps, 0)
+            foreach src in esc pic {
+                local M = cond("`src'" == "esc", "NP", "NS")
+                foreach t of local t`src' {
+                    local a = max(1, `t' - $pico_vec)
+                    local z = min(`nb', `t' + $pico_vec)
+                    mata: iv = (`a'::`z'); iv = select(iv, iv :!= `t'); V = `M'[iv, .]; md = J(1, $reps, .); for (r = 1; r <= $reps; r++) { v = sort(V[., r], 1); md[r] = (v[floor((rows(v) + 1) / 2)] + v[ceil((rows(v) + 1) / 2)]) / 2 ; }; BE = BE + `M'[`t', .] - md
+                }
+            }
+            mata: S = (sB \ sc0 \ sB :/ sc0 \ colsum(NS[eiz, .] - CF[eiz, .]) \ colsum(CF[ede, .] - NS[ede, .]) \ (sB - BE) :/ sc0)'
+
+            * EE = desviación estándar de cada estadístico entre repeticiones
+            mata: st_matrix("SE", sqrt(diagonal(variance(S)))')
+            forvalues c = 1/6 {
+                local se`c'_`bt' = SE[1, `c']
+                if "`bt'" == "res" local se`c' = SE[1, `c']
+            }
+        }
+        if !strpos("`boots'", "pers") {
+            forvalues c = 1/6 {
+                local se`c'_pers = .
+            }
+        }
+
+        post h_est (`id') (`B') (`c0') (`b') (`B_izq') (`B_der') ///
+            (`se1') (`se2') (`se3') (`se4') (`se5')                 ///
+            (`se6') (`se3_pers') (`se6_pers') (`se4_pers') (`se5_pers') (`nwin_e') ///
+            (`n_pic_fuera') (`n_pic_dentro') (`n_esc_fuera') (`n_esc_dentro')  ///
+            (`B_picos') (`top_emp_dentro') (`B_escalas') (`B_esc_pub')
+    }
+
+    * --- 6.5 Gráfico: histograma y contrafactual ---
+    if "`grafico'" != "" {
+        local bs  = string(`b', "%5.2f")
+        local ses = string(`se3', "%5.2f")
+        gen double x = `z_graf' + k * `delta'
+        local xl = `z_graf' - (`lo' + 0.5) * `delta'
+        * Picos en naranja y bins de escala salarial en verde (solo si hay;
+        * un bin de escala que también es pico se pinta como escala)
+        local capas ""
+        local ley `"1 "Observado""'
+        local nc 1
+        quietly count if pico & !esc
+        if r(N) > 0 {
+            local ++nc
+            local capas "`capas' (bar n x if pico & !esc, barwidth(`delta') fcolor(orange*0.6) lcolor(orange))"
+            local ley `"`ley' `nc' "Pico""'
+        }
+        quietly count if esc
+        if r(N) > 0 {
+            local ++nc
+            local capas "`capas' (bar n x if esc, barwidth(`delta') fcolor(green*0.5) lcolor(green))"
+            local ley `"`ley' `nc' "Escala salarial""'
+        }
+        local ++nc
+        local ley `"`ley' `nc' "Contrafactual (con redondeo, picos y escalas)""'
+        local filas = cond(`nc' > 3, 2, 1)
+        local xr = `z_graf' + (`hi' + 0.5) * `delta'
+        quietly twoway                                                        ///
+            (bar n x, barwidth(`delta') fcolor(gs13) lcolor(gs11))            ///
+            `capas'                                                           ///
+            (line cf x, lcolor(cranberry) lwidth(medthick)),                  ///
+            xline(`xl' `xr', lpattern(dash) lcolor(gs7))                      ///
+            xline(`z_graf', lcolor(navy))                                     ///
+            title(`"`titulo'"', size(medsmall))                               ///
+            xtitle(`"`xtitulo'"') ytitle("Declarantes por bin")               ///
+            legend(order(`ley') rows(`filas') position(6))                    ///
+            note("Exceso de masa b = `bs' (EE = `ses'). Lineas discontinuas: ventana excluida.") ///
+            graphregion(color(white))
+        quietly graph export "`grafico'", replace width(1600)
+    }
+}
+
+postclose h_est
+timer off 1
+quietly timer list 1
+di as result _n "  Sección 6 (estimación): " %8.1f r(t1) " segundos"
+
+* ============================================================================
+* 7. GUARDAR, DIFERENCIAS Y EXPORTAR
+*    Requiere: $dir_tmp/casos.dta y $dir_tmp/estimaciones.dta (sección 6).
+* ============================================================================
+
+* --- 7.1 Umbrales ---
+use "$dir_tmp/casos.dta", clear
+merge 1:1 id using "$dir_tmp/estimaciones.dta", nogen
+keep if tipo == "kink"
+
+gen double zstat    = b / se_b
+gen double pval_pos = 1 - normal(zstat)
+gen double pval_two = 2 * (1 - normal(abs(zstat)))
+gen double dz       = b * delta
+gen double elast    = b * delta / (zstar * ln((1 - t0) / (1 - t1)))
+gen double se_elast = se_b * delta / (zstar * ln((1 - t0) / (1 - t1)))
+gen double b_picos  = B_picos / c0
+gen double b_esc_pub         = B_esc_pub / c0
+gen double b_sin_escalas     = (B - B_escalas) / c0
+gen double elast_sin_escalas = b_sin_escalas * delta / (zstar * ln((1 - t0) / (1 - t1)))
+* Bootstrap de personas (6.4b) y EE de b_sin_escalas (ambos bootstraps)
+rename se_bse se_b_sin_escalas
+rename se_bse_pers se_b_sin_escalas_pers
+gen double zstat_pers    = b / se_b_pers
+gen double pval_pos_pers = 1 - normal(zstat_pers)
+gen double pval_two_pers = 2 * (1 - normal(abs(zstat_pers)))
+gen double se_elast_pers = se_b_pers * delta / (zstar * ln((1 - t0) / (1 - t1)))
+gen double se_elast_sin_escalas      = se_b_sin_escalas * delta / (zstar * ln((1 - t0) / (1 - t1)))
+gen double se_elast_sin_escalas_pers = se_b_sin_escalas_pers * delta / (zstar * ln((1 - t0) / (1 - t1)))
+gen double pval_pos_sin_escalas      = 1 - normal(b_sin_escalas / se_b_sin_escalas)
+gen double pval_pos_sin_escalas_pers = 1 - normal(b_sin_escalas / se_b_sin_escalas_pers)
+local vnuevas se_b_pers zstat_pers pval_pos_pers pval_two_pers se_elast_pers  ///
+    se_b_sin_escalas se_b_sin_escalas_pers se_elast_sin_escalas             ///
+    se_elast_sin_escalas_pers pval_pos_sin_escalas pval_pos_sin_escalas_pers
+
+keep  anio periodo grupo variable kink round_z zstar t0 t1 delta nwin ///
+      B c0 b se_b zstat pval_pos pval_two B_izq B_der dz elast se_elast ///
+      n_pic_fuera n_pic_dentro b_picos top_emp_dentro n_esc_fuera n_esc_dentro ///
+      b_esc_pub b_sin_escalas elast_sin_escalas `vnuevas'
+order anio periodo grupo variable kink round_z zstar t0 t1 delta nwin ///
+      B c0 b se_b zstat pval_pos pval_two B_izq B_der dz elast se_elast ///
+      n_pic_fuera n_pic_dentro b_picos top_emp_dentro n_esc_fuera n_esc_dentro ///
+      b_esc_pub b_sin_escalas elast_sin_escalas `vnuevas'
 
 label var anio      "Año (0 = agrupado)"
 label var periodo   "anual / todo / pre (< reforma) / post (>= reforma)"
 label var grupo     "Grupo"
-label var variable  "base = base imponible; placebo = PreTaxHHI"
+label var variable  "base: base imponible; placebo: PreTaxHHI; base_ant: base en umbrales del año anterior"
 label var kink      "Umbral (1 = fracción exenta)"
 label var round_z   "Umbral múltiplo de 5.000 (no separable del redondeo)"
 label var zstar     "Umbral (USD nominales; agrupado: promedio ponderado)"
@@ -857,13 +1413,35 @@ label var B_der     "Masa faltante a la derecha (k > 0)"
 label var dz        "Desplazamiento del bunching (USD) = b*delta"
 label var elast     "Elasticidad del ingreso imponible"
 label var se_elast  "EE de la elasticidad"
+label var n_pic_fuera    "Picos fuera de la ventana (con dummy propia; sin bins de escala)"
+label var n_pic_dentro   "Picos dentro de la ventana excluida"
+label var b_picos        "Exceso de los picos dentro de la ventana, normalizado (parte de b)"
+label var top_emp_dentro "Máx. participación del empleador más frecuente en picos dentro"
+label var n_esc_fuera       "Bins de escala salarial fuera de la ventana (con dummy)"
+label var n_esc_dentro      "Bins de escala salarial dentro de la ventana excluida"
+label var b_esc_pub         "Exceso de servidores públicos en bins de escala de la ventana, normalizado"
+label var b_sin_escalas     "b sin escalas: sin b_esc_pub ni picos de un solo empleador fuera de la escala"
+label var elast_sin_escalas "Elasticidad sin escalas (de b_sin_escalas)"
+label var se_b_pers         "EE de b, bootstrap de personas"
+label var zstat_pers        "b / EE (personas)"
+label var pval_pos_pers     "p-valor una cola (H1: b > 0), EE de personas"
+label var pval_two_pers     "p-valor dos colas, EE de personas"
+label var se_elast_pers     "EE de la elasticidad, bootstrap de personas"
+label var se_b_sin_escalas          "EE de b_sin_escalas, bootstrap de residuos"
+label var se_b_sin_escalas_pers     "EE de b_sin_escalas, bootstrap de personas"
+label var se_elast_sin_escalas      "EE de elast_sin_escalas, bootstrap de residuos"
+label var se_elast_sin_escalas_pers "EE de elast_sin_escalas, bootstrap de personas"
+label var pval_pos_sin_escalas      "p-valor una cola de b_sin_escalas (residuos)"
+label var pval_pos_sin_escalas_pers "p-valor una cola de b_sin_escalas (personas)"
 
 sort grupo variable periodo anio kink
 save "$dir_out/bunching_resultados.dta", replace
 export excel using "$dir_out/bunching_resultados.xlsx", ///
     sheet("kinks") firstrow(varlabels) replace
 
-* --- 9.2 Reforma 2022: pre vs post ---
+* --- 7.2 Reforma 2022: pre vs post ---
+*     Requiere: $dir_out/bunching_resultados.dta (7.1).
+use "$dir_out/bunching_resultados.dta", clear
 keep if anio == 0 & inlist(periodo, "pre", "post") & !missing(b)
 keep grupo variable kink periodo nwin b se_b elast se_elast
 reshape wide nwin b se_b elast se_elast, i(grupo variable kink) j(periodo) string
@@ -889,14 +1467,32 @@ export excel using "$dir_out/bunching_resultados.xlsx", ///
 
 di as result _n "===== Reforma 2022: elasticidad pre vs post (base imponible) ====="
 format elastpre se_elastpre elastpost se_elastpost dif_elast se_dif_elast p_dif %7.3f
-foreach g in f107 f107solo f102 f102gen todos {
+foreach g in f107 f107priv f107pub f107solo f102 f102gen todos todospriv {
     di as text _n "--- Grupo: `g' ---"
     list kink nwinpre elastpre se_elastpre nwinpost elastpost se_elastpost dif_elast p_dif ///
         if variable == "base" & grupo == "`g'", noobs sep(0) abbreviate(12)
 }
 
-* --- 9.3 RIMPE ---
-use "`rim_file'", clear
+* --- 7.3 RIMPE ---
+use "$dir_tmp/casos.dta", clear
+merge 1:1 id using "$dir_tmp/estimaciones.dta", nogen
+keep if tipo == "rimpe"
+sort id
+
+gen double b_izq    = B_izq / c0
+gen double se_b_izq_pers = se_B_izq_pers / c0
+gen double se_b_der_pers = se_B_der_pers / c0
+gen double se_b_izq = se_B_izq / c0
+gen double pval_izq = 1 - normal(B_izq / se_B_izq)
+gen double b_der    = B_der / c0
+gen double se_b_der = se_B_der / c0
+gen double pval_der = 1 - normal(B_der / se_B_der)
+
+keep  serie anio nwin B c0 b se_b b_izq se_b_izq pval_izq b_der se_b_der pval_der ///
+      se_b_pers se_b_izq_pers se_b_der_pers
+order serie anio nwin B c0 b se_b b_izq se_b_izq pval_izq b_der se_b_der pval_der ///
+      se_b_pers se_b_izq_pers se_b_der_pers
+
 * Diferencias del exceso a la izquierda: RIMPE menos cada placebo (agrupados)
 foreach pl in plac_post plac_pre {
     quietly summarize b_izq if serie == "rimpe" & anio == 0, meanonly
@@ -928,6 +1524,9 @@ label var b_izq    "Exceso a la izquierda de 20.000, normalizado"
 label var pval_izq "p-valor una cola (exceso izquierda > 0)"
 label var b_der    "Masa faltante a la derecha de 20.000, normalizada"
 label var pval_der "p-valor una cola (masa faltante > 0)"
+label var se_b_pers     "EE de b, bootstrap de personas"
+label var se_b_izq_pers "EE de b_izq, bootstrap de personas"
+label var se_b_der_pers "EE de b_der, bootstrap de personas"
 save "$dir_out/bunching_rimpe20000.dta", replace
 export excel using "$dir_out/bunching_resultados.xlsx", ///
     sheet("rimpe_20000", replace) firstrow(variables)
@@ -936,24 +1535,105 @@ di as result _n "===== RIMPE: línea de 20.000 ====="
 format b_izq se_b_izq pval_izq b_der se_b_der pval_der %7.3f
 list serie anio nwin b_izq se_b_izq pval_izq b_der se_b_der pval_der, noobs sep(0) abbreviate(10)
 
-* --- 9.4 Resumen de agrupados (todos los años) ---
+* --- 7.4 Resumen de agrupados (todos los años) ---
 use "$dir_out/bunching_resultados.dta", clear
 di as result _n "===== Bunching agrupado (todos los años): base imponible ====="
-format b se_b pval_pos elast %8.3f
-foreach g of local groups {
+format b se_b pval_pos elast b_picos b_esc_pub b_sin_escalas %8.3f
+foreach g of global groups {
     di as text _n "--- Grupo: `g' ---"
-    list kink nwin b se_b pval_pos elast ///
+    list kink nwin b se_b pval_pos elast n_pic_fuera n_pic_dentro b_picos ///
+        n_esc_fuera n_esc_dentro b_esc_pub b_sin_escalas                    ///
         if anio == 0 & periodo == "todo" & variable == "base" & grupo == "`g'", ///
-        noobs sep(0)
+        noobs sep(0) abbreviate(12)
 }
 
 di as result _n "===== Placebo agrupado (todos los años): ingreso bruto ====="
-foreach g of local groups {
+foreach g of global groups {
     di as text _n "--- Grupo: `g' ---"
-    list kink nwin b se_b pval_pos ///
+    list kink nwin b se_b pval_pos n_esc_dentro b_esc_pub b_sin_escalas ///
         if anio == 0 & periodo == "todo" & variable == "placebo" & grupo == "`g'", ///
-        noobs sep(0)
+        noobs sep(0) abbreviate(12)
 }
+
+di as result _n "===== Placebo agrupado: base imponible en los umbrales del año anterior ====="
+foreach g of global groups {
+    di as text _n "--- Grupo: `g' ---"
+    list kink nwin b se_b pval_pos n_esc_dentro b_esc_pub b_sin_escalas ///
+        if anio == 0 & periodo == "todo" & variable == "base_ant" & grupo == "`g'", ///
+        noobs sep(0) abbreviate(12)
+}
+
+* --- 7.5 Escalas salariales: por año, umbrales 1-3, asalariados vs F102 ---
+di as result _n "===== Por año, umbrales 1-3: b y b sin escalas (base imponible y placebo) ====="
+format elast_sin_escalas %8.3f
+foreach g in f102 f107 f107solo f107priv f107pub todos todospriv {
+    di as text _n "--- Grupo: `g' ---"
+    list anio variable kink nwin b se_b elast n_esc_fuera n_esc_dentro b_esc_pub ///
+        b_sin_escalas elast_sin_escalas                                          ///
+        if periodo == "anual" & inlist(variable, "base", "placebo") & kink <= 3 & grupo == "`g'", ///
+        noobs sep(0) abbreviate(12)
+}
+
+* --- 7.6 Robustez: polinomio, ventana excluida y ventana máxima ---
+*     Requiere: $dir_tmp/casos.dta y estimaciones.dta (sección 6, $robustez = 1).
+*     Una fila por caso y especificación; spec = base son los casos
+*     principales (poly = $poly, excl = $excl_bins, maxwin = $maxwin).
+if $robustez == 1 {
+    use "$dir_tmp/casos.dta", clear
+    merge 1:1 id using "$dir_tmp/estimaciones.dta", nogen
+    gen byte _sel = 0
+    foreach g of global rob_grupos {
+        replace _sel = 1 if grupo == "`g'"
+    }
+    keep if tipo == "rob" | (tipo == "kink" & variable == "base" & _sel == 1 & ///
+        inlist(periodo, "anual", "todo", "pre", "post"))
+    drop _sel
+    replace nwin = nwin_e if !missing(nwin_e)
+    gen double elast = b * delta / (zstar * ln((1 - t0) / (1 - t1)))
+    gen double b_sin_escalas = (B - B_escalas) / c0
+    gen double pval_pos = 1 - normal(b / se_b)
+    gen str20 especificacion = cond(spec == "base", "base", spec + " = " + string(valor))
+    keep  grupo variable anio periodo kink round_z spec valor especificacion K lo hi pol nwin ///
+          zstar b se_b pval_pos elast b_sin_escalas se_bse
+    rename se_bse se_b_sin_escalas
+    order grupo variable anio periodo kink round_z spec valor especificacion K lo hi pol nwin ///
+          zstar b se_b pval_pos elast b_sin_escalas se_b_sin_escalas
+    label var spec           "Parámetro cambiado (base = especificación principal)"
+    label var valor          "Valor del parámetro cambiado"
+    label var especificacion "Especificación"
+    label var K              "Semiancho de la ventana (bins)"
+    label var lo             "Bins excluidos a la izquierda"
+    label var hi             "Bins excluidos a la derecha"
+    label var pol            "Orden del polinomio"
+    label var se_b_sin_escalas "EE de b_sin_escalas (residuos)"
+    sort grupo periodo anio kink spec valor
+    save "$dir_out/bunching_robustez.dta", replace
+    export excel using "$dir_out/bunching_resultados.xlsx", ///
+        sheet("robustez", replace) firstrow(variables)
+
+    di as result _n "===== Robustez: agrupados (todo), base imponible, b por especificación ====="
+    preserve
+    keep if anio == 0 & periodo == "todo" & !missing(b)
+    keep grupo kink especificacion b
+    replace especificacion = subinstr(subinstr(especificacion, " = ", "_", .), " ", "", .)
+    reshape wide b, i(grupo kink) j(especificacion) string
+    format b* %7.2f
+    list, noobs sep(0) abbreviate(12)
+    restore
+}
+
+* --- 7.7 Diagnóstico de la tasa de aporte al IESS (sección 3.1b) ---
+use "$dir_tmp/diag_iess.dta", clear
+label var tramo "bin (0,005) / banda / total"
+label var desde "Desde (tasa)"
+label var hasta "Hasta (tasa; bin: [desde, hasta))"
+label var n     "Declarantes"
+label var share "Participación entre los que tienen tasa"
+save "$dir_out/bunching_diagnostico_iess.dta", replace
+export excel using "$dir_out/bunching_resultados.xlsx", ///
+    sheet("diag_iess", replace) firstrow(variables)
+di as result _n "===== Tasa de aporte IESS: participación en las bandas ====="
+list anio tramo n share if tramo != "bin", noobs sep(0) abbreviate(20)
 
 di as result _n "Resultados: $dir_out"
 di as result    "Gráficos  : $dir_graf"
