@@ -115,6 +115,17 @@ foreach yr of numlist 2010(1)2024 {
 
     use "$dir_f107/F107_anonimizada_`yr'.dta", clear
 
+	* Gastos personales del F107 (bunching): no todos los campos existen en
+	* todos los años (educación pasa a deduccion_educacion_arte en 2018;
+	* turismo desde 2020); los que faltan se crean en 0
+	global gp107_vars deduccion_vivienda deduccion_salud deduccion_educacion  ///
+	    deduccion_educacion_arte deduccion_arte_cultura deduccion_alimentacion ///
+	    deduccion_vestimenta deduccion_turismo
+	foreach v of global gp107_vars {
+	    capture confirm variable `v'
+	    if _rc gen double `v' = 0
+	}
+
 	keep CEDULA_PK_empleado                  ///
 		 RUC_PK_empleado                     ///
 		 RUC_PK_empleador                    ///
@@ -127,7 +138,8 @@ foreach yr of numlist 2010(1)2024 {
          aporte_iess_empleado                ///  Aporte personal IESS
          imp_renta_causado                   ///  Impuesto a la renta (F107)
          base_imponible                      ///  Base imponible (bunching)
-         ingreso_grav_otr_empleador          //  Ingresos con otros empleadores (bunching)
+         ingreso_grav_otr_empleador          ///  Ingresos con otros empleadores (bunching)
+         $gp107_vars                         //   Gastos personales (bunching)
 	
     rename CEDULA_PK_empleado CEDULA_PK
 	
@@ -175,6 +187,12 @@ foreach yr of numlist 2010(1)2024 {
 	*     base107_max     base imponible F107 más alta entre empleadores
 	*     base107_sum     suma de las bases F107 de todos los empleadores
 	*     otr_emp_107     suma de ingreso_grav_otr_empleador
+	*     gp_107          suma de los gastos personales declarados ($gp107_vars).
+	*                     Hasta 2021 se deducen de la base imponible; desde
+	*                     2022 dan una rebaja del impuesto y no tocan la base
+	*     grav_107        sueldos + sobresueldos + utilidades - aporte personal
+	*                     al IESS (sirve para verificar que base = grav - gp
+	*                     hasta 2021 y base = grav desde 2022)
 	*     tasa_iess_107   aporte personal al IESS / (sueldos + sobresueldos)
 	*                     del registro F107 con la base más alta de la persona
 	*     publico_107     1 = servidor público: en algún registro F107 la tasa
@@ -193,11 +211,17 @@ foreach yr of numlist 2010(1)2024 {
 	* ------------------------------------------------------------------
 
 	global iess_pub_lo 0.110     // banda de la tasa de aporte personal del sector público (11,45%)
-	global iess_pub_hi 0.119
+	global iess_pub_hi 0.125     // hasta 0,125: en 2020 las tasas públicas se dispersan a 0,115-0,125
+	                             // (recortes de remuneración con aporte sobre el sueldo completo); en
+	                             // los demás años no hay masa entre 0,12 y 0,125
 
 	preserve
 		keep CEDULA_PK RUC_PK_empleador base_imponible ingreso_grav_otr_empleador ///
-		     aporte_iess_empleado ingresos_liq_pagados sob_suel_com_remu
+		     aporte_iess_empleado ingresos_liq_pagados sob_suel_com_remu       ///
+		     partic_utilidades $gp107_vars
+		egen double gp = rowtotal($gp107_vars)
+		egen double grav = rowtotal(ingresos_liq_pagados sob_suel_com_remu partic_utilidades)
+		replace grav = grav - aporte_iess_empleado if !missing(aporte_iess_empleado)
 		replace RUC_PK_empleador = "sin_ruc_" + string(_n) if inlist(RUC_PK_empleador, "", ".")
 
 		* Tasa de aporte personal de cada registro y marca de sector público
@@ -210,12 +234,13 @@ foreach yr of numlist 2010(1)2024 {
 		gsort CEDULA_PK -base_imponible RUC_PK_empleador
 		by CEDULA_PK: gen double tasa_iess_107 = tasa_iess[1]
 
-		collapse (sum) base_imponible ingreso_grav_otr_empleador ///
+		collapse (sum) base_imponible ingreso_grav_otr_empleador gp grav ///
 		         (max) publico tasa_iess_107, by(CEDULA_PK RUC_PK_empleador)
 		bysort CEDULA_PK: gen int n_emp_107 = _N
 		collapse (first) n_emp_107                                      ///
 		         (sum)   base107_sum = base_imponible                   ///
 		                 otr_emp_107 = ingreso_grav_otr_empleador       ///
+		                 gp_107 = gp grav_107 = grav                    ///
 		         (max)   base107_max = base_imponible                   ///
 		                 publico_107 = publico                          ///
 		                 tasa_iess_107, by(CEDULA_PK)
@@ -276,11 +301,39 @@ foreach yr of numlist 2010(1)2024 {
 	*   rimpe        1 = sujeto a RIMPE (suj_reg_rimpe_4896 = SI; desde 2022)
 	*   rimpe_bruto  ingresos brutos gravados RIMPE (bas_imp_grav_reg_rimpe_5687)
 	*   emp_bruto    ingresos empresariales brutos (ingresos_aem_rie_1280)
+	*   Umbrales de la obligación de llevar contabilidad (personas naturales;
+	*   se evalúan con el ejercicio anterior):
+	*   cont_ing     ingresos brutos de la actividad: el mayor entre el total
+	*                de ingresos del estado de resultados (1440, solo quienes
+	*                llevan contabilidad), la suma de los ingresos por
+	*                actividad de quienes no llevan (1280 empresarial, 2990
+	*                libre ejercicio, 3010 ocupación liberal, 3040 arriendo de
+	*                inmuebles), los del RIMPE (5687) y los del régimen de
+	*                microempresas de no obligados (4825). El máximo evita
+	*                sumar dos veces el mismo ingreso declarado en dos
+	*                secciones; si alguien declara actividades distintas en
+	*                secciones distintas, lo subestima.
+	*   cont_cyg     costos y gastos: el mayor entre el total del estado de
+	*                resultados (2760) y la suma de deducciones por actividad
+	*                de quienes no llevan (1290, 3000, 3020, 3050)
+	*   cont_cap     patrimonio neto (1330). Solo lo reportan quienes llevan
+	*                contabilidad: por debajo del umbral casi siempre es 0
+	*   rimpe_cat    categoría RIMPE declarada (cat_reg_rimpe_4897, código
+	*                0-3; el significado de cada código se identifica en
+	*                bunching_renta.do)
+	*   rimpe_simpl  1 = presentó la declaración simplificada de negocio
+	*                popular con ingresos <= 20.000 (pag_reg_rimpe_neg_pop_4898
+	*                = SI; 2022-2023): no declara ingresos
+	*   cont_oblig   1 = llenó el balance o el estado de resultados (activo
+	*                total 830 > 0 o ingresos 1440 > 0): llevó contabilidad
 	*   Si el F102 limpio no trae alguna de estas variables, se leen solo esas
 	*   columnas del F102 original.
 	* ------------------------------------------------------------------
 
-	local bunch102 base_imponible_3480 suj_reg_rimpe_4896 bas_imp_grav_reg_rimpe_5687
+	local bunch102 base_imponible_3480 suj_reg_rimpe_4896 bas_imp_grav_reg_rimpe_5687 ///
+		total_ingresos_1440 total_costos_gastos_2760 tot_patrimonio_neto_1330      ///
+		total_activo_830 ingr_regimen_micro_noob_4825 cat_reg_rimpe_4897          ///
+		pag_reg_rimpe_neg_pop_4898
 	local faltan ""
 	foreach v of local bunch102 {
 		capture confirm variable `v'
@@ -297,7 +350,12 @@ foreach yr of numlist 2010(1)2024 {
 				drop if CEDULA_PK == ""
 				foreach v of local traer {
 					capture confirm string variable `v'
-					if !_rc & "`v'" != "suj_reg_rimpe_4896" destring `v', replace force
+					if !_rc & !inlist("`v'", "suj_reg_rimpe_4896", "pag_reg_rimpe_neg_pop_4898") destring `v', replace force
+				}
+				if strpos("`traer'", "pag_reg_rimpe_neg_pop_4898") {
+					gen byte _simpl = upper(strtrim(pag_reg_rimpe_neg_pop_4898)) == "SI"
+					drop pag_reg_rimpe_neg_pop_4898
+					rename _simpl pag_reg_rimpe_neg_pop_4898
 				}
 				* Declaraciones sustitutivas: se toma el valor más alto
 				if strpos("`traer'", "suj_reg_rimpe_4896") {
@@ -336,6 +394,39 @@ foreach yr of numlist 2010(1)2024 {
 	else gen double rimpe_bruto = .
 
 	gen double emp_bruto = ingresos_aem_rie_1280
+
+	foreach v in total_ingresos_1440 total_costos_gastos_2760 tot_patrimonio_neto_1330 ///
+	             total_activo_830 ingr_regimen_micro_noob_4825 {
+		capture confirm variable `v'
+		if _rc gen double `v' = .
+		capture destring `v', replace force
+	}
+	egen double _ing_act = rowtotal(ingresos_aem_rie_1280 ing_libre_eje_profesional_2990 ///
+		ing_ocupacion_liberal_3010 ing_arriendo_inmuebles_3040)
+	egen double _ded_act = rowtotal(deducciones_aem_rie_1290 ded_libre_eje_profesional_3000 ///
+		ded_ocupacion_liberal_3020 ded_arriendo_inmuebles_3050)
+	gen double cont_ing = max(total_ingresos_1440, _ing_act, rimpe_bruto, ///
+		ingr_regimen_micro_noob_4825) if inlist(_merge, 2, 3)
+	gen double cont_cyg = max(total_costos_gastos_2760, _ded_act) if inlist(_merge, 2, 3)
+	gen double cont_cap = tot_patrimonio_neto_1330 if inlist(_merge, 2, 3)
+	gen byte cont_oblig = (total_activo_830 > 0 & !missing(total_activo_830)) | ///
+		(total_ingresos_1440 > 0 & !missing(total_ingresos_1440)) if inlist(_merge, 2, 3)
+	drop _ing_act _ded_act
+
+	gen byte rimpe_cat = .
+	capture confirm variable cat_reg_rimpe_4897
+	if !_rc & `yr' >= 2022 {
+		capture confirm string variable cat_reg_rimpe_4897
+		if !_rc replace rimpe_cat = real(strtrim(cat_reg_rimpe_4897))
+		else    replace rimpe_cat = cat_reg_rimpe_4897
+	}
+	gen byte rimpe_simpl = 0 if inlist(_merge, 2, 3)
+	capture confirm variable pag_reg_rimpe_neg_pop_4898
+	if !_rc & `yr' >= 2022 {
+		capture confirm string variable pag_reg_rimpe_neg_pop_4898
+		if !_rc replace rimpe_simpl = upper(strtrim(pag_reg_rimpe_neg_pop_4898)) == "SI" if inlist(_merge, 2, 3)
+		else    replace rimpe_simpl = pag_reg_rimpe_neg_pop_4898 == 1 if inlist(_merge, 2, 3)
+	}
 
     * ------------------------------------------------------------------
     * 3.4  CORRECCIÓN DE VALORES IMPOSIBLES EN HERENCIAS Y RIFAS
@@ -605,7 +696,8 @@ foreach yr of numlist 2010(1)2024 {
 
     * Variables de bunching: (max) para conservar los missing
     local bunch_vars base102 rimpe rimpe_bruto emp_bruto ///
-        n_emp_107 base107_max base107_sum otr_emp_107 ///
+        n_emp_107 base107_max base107_sum otr_emp_107 gp_107 grav_107 ///
+        cont_ing cont_cyg cont_cap cont_oblig rimpe_cat rimpe_simpl    ///
         publico_107 tasa_iess_107
 
     collapse (sum) `final_vars' (max) `bunch_vars', by(CEDULA_PK RUC_PK RUC_PK_empleado RUC_PK_empleador* _merge)
@@ -621,6 +713,14 @@ foreach yr of numlist 2010(1)2024 {
     label var base107_max    "Bunching: base imponible F107 más alta entre empleadores"
     label var base107_sum    "Bunching: suma de bases imponibles F107"
     label var otr_emp_107    "Bunching: ingresos gravados con otros empleadores (F107)"
+    label var gp_107         "Bunching: gastos personales declarados en el F107"
+    label var cont_ing       "Bunching: ingresos brutos de la actividad (umbral de contabilidad)"
+    label var cont_cyg       "Bunching: costos y gastos (umbral de contabilidad)"
+    label var cont_cap       "Bunching: patrimonio neto, solo obligados (1330)"
+    label var cont_oblig     "Bunching: llenó balance o estado de resultados (llevó contabilidad)"
+    label var rimpe_cat      "Bunching: categoría RIMPE declarada (código 4897)"
+    label var rimpe_simpl    "Bunching: declaración simplificada de negocio popular (4898 = SI)"
+    label var grav_107       "Bunching: sueldos + sobresueldos + utilidades - aporte IESS (F107)"
     label var publico_107    "Bunching: servidor público (aporte personal IESS ~11,45% en algún F107)"
     label var tasa_iess_107  "Bunching: tasa de aporte personal IESS del F107 con la base más alta"
 

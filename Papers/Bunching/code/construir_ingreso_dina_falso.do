@@ -13,7 +13,7 @@
 *******************************************************************************/
 
 global dina_code "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/Papers/Desigualdad ingreso"
-global dir_sri   "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Falso/SRI"
+global dir_sri   "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/SRI/Falso/SRI"
 
 capture mkdir "$dir_sri/03 BDD/SRI/IR/Merged"
 

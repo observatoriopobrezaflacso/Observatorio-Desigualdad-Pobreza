@@ -1,0 +1,427 @@
+-------------------------------------------------------------------------------------------------------------------------------------------
+      name:  movlog
+       log:  D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Proyectos/Impacto shocks/resultados/movilidad_v2/
+> covid/dos_anios/winsorized/regresiones/A5_desercion_covid.log
+  log type:  text
+ opened on:   5 Oct 2026, 14:07:38
+. 
+. di as result _n "===================================================================="
+
+====================================================================
+. di as result    " (5) LOS QUE SE VAN -- muestra NO balanceada"
+ (5) LOS QUE SE VAN -- muestra NO balanceada
+. di as result    "     $shock_lab"
+     covid | pre 2019 | orden a=2017 b=2015-2017 | base 2018 | origen D6-D10 | principal lg | solo 2019 vs 2020 | winsorizado p1
+. di as result    "     poblacion: observados en $pre_year, origen D$keep_dec_lo-D$keep_dec_hi"
+     poblacion: observados en 2019, origen D6-D10
+. di as result    "     peor caso: piso / techo = p($wc_p_lo) / p($wc_p_hi) de los que se quedan"
+     peor caso: piso / techo = p(1 10 20) / p(99 90 80) de los que se quedan
+. if $wc_g_floor0 == 1 di as result "                (en g, la primera variante usa piso -1)"
+                (en g, la primera variante usa piso -1)
+. di as result    "===================================================================="
+====================================================================
+. 
+. * minimo y maximo del crecimiento medio por decil de origen (los 10) de los
+. * que se quedan, por columna, anio post y resultado -> locals dmn_* / dmx_*
+. * (valor) y ddn_* / ddx_* (decil)
+. capture confirm file "$work/${fstem}_dec_means.dta"
+. local _hasdm = !_rc
+. if !`_hasdm' di as error "OJO: falta $work/${fstem}_dec_means.dta (bloque 05): sin el escenario rango de deciles."
+. if `_hasdm' {
+.     use "$work/${fstem}_dec_means.dta" if muestra == 1, clear
+.     quietly levelsof pair, local(_dpairs)
+.     foreach p of local _dpairs {
+  2.         foreach y of global post_years {
+  3.             foreach o in lg gw {
+  4.                 quietly summarize m_`o' if pair == "`p'" & anio == `y'
+  5.                 if r(N) == 0 continue
+  6.                 local dmn_`o'_`p'_`y' = r(min)
+  7.                 local dmx_`o'_`p'_`y' = r(max)
+  8.                 quietly levelsof decil if pair == "`p'" & anio == `y' & m_`o' == r(min), local(_dd) clean
+  9.                 local ddn_`o'_`p'_`y' : word 1 of `_dd'
+ 10.                 quietly summarize m_`o' if pair == "`p'" & anio == `y'
+ 11.                 quietly levelsof decil if pair == "`p'" & anio == `y' & m_`o' == r(max), local(_dd) clean
+ 12.                 local ddx_`o'_`p'_`y' : word 1 of `_dd'
+ 13.             }
+ 14.         }
+ 15.     }
+. }
+. 
+. tempname PC PE
+. postfile `PC' str16 pair int anio byte decil int stat double value ///
+>     using "$work/${fstem}_lv_comp.dta", replace
+(file D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Proyectos/Impacto
+    shocks/data/movilidad_v2/covid_2p_w1_lv_comp.dta not found)
+. postfile `PE' str16 pair str2 outc int anio int fila double value ///
+>     using "$work/${fstem}_lv_esc.dta", replace
+(file D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Proyectos/Impacto
+    shocks/data/movilidad_v2/covid_2p_w1_lv_esc.dta not found)
+. 
+. foreach v of global inc_vars {
+  2.     foreach j in a b {
+  3.         local pl "`v'_`j'"
+  4.         di as result _n "############ `pl' ############"
+  5. 
+.         use id anio muestra decil0_`j'_`v' pctl0_`j'_`v' pctl_`v' real_`v'  ///
+>             gw_`j'_`v' lg_`j'_`v' if muestra == 1 & !missing(decil0_`j'_`v') ///
+>             using "$work/${fstem}_analysis.dta", clear
+  6.         quietly count
+  7.         if r(N) == 0 {
+  8.             di as error "  sin observaciones para `pl': se saltea"
+  9.             continue
+ 10.         }
+ 11.         rename (decil0_`j'_`v' pctl0_`j'_`v' pctl_`v' real_`v' gw_`j'_`v' lg_`j'_`v') ///
+>                (d0 p0 pc y gw lg)
+ 12.         gen byte _obs = !missing(lg)
+ 13. 
+.         * ---- valores del anio pre, por persona ---------------------------
+.         foreach x in y gw lg pc {
+ 14.             quietly gen double _t = `x' if anio == $pre_year & _obs
+ 15.             quietly bysort id: egen double `x'_pre = max(_t)
+ 16.             drop _t
+ 17.         }
+ 18.         gen byte   in_pre  = !missing(lg_pre)
+ 19.         gen double lny_pre = ln(y_pre)
+ 20. 
+.         foreach y of global post_years {
+ 21. 
+.             preserve
+ 22.             quietly {
+ 23.                 foreach x in gw lg {
+ 24.                     gen double _t = `x' if anio == `y' & _obs
+ 25.                     bysort id: egen double `x'_t = max(_t)
+ 26.                     drop _t
+ 27.                 }
+ 28.                 bysort id (anio): keep if _n == 1       // una fila por persona
+ 29.                 gen byte stay   =  in_pre & !missing(lg_t)
+ 30.                 gen byte leave  =  in_pre &  missing(lg_t)
+ 31.                 gen byte vuelve = !in_pre & !missing(lg_t)
+ 32.                 gen byte hi     = d0 == $hi_decile
+ 33.             }
+ 34. 
+.             * ---- 11.1 comparacion pre-shock, por decil ------------------
+.             forvalues d = $keep_dec_lo/$keep_dec_hi {
+ 35.                 quietly count if d0 == `d' & in_pre
+ 36.                 local npre = r(N)
+ 37.                 post `PC' ("`pl'") (`y') (`d') (1) (`npre')
+ 38.                 if `npre' == 0 continue
+ 39.                 quietly count if d0 == `d' & leave
+ 40.                 post `PC' ("`pl'") (`y') (`d') (2) (r(N) / `npre')
+ 41.                 quietly count if d0 == `d' & vuelve
+ 42.                 post `PC' ("`pl'") (`y') (`d') (3) (r(N) / `npre')
+ 43.                 local k = 0
+ 44.                 foreach x in lny_pre lg_pre pc_pre p0 {
+ 45.                     local k = `k' + 1
+ 46.                     quietly summarize `x' if d0 == `d' & stay, meanonly
+ 47.                     local ms = cond(r(N) > 0, r(mean), .)
+ 48.                     quietly summarize `x' if d0 == `d' & leave, meanonly
+ 49.                     local ml = cond(r(N) > 0, r(mean), .)
+ 50.                     post `PC' ("`pl'") (`y') (`d') (10*`k' + 1) (`ms')
+ 51.                     post `PC' ("`pl'") (`y') (`d') (10*`k' + 2) (`ml')
+ 52.                     post `PC' ("`pl'") (`y') (`d') (10*`k' + 3) (`ml' - `ms')
+ 53.                 }
+ 54.             }
+ 55. 
+.             * [se van - quedan] en D$hi_decile menos en D$lo_decile (decil 0)
+.             capture quietly reg leave hi ///
+>                 if in_pre & inlist(d0, $lo_decile, $hi_decile), vce(robust)
+ 56.             if !_rc {
+ 57.                 post `PC' ("`pl'") (`y') (0) (7) (_b[hi])
+ 58.                 post `PC' ("`pl'") (`y') (0) (8) (_se[hi])
+ 59.                 post `PC' ("`pl'") (`y') (0) (9) (2*ttail(e(df_r), abs(_b[hi]/_se[hi])))
+ 60.             }
+ 61.             local k = 0
+ 62.             foreach x in lny_pre lg_pre pc_pre p0 {
+ 63.                 local k = `k' + 1
+ 64.                 capture quietly reg `x' i.leave##i.hi ///
+>                     if in_pre & inlist(d0, $lo_decile, $hi_decile), vce(robust)
+ 65.                 if !_rc {
+ 66.                     capture quietly lincom 1.leave#1.hi
+ 67.                     if !_rc {
+ 68.                         post `PC' ("`pl'") (`y') (0) (10*`k' + 4) (r(estimate))
+ 69.                         post `PC' ("`pl'") (`y') (0) (10*`k' + 5) (r(se))
+ 70.                         post `PC' ("`pl'") (`y') (0) (10*`k' + 6) ///
+>                             (2*ttail(r(df), abs(r(estimate)/r(se))))
+ 71.                     }
+ 72.                 }
+ 73.             }
+ 74. 
+.             * ---- 11.2 escenarios y 11.3 peor caso ------------------------
+.             quietly keep if in_pre & inlist(d0, $lo_decile, $hi_decile)
+ 75.             quietly count if stay
+ 76.             local nst = r(N)
+ 77.             quietly count if leave
+ 78.             local nlv = r(N)
+ 79.             quietly summarize leave if !hi, meanonly
+ 80.             local shlo = cond(r(N) > 0, r(mean), .)
+ 81.             quietly summarize leave if hi, meanonly
+ 82.             local shhi = cond(r(N) > 0, r(mean), .)
+ 83. 
+.             foreach o in lg gw {
+ 84.                 local oc = cond("`o'" == "lg", "lg", "g")
+ 85. 
+.                 * ---- 11.2 escenarios (filas 1-16 del Excel) ------------------
+.                 quietly {
+ 86.                     gen double D_q = `o'_t - `o'_pre if stay
+ 87.                     gen double D_m = cond(stay, `o'_t - `o'_pre, 0)
+ 88.                     if "`o'" == "gw" gen double D_c = cond(stay, gw_t - gw_pre, -1 - gw_pre)
+ 89.                     * decil: media de y_t de los que se quedan en el mismo decil
+.                     bysort d0: egen double _myt = mean(cond(stay, `o'_t, .))
+ 90.                     gen double D_d = cond(stay, `o'_t - `o'_pre, _myt - `o'_pre)
+ 91.                     drop _myt
+ 92.                     * winsorizado: tope en p$win_scen_p, solo los que se quedan
+.                     local _cp = .
+ 93.                     local _ct = .
+ 94.                     capture _pctile `o'_pre if stay, percentiles($win_scen_p)
+ 95.                     if !_rc local _cp = r(r1)
+ 96.                     capture _pctile `o'_t if stay, percentiles($win_scen_p)
+ 97.                     if !_rc local _ct = r(r1)
+ 98.                     gen double D_w = min(`o'_t, `_ct') - min(`o'_pre, `_cp') if stay
+ 99.                 }
+100.                 foreach sc in q m c d w {
+101.                     local b_`sc' = .
+102.                     local s_`sc' = .
+103.                     if "`sc'" == "c" & "`o'" != "gw" continue
+104.                     capture quietly reg D_`sc' hi, vce(robust)
+105.                     if !_rc {
+106.                         local b_`sc' = _b[hi]
+107.                         local s_`sc' = _se[hi]
+108.                     }
+109.                 }
+110.                 local f = 0
+111.                 foreach nm in b_q s_q b_m s_m b_c s_c b_d s_d b_w s_w nst nlv shlo shhi _cp _ct {
+112.                     local f = `f' + 1
+113.                     if "``nm''" == "" local `nm' = .
+114.                     post `PE' ("`pl'") ("`oc'") (`y') (`f') (``nm'')
+115.                 }
+116.                 di as text "  `y' `oc':  quedan " as result %8.4f `b_q'          ///
+>                    as text "  mantiene " as result %8.4f `b_m'                  ///
+>                    as text "  cero " as result %8.4f `b_c'                      ///
+>                    as text "  decil " as result %8.4f `b_d'                     ///
+>                    as text "  winsor " as result %8.4f `b_w'
+117.                 drop D_q D_m D_d D_w
+118.                 capture drop D_c
+119. 
+.                 * ---- 11.2b rango de deciles (filas 51-61 del Excel) ----------
+.                 local Rn  = .
+120.                 local Rx  = .
+121.                 local Rdn = .
+122.                 local Rdx = .
+123.                 if "`dmn_`o'_`pl'_`y''" != "" {
+124.                     local Rn  = `dmn_`o'_`pl'_`y''
+125.                     local Rx  = `dmx_`o'_`pl'_`y''
+126.                     local Rdn = `ddn_`o'_`pl'_`y''
+127.                     local Rdx = `ddx_`o'_`pl'_`y''
+128.                 }
+129.                 foreach nm in b_rl b_rh s_rl s_rh ci_rl ci_rh cf_r {
+130.                     local `nm' = .
+131.                 }
+132.                 if !missing(`Rn', `Rx') {
+133.                     quietly {
+134.                         gen double D_rl = cond(stay, `o'_t - `o'_pre, cond(hi, `Rn', `Rx') - `o'_pre)
+135.                         gen double D_rh = cond(stay, `o'_t - `o'_pre, cond(hi, `Rx', `Rn') - `o'_pre)
+136.                     }
+137.                     foreach sc in rl rh {
+138.                         capture quietly reg D_`sc' hi, vce(robust)
+139.                         if !_rc {
+140.                             local b_`sc' = _b[hi]
+141.                             local s_`sc' = _se[hi]
+142.                         }
+143.                     }
+144.                     drop D_rl D_rh
+145.                     if !missing(`b_rl', `b_rh', `s_rl', `s_rh') {
+146.                         quietly im_c, delta(`=`b_rh' - `b_rl'') ///
+>                             smax(`=max(`s_rl', `s_rh')') alpha($im_alpha)
+147.                         local cf_r = r(c)
+148.                         if !missing(`cf_r') {
+149.                             local ci_rl = `b_rl' - `cf_r' * `s_rl'
+150.                             local ci_rh = `b_rh' + `cf_r' * `s_rh'
+151.                         }
+152.                     }
+153.                 }
+154.                 local f = 50
+155.                 foreach nm in b_rl b_rh s_rl s_rh ci_rl ci_rh cf_r Rdn Rn Rdx Rx {
+156.                     local f = `f' + 1
+157.                     if "``nm''" == "" local `nm' = .
+158.                     post `PE' ("`pl'") ("`oc'") (`y') (`f') (``nm'')
+159.                 }
+160.                 di as text "        rango de deciles (D`Rdn' / D`Rdx'): [" as result %8.4f `b_rl' ///
+>                    as text "," as result %8.4f `b_rh' as text "]"
+161. 
+.                 * ---- 11.3 peor caso: una variante por par de percentiles -----
+.                 * filas 100*k + 1..11 del Excel (k = numero de variante)
+.                 local nwc : word count $wc_p_lo
+162.                 forvalues k = 1/`nwc' {
+163.                     local plo : word `k' of $wc_p_lo
+164.                     local phi : word `k' of $wc_p_hi
+165. 
+.                     * piso y techo: p`plo' / p`phi' de los que se quedan, por decil
+.                     foreach side in lo hi {
+166.                         local L`side' = .
+167.                         local U`side' = .
+168.                         capture _pctile `o'_t if stay & d0 == ${`side'_decile}, ///
+>                             percentiles(`plo' `phi')
+169.                         if !_rc {
+170.                             local L`side' = r(r1)
+171.                             local U`side' = r(r2)
+172.                         }
+173.                         if "`o'" == "gw" & `k' == 1 & $wc_g_floor0 == 1 local L`side' = -1
+174.                     }
+175. 
+.                     quietly {
+176.                         gen double D_lo = cond(stay, `o'_t - `o'_pre, ///
+>                                                cond(hi, `Lhi', `Ulo') - `o'_pre)
+177.                         gen double D_hi = cond(stay, `o'_t - `o'_pre, ///
+>                                                cond(hi, `Uhi', `Llo') - `o'_pre)
+178.                     }
+179.                     foreach sc in lo hi {
+180.                         local b_`sc' = .
+181.                         local s_`sc' = .
+182.                         capture quietly reg D_`sc' hi, vce(robust)
+183.                         if !_rc {
+184.                             local b_`sc' = _b[hi]
+185.                             local s_`sc' = _se[hi]
+186.                         }
+187.                     }
+188. 
+.                     * IC de Imbens-Manski para el efecto sobre toda la poblacion
+.                     local cf    = .
+189.                     local ci_lo = .
+190.                     local ci_hi = .
+191.                     if !missing(`b_lo', `b_hi', `s_lo', `s_hi') {
+192.                         quietly im_c, delta(`=`b_hi' - `b_lo'') ///
+>                             smax(`=max(`s_lo', `s_hi')') alpha($im_alpha)
+193.                         local cf = r(c)
+194.                         if !missing(`cf') {
+195.                             local ci_lo = `b_lo' - `cf' * `s_lo'
+196.                             local ci_hi = `b_hi' + `cf' * `s_hi'
+197.                         }
+198.                     }
+199. 
+.                     local f = 100 * `k'
+200.                     foreach nm in b_lo b_hi s_lo s_hi ci_lo ci_hi cf Llo Ulo Lhi Uhi {
+201.                         local f = `f' + 1
+202.                         if "``nm''" == "" local `nm' = .
+203.                         post `PE' ("`pl'") ("`oc'") (`y') (`f') (``nm'')
+204.                     }
+205. 
+.                     di as text "        p`plo'/p`phi': [" as result %8.4f `b_lo' ///
+>                        as text "," as result %8.4f `b_hi' as text "]  IC ["     ///
+>                        as result %8.4f `ci_lo' as text "," as result %8.4f `ci_hi' ///
+>                        as text "]"
+206. 
+.                     drop D_lo D_hi
+207.                 }
+208.             }
+209.             restore
+210.         }
+211.     }
+212. }
+
+############ ingreso_a ############
+(16,155 missing values generated)
+  2020 lg:  quedan  -0.0227  mantiene  -0.0243  cero        .  decil  -0.0395  winsor  -0.0218
+        rango de deciles (D10 / D1): [ -0.0772,  0.0168]
+        p1/p99: [ -0.5428,  0.5053]  IC [ -0.5488,  0.5113]
+        p10/p90: [ -0.1597,  0.0783]  IC [ -0.1644,  0.0831]
+        p20/p80: [ -0.0929,  0.0076]  IC [ -0.0976,  0.0123]
+  2020 g:  quedan  -0.0076  mantiene  -0.0084  cero   0.0096  decil  -0.0163  winsor  -0.0062
+        rango de deciles (D7 / D1): [-7.1e+02,568.2668]
+        p1/p99: [ -0.5154,  0.4643]  IC [ -0.5206,  0.4695]
+        p10/p90: [ -0.1004,  0.0736]  IC [ -0.1034,  0.0766]
+        p20/p80: [ -0.0590,  0.0247]  IC [ -0.0619,  0.0276]
+
+############ ingreso_b ############
+(11,709 missing values generated)
+  2020 lg:  quedan  -0.0569  mantiene  -0.0533  cero        .  decil  -0.0587  winsor  -0.0557
+        rango de deciles (D10 / D1): [ -0.0639, -0.0276]
+        p1/p99: [ -0.4775,  0.3578]  IC [ -0.4837,  0.3639]
+        p10/p90: [ -0.1519,  0.0254]  IC [ -0.1569,  0.0305]
+        p20/p80: [ -0.0962, -0.0236]  IC [ -0.1011, -0.0186]
+  2020 g:  quedan  -0.0189  mantiene  -0.0178  cero  -0.0106  decil  -0.0198  winsor  -0.0170
+        rango de deciles (D6 / D7): [-3.4e+02,323.4020]
+        p1/p99: [ -0.3946,  0.4516]  IC [ -0.3999,  0.4579]
+        p10/p90: [ -0.0853,  0.0466]  IC [ -0.0887,  0.0500]
+        p20/p80: [ -0.0534,  0.0065]  IC [ -0.0568,  0.0099]
+
+############ D1R_a ############
+(27,532 missing values generated)
+  2020 lg:  quedan   0.0207  mantiene   0.0177  cero        .  decil   0.0188  winsor   0.0208
+        rango de deciles (D4 / D1): [ -0.0053,  0.0418]
+        p1/p99: [ -0.3314,  0.3856]  IC [ -0.3361,  0.3904]
+        p10/p90: [ -0.0561,  0.0940]  IC [ -0.0600,  0.0978]
+        p20/p80: [ -0.0105,  0.0464]  IC [ -0.0144,  0.0502]
+  2020 g:  quedan   0.0122  mantiene   0.0107  cero   0.0206  decil   0.0114  winsor   0.0122
+        rango de deciles (D7 / D1): [ -6.7723,  6.1083]
+        p1/p99: [ -0.2068,  0.2018]  IC [ -0.2095,  0.2043]
+        p10/p90: [ -0.0493,  0.0720]  IC [ -0.0510,  0.0737]
+        p20/p80: [ -0.0142,  0.0384]  IC [ -0.0158,  0.0401]
+
+############ D1R_b ############
+(22,166 missing values generated)
+  2020 lg:  quedan  -0.0030  mantiene  -0.0015  cero        .  decil   0.0131  winsor  -0.0026
+        rango de deciles (D3 / D8): [  0.0085,  0.0222]
+        p1/p99: [ -0.3222,  0.3163]  IC [ -0.3272,  0.3213]
+        p10/p90: [ -0.0506,  0.0706]  IC [ -0.0547,  0.0747]
+        p20/p80: [ -0.0075,  0.0373]  IC [ -0.0117,  0.0414]
+  2020 g:  quedan   0.0082  mantiene   0.0081  cero   0.0084  decil   0.0159  winsor   0.0082
+        rango de deciles (D10 / D1): [ -1.2663,  1.4711]
+        p1/p99: [ -0.1921,  0.2333]  IC [ -0.1951,  0.2364]
+        p10/p90: [ -0.0369,  0.0640]  IC [ -0.0388,  0.0659]
+        p20/p80: [ -0.0051,  0.0368]  IC [ -0.0069,  0.0386]
+
+############ capital_a ############
+(17,524 missing values generated)
+  2020 lg:  quedan  -0.6375  mantiene  -0.4989  cero        .  decil  -0.6840  winsor  -0.6317
+        rango de deciles (D10 / D1): [ -0.8861, -0.0901]
+        p1/p99: [ -4.3814,  2.5477]  IC [ -4.4838,  2.6370]
+        p10/p90: [ -1.7835,  0.3482]  IC [ -1.8436,  0.4069]
+        p20/p80: [ -1.2276, -0.1277]  IC [ -1.2837, -0.0720]
+  2020 g:  quedan  -0.8718  mantiene  -0.6492  cero  -0.6235  decil  -1.1485  winsor  -0.8131
+        rango de deciles (D6 / D1): [-2.4e+02,193.9365]
+        p1/p99: [-31.0494, 21.7207]  IC [-32.0164, 22.5322]
+        p10/p90: [ -1.9886, -0.1002]  IC [ -2.3882,  0.2998]
+        p20/p80: [ -1.2803, -0.4233]  IC [ -1.6801, -0.0231]
+
+############ capital_b ############
+(4,749 missing values generated)
+  2020 lg:  quedan  -0.9491  mantiene  -0.7000  cero        .  decil  -0.9574  winsor  -0.9409
+        rango de deciles (D10 / D1): [ -1.0817, -0.3083]
+        p1/p99: [ -4.8416,  2.0372]  IC [ -5.0076,  2.1749]
+        p10/p90: [ -2.0386, -0.0400]  IC [ -2.1332,  0.0519]
+        p20/p80: [ -1.5045, -0.4103]  IC [ -1.5927, -0.3220]
+  2020 g:  quedan  -1.3656  mantiene  -1.0435  cero  -1.0540  decil  -1.3084  winsor  -1.3182
+        rango de deciles (D5 / D4): [-72.5628, 81.2143]
+        p1/p99: [-32.3498, 14.6412]  IC [-34.0531, 15.5603]
+        p10/p90: [ -1.7937, -0.5587]  IC [ -2.3747,  0.0238]
+        p20/p80: [ -1.4229, -0.8388]  IC [ -2.0067, -0.2545]
+
+############ liq_107_a ############
+(29,168 missing values generated)
+  2020 lg:  quedan   0.0212  mantiene   0.0183  cero        .  decil   0.0196  winsor   0.0213
+        rango de deciles (D4 / D1): [ -0.0046,  0.0427]
+        p1/p99: [ -0.3330,  0.3881]  IC [ -0.3377,  0.3928]
+        p10/p90: [ -0.0553,  0.0948]  IC [ -0.0592,  0.0986]
+        p20/p80: [ -0.0096,  0.0472]  IC [ -0.0135,  0.0511]
+  2020 g:  quedan   0.0126  mantiene   0.0111  cero   0.0204  decil   0.0119  winsor   0.0126
+        rango de deciles (D7 / D1): [ -5.9256,  5.3916]
+        p1/p99: [ -0.2069,  0.2041]  IC [ -0.2096,  0.2066]
+        p10/p90: [ -0.0489,  0.0725]  IC [ -0.0506,  0.0742]
+        p20/p80: [ -0.0137,  0.0389]  IC [ -0.0154,  0.0405]
+
+############ liq_107_b ############
+(23,297 missing values generated)
+  2020 lg:  quedan  -0.0017  mantiene  -0.0002  cero        .  decil   0.0150  winsor  -0.0015
+        rango de deciles (D3 / D8): [  0.0102,  0.0239]
+        p1/p99: [ -0.3227,  0.3196]  IC [ -0.3278,  0.3246]
+        p10/p90: [ -0.0488,  0.0723]  IC [ -0.0529,  0.0765]
+        p20/p80: [ -0.0056,  0.0391]  IC [ -0.0098,  0.0433]
+  2020 g:  quedan   0.0089  mantiene   0.0089  cero   0.0086  decil   0.0168  winsor   0.0089
+        rango de deciles (D10 / D1): [ -1.1440,  1.3485]
+        p1/p99: [ -0.1910,  0.2363]  IC [ -0.1940,  0.2395]
+        p10/p90: [ -0.0361,  0.0649]  IC [ -0.0379,  0.0668]
+        p20/p80: [ -0.0041,  0.0377]  IC [ -0.0060,  0.0395]
+. 
+. postclose `PC'
+. postclose `PE'
+. capture log close movlog

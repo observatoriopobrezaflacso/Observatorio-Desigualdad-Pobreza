@@ -42,8 +42,8 @@ clear all
 set more off
 set seed 20260929
 
-global code_dir  "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/Papers/Bunching"
-global bunch_dir "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Falso"
+global code_dir  "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/Papers/Bunching/code"
+global bunch_dir "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/SRI/Falso"
 global dir_gen   "$bunch_dir/Datos_falsos"          // formularios generados
 global fake_sri  "$bunch_dir/SRI"                   // equivale a dir_sri del servidor
 global fake_ir   "$fake_sri/03 BDD/SRI/IR"

@@ -972,7 +972,9 @@ foreach s of global samples {
     * post y decil de origen 1-10: media del crecimiento base -> t (lg y g) de
     * los que estan en $pre_year y en t ("se quedan"). La usa el escenario
     * "rango de deciles" del bloque 11 -> $work/${fstem}_dec_means.dta
-    * g todavia no esta winsorizado aca.
+    * g todavia no esta winsorizado aca: si $wins_p > 0 se topea en p$wins_p /
+    * p(100-$wins_p) por anio, sobre los 10 deciles, antes de promediar. Sin
+    * esto los deciles de abajo (bases chicas) dan medias absurdas.
     if $do_leavers == 1 {
         preserve
             keep id anio decil0_* lg_* g_*
@@ -986,6 +988,15 @@ foreach s of global samples {
                         gen byte _p = anio == $pre_year & !missing(lg_`j'_`v')
                         bysort id: egen byte _inpre = max(_p)
                         keep if _inpre & anio != $pre_year & !missing(lg_`j'_`v', decil0_`j'_`v')
+                        if $wins_p > 0 {
+                            levelsof anio, local(_ys)
+                            foreach yy of local _ys {
+                                _pctile g_`j'_`v' if anio == `yy', ///
+                                    percentiles($wins_p `=100 - $wins_p')
+                                replace g_`j'_`v' = r(r1) if anio == `yy' & g_`j'_`v' < r(r1)
+                                replace g_`j'_`v' = r(r2) if anio == `yy' & g_`j'_`v' > r(r2) & !missing(g_`j'_`v')
+                            }
+                        }
                         gen byte _uno = 1
                         collapse (mean) m_lg = lg_`j'_`v' m_gw = g_`j'_`v' (sum) n = _uno, ///
                             by(anio decil0_`j'_`v')

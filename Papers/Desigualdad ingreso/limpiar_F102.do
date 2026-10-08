@@ -60,10 +60,13 @@ global f102_vars                                                        ///
     img_herencias_leg_don_3420 ipa_herencias_leg_don_3410               ///
     ing_lot_rifas_apuestas_3400 ipa_lot_rifas_apuestas_3390             ///
     ing_pensiones_jubilares_3450 imp_renta_causado_3490                 ///
-    base_imponible_3480 suj_reg_rimpe_4896 bas_imp_grav_reg_rimpe_5687  //  bunching (+ 1280 arriba)
+    base_imponible_3480 suj_reg_rimpe_4896 bas_imp_grav_reg_rimpe_5687  ///  bunching (+ 1280 arriba)
+    total_ingresos_1440 total_costos_gastos_2760 tot_patrimonio_neto_1330 ///  umbrales de contabilidad
+    total_activo_830 ingr_regimen_micro_noob_4825                       ///  (bunching)
+    cat_reg_rimpe_4897 pag_reg_rimpe_neg_pop_4898                       //   categoría RIMPE, declaración simplificada
 
 * Variables de texto que no se convierten a número
-global f102_texto "CEDULA_PK RUC_PK suj_reg_rimpe_4896"
+global f102_texto "CEDULA_PK RUC_PK suj_reg_rimpe_4896 cat_reg_rimpe_4897 pag_reg_rimpe_neg_pop_4898"
 
 * Sección 2: variables nuevas para agregar a las bases limpias existentes
 * (si ya están en la base limpia, se reemplazan)

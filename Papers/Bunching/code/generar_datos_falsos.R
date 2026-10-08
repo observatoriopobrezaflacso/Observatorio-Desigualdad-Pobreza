@@ -16,7 +16,7 @@
 invisible(Sys.setlocale("LC_ALL", "en_US.UTF-8"))
 suppressMessages({library(haven); library(dplyr); library(tibble); library(purrr); library(stringr)})
 proc <- "/Users/santiago/Documents/GitHub/Observatorio-Desigualdad-Pobreza/SRI/Procesamiento"
-out  <- "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Falso/Datos_falsos"
+out  <- "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/SRI/Falso/Datos_falsos"
 n_obs    <- 50000
 keep_all <- FALSE   # TRUE = generar las 858 variables (archivos mucho más grandes)
 source(file.path(proc, "Codigos/Fake data/Synthetic.R"))
@@ -39,12 +39,18 @@ vars_keep <- list(
           "dividendos_recibidos_3192", "ingresos_otr_rgr_3193", "deducciones_otr_rgr_3194",
           "img_herencias_leg_don_3420", "ipa_herencias_leg_don_3410",
           "ing_lot_rifas_apuestas_3400", "ipa_lot_rifas_apuestas_3390",
-          "ing_pensiones_jubilares_3450", "imp_renta_causado_3490"),
+          "ing_pensiones_jubilares_3450", "imp_renta_causado_3490",
+          "total_ingresos_1440", "total_costos_gastos_2760", "tot_patrimonio_neto_1330",
+          "total_activo_830", "ingr_regimen_micro_noob_4825",
+          "cat_reg_rimpe_4897", "pag_reg_rimpe_neg_pop_4898"),
   "7" = c("CEDULA_PK_empleado", "RUC_PK_empleado", "RUC_PK_empleador", "base_imponible",
           "ingreso_grav_otr_empleador",
           "ingresos_liq_pagados", "sob_suel_com_remu", "partic_utilidades",
           "decimo_tercero", "decimo_cuarto", "fondo_reserva",
-          "aporte_iess_empleado", "imp_renta_causado")
+          "aporte_iess_empleado", "imp_renta_causado",
+          "deduccion_vivienda", "deduccion_salud", "deduccion_educacion",
+          "deduccion_educacion_arte", "deduccion_arte_cultura",
+          "deduccion_alimentacion", "deduccion_vestimenta", "deduccion_turismo")
 )
 
 # Copia temporal del YAML con los bytes reparados

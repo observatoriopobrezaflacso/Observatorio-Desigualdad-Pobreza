@@ -25,8 +25,8 @@ set seed 42
 
 global basedir "/Users/vero/Library/CloudStorage/GoogleDrive-santy85258@gmail.com/Mi unidad/Trabajos/Observatorio de Políticas Públicas/Observatorio GH/SRI/Procesamiento"
 
-global dir_f107 "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Falso/Datos_falsos/F107"
-global dir_f102 "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/Falso/Datos_falsos/F102"
+global dir_f107 "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/SRI/Falso/Datos_falsos/F107"
+global dir_f102 "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad/Papers/Bunching/SRI/Falso/Datos_falsos/F102"
 
 local pool_size   80000     // >= n107 + n102 - compartidos (50 000 filas por formulario)
 local id_len      10
