@@ -1,0 +1,307 @@
+-------------------------------------------------------------------------------------------------------------------------------------------
+      name:  movlog
+       log:  D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Proyectos/Impacto shocks/resultados/movilidad_v2/
+> covid/dos_anios/winsorized/regresiones/A6_heterogeneidad_covid.log
+  log type:  text
+ opened on:   5 Oct 2026, 14:08:57
+. di as result _n "===================================================================="
+
+====================================================================
+. di as result    " (6) HETEROGENEIDAD -- $shock_lab"
+ (6) HETEROGENEIDAD -- covid | pre 2019 | orden a=2017 b=2015-2017 | base 2018 | origen D6-D10 | principal lg | solo 2019 vs 2020 | winsori
+> zado p1
+. di as result    "     dimensiones: `dims'   comparaciones: D$hi_decile vs D($lo_list)"
+     dimensiones:  edad sexo civil   comparaciones: D10 vs D(6 7 8 9)
+. di as result    "     resultado: $main_lab"
+     resultado: log-crecimiento  ln(y_t) - ln(y_base)
+. di as result    "===================================================================="
+====================================================================
+. 
+. tempname PH PK
+. postfile `PH' str16 pair str6 dim byte muestra int contraste int anio int nivel ///
+>     str24 nivel_lab byte stat double value using "$work/${fstem}_het.dta", replace
+(file D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Proyectos/Impacto
+    shocks/data/movilidad_v2/covid_2p_w1_het.dta not found)
+. postfile `PK' str16 pair str6 dim byte muestra int decil int nivel ///
+>     str24 nivel_lab byte stat double value using "$work/${fstem}_het_comp.dta", replace
+(file D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Proyectos/Impacto
+    shocks/data/movilidad_v2/covid_2p_w1_het_comp.dta not found)
+. 
+. foreach d of local dims {
+  2.     di as result _n "############ dimension: `d' ############"
+  3.     local si = 0
+  4.     foreach s of global samples {
+  5.         local si = `si' + 1
+  6.         foreach v of global inc_vars {
+  7.             foreach j in a b {
+  8.                 local pl "`v'_`j'"
+  9.                 local yv "`ymain'_`j'_`v'"
+ 10.                 local dv "decil0_`j'_`v'"
+ 11. 
+.                 quietly levelsof het_`d' if muestra == `si' & !missing(`dv', `yv'), local(levs)
+ 12.                 if "`levs'" == "" continue
+ 13.                 local base : word 1 of `levs'
+ 14. 
+.                 * ---- composicion en el anio pre --------------------------
+.                 forvalues dd = $keep_dec_lo/$keep_dec_hi {
+ 15.                     quietly count if muestra == `si' & anio == $pre_year & `dv' == `dd' ///
+>                         & !missing(`yv', het_`d')
+ 16.                     local ntot = r(N)
+ 17.                     if `ntot' == 0 continue
+ 18.                     foreach k of local levs {
+ 19.                         local lab : label (het_`d') `k'
+ 20.                         quietly count if muestra == `si' & anio == $pre_year & `dv' == `dd' ///
+>                             & !missing(`yv') & het_`d' == `k'
+ 21.                         post `PK' ("`pl'") ("`d'") (`si') (`dd') (`k') ("`lab'") (1) (r(N) / `ntot')
+ 22.                         post `PK' ("`pl'") ("`d'") (`si') (`dd') (`k') ("`lab'") (2) (r(N))
+ 23.                     }
+ 24.                 }
+ 25. 
+.                 * ---- dif-en-dif por grupo, contra cada decil --------------
+.                 foreach c of global lo_list {
+ 26.                     capture quietly reg `yv'                                          ///
+>                         ib${pre_year}.anio##ib`c'.`dv'##ib`base'.het_`d'              ///
+>                         if muestra == `si' & inlist(`dv', `c', $hi_decile) & !missing(het_`d'), ///
+>                         vce(cluster id)
+ 27.                     if _rc {
+ 28.                         di as error "  no estimable: `s' | `pl' | `d' | D`c'"
+ 29.                         continue
+ 30.                     }
+ 31.                     tempvar es
+ 32.                     quietly gen byte `es' = e(sample)
+ 33.                     foreach y of global post_years {
+ 34.                         local line ""
+ 35.                         foreach k of local levs {
+ 36.                             local lab : label (het_`d') `k'
+ 37.                             if `k' == `base' capture quietly lincom `y'.anio#${hi_decile}.`dv'
+ 38.                             else capture quietly lincom `y'.anio#${hi_decile}.`dv' + ///
+>                                                          `y'.anio#${hi_decile}.`dv'#`k'.het_`d'
+ 39.                             if !_rc {
+ 40.                                 post `PH' ("`pl'") ("`d'") (`si') (`c') (`y') (`k') ("`lab'") (1) (r(estimate))
+ 41.                                 post `PH' ("`pl'") ("`d'") (`si') (`c') (`y') (`k') ("`lab'") (2) (r(se))
+ 42.                                 post `PH' ("`pl'") ("`d'") (`si') (`c') (`y') (`k') ("`lab'") (3) ///
+>                                     (2*ttail(r(df), abs(r(estimate)/r(se))))
+ 43.                                 local _b : display %7.4f r(estimate)
+ 44.                                 local line "`line'  `lab' `_b'"
+ 45.                             }
+ 46.                             if `k' != `base' {
+ 47.                                 capture quietly lincom `y'.anio#${hi_decile}.`dv'#`k'.het_`d'
+ 48.                                 if !_rc {
+ 49.                                     post `PH' ("`pl'") ("`d'") (`si') (`c') (`y') (`k') ("`lab'") (4) (r(estimate))
+ 50.                                     post `PH' ("`pl'") ("`d'") (`si') (`c') (`y') (`k') ("`lab'") (5) (r(se))
+ 51.                                     post `PH' ("`pl'") ("`d'") (`si') (`c') (`y') (`k') ("`lab'") (6) ///
+>                                         (2*ttail(r(df), abs(r(estimate)/r(se))))
+ 52.                                 }
+ 53.                             }
+ 54.                             quietly count if `es' & het_`d' == `k'
+ 55.                             post `PH' ("`pl'") ("`d'") (`si') (`c') (`y') (`k') ("`lab'") (7) (r(N))
+ 56.                         }
+ 57.                         di as text "  `s' | `pl' | D$hi_decile vs D`c' | `y':`line'"
+ 58.                     }
+ 59.                     drop `es'
+ 60.                 }
+ 61.             }
+ 62.         }
+ 63.     }
+ 64. }
+
+############ dimension: edad ############
+  unbal | ingreso_a | D10 vs D6 | 2020:  <30 -0.0577  30-44 -0.0078  45-59 -0.0197  60+ -0.1215
+  unbal | ingreso_a | D10 vs D7 | 2020:  <30 -0.0872  30-44 -0.0354  45-59 -0.0654  60+ -0.1268
+  unbal | ingreso_a | D10 vs D8 | 2020:  <30 -0.1078  30-44 -0.0437  45-59 -0.0357  60+ -0.1268
+  unbal | ingreso_a | D10 vs D9 | 2020:  <30 -0.0480  30-44 -0.0163  45-59 -0.0160  60+ -0.0995
+  unbal | ingreso_b | D10 vs D6 | 2020:  <30 -0.0869  30-44 -0.0243  45-59 -0.0488  60+ -0.1155
+  unbal | ingreso_b | D10 vs D7 | 2020:  <30 -0.1309  30-44 -0.0225  45-59 -0.0518  60+ -0.1667
+  unbal | ingreso_b | D10 vs D8 | 2020:  <30 -0.1111  30-44 -0.0413  45-59 -0.0304  60+ -0.1363
+  unbal | ingreso_b | D10 vs D9 | 2020:  <30 -0.1096  30-44 -0.0203  45-59 -0.0195  60+ -0.0985
+  unbal | D1R_a | D10 vs D6 | 2020:  <30  0.0291  30-44  0.0247  45-59  0.0073  60+  0.0119
+  unbal | D1R_a | D10 vs D7 | 2020:  <30  0.0153  30-44 -0.0040  45-59 -0.0127  60+ -0.0168
+  unbal | D1R_a | D10 vs D8 | 2020:  <30 -0.0326  30-44 -0.0005  45-59 -0.0023  60+ -0.0638
+  unbal | D1R_a | D10 vs D9 | 2020:  <30 -0.0063  30-44 -0.0185  45-59  0.0031  60+ -0.0711
+  unbal | D1R_b | D10 vs D6 | 2020:  <30  0.0086  30-44  0.0156  45-59  0.0055  60+  0.0038
+  unbal | D1R_b | D10 vs D7 | 2020:  <30 -0.0114  30-44  0.0055  45-59 -0.0072  60+ -0.0601
+  unbal | D1R_b | D10 vs D8 | 2020:  <30 -0.0542  30-44 -0.0110  45-59  0.0017  60+ -0.0755
+  unbal | D1R_b | D10 vs D9 | 2020:  <30 -0.0350  30-44 -0.0091  45-59 -0.0002  60+ -0.0680
+  unbal | capital_a | D10 vs D6 | 2020:  <30 -0.2684  30-44 -0.6459  45-59 -0.8532  60+ -0.5743
+  unbal | capital_a | D10 vs D7 | 2020:  <30 -0.0241  30-44 -0.5736  45-59 -0.7640  60+ -0.4939
+  unbal | capital_a | D10 vs D8 | 2020:  <30 -0.2508  30-44 -0.5723  45-59 -0.7006  60+ -0.4214
+  unbal | capital_a | D10 vs D9 | 2020:  <30 -0.2100  30-44 -0.4940  45-59 -0.6168  60+ -0.3521
+  unbal | capital_b | D10 vs D6 | 2020:  <30 -0.9908  30-44 -1.2153  45-59 -1.0431  60+ -0.7691
+  unbal | capital_b | D10 vs D7 | 2020:  <30 -0.9428  30-44 -0.9378  45-59 -1.0081  60+ -0.7571
+  unbal | capital_b | D10 vs D8 | 2020:  <30 -1.0543  30-44 -0.8767  45-59 -1.0556  60+ -0.7209
+  unbal | capital_b | D10 vs D9 | 2020:  <30 -0.5717  30-44 -0.5963  45-59 -0.8257  60+ -0.5094
+  unbal | liq_107_a | D10 vs D6 | 2020:  <30  0.0294  30-44  0.0252  45-59  0.0093  60+  0.0135
+  unbal | liq_107_a | D10 vs D7 | 2020:  <30  0.0170  30-44 -0.0026  45-59 -0.0113  60+ -0.0182
+  unbal | liq_107_a | D10 vs D8 | 2020:  <30 -0.0317  30-44  0.0002  45-59 -0.0012  60+ -0.0613
+  unbal | liq_107_a | D10 vs D9 | 2020:  <30 -0.0058  30-44 -0.0179  45-59  0.0046  60+ -0.0714
+  unbal | liq_107_b | D10 vs D6 | 2020:  <30  0.0130  30-44  0.0171  45-59  0.0082  60+  0.0056
+  unbal | liq_107_b | D10 vs D7 | 2020:  <30 -0.0073  30-44  0.0063  45-59 -0.0052  60+ -0.0607
+  unbal | liq_107_b | D10 vs D8 | 2020:  <30 -0.0506  30-44 -0.0100  45-59  0.0044  60+ -0.0711
+  unbal | liq_107_b | D10 vs D9 | 2020:  <30 -0.0318  30-44 -0.0093  45-59  0.0018  60+ -0.0622
+  bal | ingreso_a | D10 vs D6 | 2020:  <30 -0.0696  30-44  0.0031  45-59 -0.0320  60+ -0.0414
+  bal | ingreso_a | D10 vs D7 | 2020:  <30 -0.1403  30-44 -0.0377  45-59 -0.0737  60+ -0.0587
+  bal | ingreso_a | D10 vs D8 | 2020:  <30 -0.1315  30-44 -0.0471  45-59 -0.0376  60+ -0.0112
+  bal | ingreso_a | D10 vs D9 | 2020:  <30 -0.0774  30-44 -0.0194  45-59 -0.0203  60+ -0.0153
+  bal | ingreso_b | D10 vs D6 | 2020:  <30 -0.0894  30-44 -0.0277  45-59 -0.0785  60+ -0.0704
+  bal | ingreso_b | D10 vs D7 | 2020:  <30 -0.1463  30-44 -0.0085  45-59 -0.0376  60+ -0.0468
+  bal | ingreso_b | D10 vs D8 | 2020:  <30 -0.1079  30-44 -0.0453  45-59 -0.0252  60+  0.0049
+  bal | ingreso_b | D10 vs D9 | 2020:  <30 -0.0941  30-44 -0.0154  45-59 -0.0167  60+ -0.0261
+  bal | D1R_a | D10 vs D6 | 2020:  <30  0.0329  30-44  0.0481  45-59  0.0226  60+  0.0580
+  bal | D1R_a | D10 vs D7 | 2020:  <30 -0.0061  30-44 -0.0049  45-59 -0.0351  60+  0.0153
+  bal | D1R_a | D10 vs D8 | 2020:  <30 -0.0670  30-44 -0.0104  45-59 -0.0114  60+  0.0763
+  bal | D1R_a | D10 vs D9 | 2020:  <30 -0.0164  30-44 -0.0165  45-59  0.0067  60+  0.0984
+  bal | D1R_b | D10 vs D6 | 2020:  <30 -0.0026  30-44  0.0270  45-59  0.0015  60+  0.0665
+  bal | D1R_b | D10 vs D7 | 2020:  <30 -0.0449  30-44  0.0024  45-59 -0.0250  60+  0.0282
+  bal | D1R_b | D10 vs D8 | 2020:  <30 -0.0682  30-44 -0.0195  45-59 -0.0021  60+  0.0908
+  bal | D1R_b | D10 vs D9 | 2020:  <30 -0.0399  30-44 -0.0047  45-59  0.0022  60+  0.0770
+  bal | capital_a | D10 vs D6 | 2020:  <30 -0.1420  30-44 -0.6872  45-59 -0.8847  60+ -0.5534
+  bal | capital_a | D10 vs D7 | 2020:  <30  0.1516  30-44 -0.5705  45-59 -0.8250  60+ -0.5044
+  bal | capital_a | D10 vs D8 | 2020:  <30 -0.1854  30-44 -0.6065  45-59 -0.7365  60+ -0.3852
+  bal | capital_a | D10 vs D9 | 2020:  <30  0.0361  30-44 -0.4913  45-59 -0.6276  60+ -0.3459
+  bal | capital_b | D10 vs D6 | 2020:  <30 -0.9289  30-44 -1.2535  45-59 -1.0587  60+ -0.7763
+  bal | capital_b | D10 vs D7 | 2020:  <30 -1.0332  30-44 -1.0022  45-59 -0.9833  60+ -0.8014
+  bal | capital_b | D10 vs D8 | 2020:  <30 -0.8432  30-44 -0.8150  45-59 -1.0267  60+ -0.7153
+  bal | capital_b | D10 vs D9 | 2020:  <30 -0.5831  30-44 -0.7765  45-59 -0.7173  60+ -0.5303
+  bal | liq_107_a | D10 vs D6 | 2020:  <30  0.0343  30-44  0.0492  45-59  0.0245  60+  0.0575
+  bal | liq_107_a | D10 vs D7 | 2020:  <30 -0.0056  30-44 -0.0036  45-59 -0.0339  60+  0.0132
+  bal | liq_107_a | D10 vs D8 | 2020:  <30 -0.0661  30-44 -0.0100  45-59 -0.0102  60+  0.0809
+  bal | liq_107_a | D10 vs D9 | 2020:  <30 -0.0158  30-44 -0.0155  45-59  0.0084  60+  0.0977
+  bal | liq_107_b | D10 vs D6 | 2020:  <30  0.0016  30-44  0.0285  45-59  0.0039  60+  0.0696
+  bal | liq_107_b | D10 vs D7 | 2020:  <30 -0.0372  30-44  0.0032  45-59 -0.0234  60+  0.0283
+  bal | liq_107_b | D10 vs D8 | 2020:  <30 -0.0664  30-44 -0.0189  45-59 -0.0002  60+  0.0940
+  bal | liq_107_b | D10 vs D9 | 2020:  <30 -0.0363  30-44 -0.0049  45-59  0.0051  60+  0.0858
+
+############ dimension: sexo ############
+  unbal | ingreso_a | D10 vs D6 | 2020:  hombre -0.0451  mujer -0.0309
+  unbal | ingreso_a | D10 vs D7 | 2020:  hombre -0.0607  mujer -0.0680
+  unbal | ingreso_a | D10 vs D8 | 2020:  hombre -0.0862  mujer -0.0509
+  unbal | ingreso_a | D10 vs D9 | 2020:  hombre -0.0446  mujer -0.0220
+  unbal | ingreso_b | D10 vs D6 | 2020:  hombre -0.0515  mujer -0.0643
+  unbal | ingreso_b | D10 vs D7 | 2020:  hombre -0.0668  mujer -0.0693
+  unbal | ingreso_b | D10 vs D8 | 2020:  hombre -0.0771  mujer -0.0569
+  unbal | ingreso_b | D10 vs D9 | 2020:  hombre -0.0493  mujer -0.0385
+  unbal | D1R_a | D10 vs D6 | 2020:  hombre  0.0240  mujer  0.0073
+  unbal | D1R_a | D10 vs D7 | 2020:  hombre  0.0101  mujer -0.0156
+  unbal | D1R_a | D10 vs D8 | 2020:  hombre -0.0144  mujer -0.0171
+  unbal | D1R_a | D10 vs D9 | 2020:  hombre -0.0166  mujer -0.0182
+  unbal | D1R_b | D10 vs D6 | 2020:  hombre  0.0193  mujer  0.0006
+  unbal | D1R_b | D10 vs D7 | 2020:  hombre  0.0133  mujer -0.0157
+  unbal | D1R_b | D10 vs D8 | 2020:  hombre -0.0209  mujer -0.0170
+  unbal | D1R_b | D10 vs D9 | 2020:  hombre -0.0135  mujer -0.0124
+  unbal | capital_a | D10 vs D6 | 2020:  hombre -0.8392  mujer -0.4300
+  unbal | capital_a | D10 vs D7 | 2020:  hombre -0.7510  mujer -0.3674
+  unbal | capital_a | D10 vs D8 | 2020:  hombre -0.6742  mujer -0.3609
+  unbal | capital_a | D10 vs D9 | 2020:  hombre -0.5662  mujer -0.3228
+  unbal | capital_b | D10 vs D6 | 2020:  hombre -1.0695  mujer -0.7265
+  unbal | capital_b | D10 vs D7 | 2020:  hombre -1.0166  mujer -0.6641
+  unbal | capital_b | D10 vs D8 | 2020:  hombre -0.9939  mujer -0.6734
+  unbal | capital_b | D10 vs D9 | 2020:  hombre -0.7958  mujer -0.4217
+  unbal | liq_107_a | D10 vs D6 | 2020:  hombre  0.0253  mujer  0.0074
+  unbal | liq_107_a | D10 vs D7 | 2020:  hombre  0.0114  mujer -0.0141
+  unbal | liq_107_a | D10 vs D8 | 2020:  hombre -0.0135  mujer -0.0163
+  unbal | liq_107_a | D10 vs D9 | 2020:  hombre -0.0158  mujer -0.0172
+  unbal | liq_107_b | D10 vs D6 | 2020:  hombre  0.0223  mujer  0.0011
+  unbal | liq_107_b | D10 vs D7 | 2020:  hombre  0.0154  mujer -0.0154
+  unbal | liq_107_b | D10 vs D8 | 2020:  hombre -0.0184  mujer -0.0165
+  unbal | liq_107_b | D10 vs D9 | 2020:  hombre -0.0119  mujer -0.0132
+  bal | ingreso_a | D10 vs D6 | 2020:  hombre -0.0279  mujer -0.0448
+  bal | ingreso_a | D10 vs D7 | 2020:  hombre -0.0697  mujer -0.0863
+  bal | ingreso_a | D10 vs D8 | 2020:  hombre -0.0846  mujer -0.0499
+  bal | ingreso_a | D10 vs D9 | 2020:  hombre -0.0446  mujer -0.0271
+  bal | ingreso_b | D10 vs D6 | 2020:  hombre -0.0488  mujer -0.0901
+  bal | ingreso_b | D10 vs D7 | 2020:  hombre -0.0602  mujer -0.0588
+  bal | ingreso_b | D10 vs D8 | 2020:  hombre -0.0769  mujer -0.0503
+  bal | ingreso_b | D10 vs D9 | 2020:  hombre -0.0399  mujer -0.0352
+  bal | D1R_a | D10 vs D6 | 2020:  hombre  0.0425  mujer  0.0171
+  bal | D1R_a | D10 vs D7 | 2020:  hombre  0.0074  mujer -0.0364
+  bal | D1R_a | D10 vs D8 | 2020:  hombre -0.0323  mujer -0.0204
+  bal | D1R_a | D10 vs D9 | 2020:  hombre -0.0161  mujer -0.0122
+  bal | D1R_b | D10 vs D6 | 2020:  hombre  0.0267  mujer -0.0093
+  bal | D1R_b | D10 vs D7 | 2020:  hombre  0.0007  mujer -0.0285
+  bal | D1R_b | D10 vs D8 | 2020:  hombre -0.0325  mujer -0.0159
+  bal | D1R_b | D10 vs D9 | 2020:  hombre -0.0106  mujer -0.0061
+  bal | capital_a | D10 vs D6 | 2020:  hombre -0.8472  mujer -0.4475
+  bal | capital_a | D10 vs D7 | 2020:  hombre -0.7680  mujer -0.3970
+  bal | capital_a | D10 vs D8 | 2020:  hombre -0.6710  mujer -0.3682
+  bal | capital_a | D10 vs D9 | 2020:  hombre -0.5627  mujer -0.3167
+  bal | capital_b | D10 vs D6 | 2020:  hombre -1.0750  mujer -0.7524
+  bal | capital_b | D10 vs D7 | 2020:  hombre -1.0095  mujer -0.7114
+  bal | capital_b | D10 vs D8 | 2020:  hombre -0.9655  mujer -0.6534
+  bal | capital_b | D10 vs D9 | 2020:  hombre -0.7710  mujer -0.4421
+  bal | liq_107_a | D10 vs D6 | 2020:  hombre  0.0438  mujer  0.0184
+  bal | liq_107_a | D10 vs D7 | 2020:  hombre  0.0089  mujer -0.0357
+  bal | liq_107_a | D10 vs D8 | 2020:  hombre -0.0315  mujer -0.0199
+  bal | liq_107_a | D10 vs D9 | 2020:  hombre -0.0152  mujer -0.0110
+  bal | liq_107_b | D10 vs D6 | 2020:  hombre  0.0296  mujer -0.0092
+  bal | liq_107_b | D10 vs D7 | 2020:  hombre  0.0039  mujer -0.0285
+  bal | liq_107_b | D10 vs D8 | 2020:  hombre -0.0312  mujer -0.0164
+  bal | liq_107_b | D10 vs D9 | 2020:  hombre -0.0091  mujer -0.0060
+
+############ dimension: civil ############
+  unbal | ingreso_a | D10 vs D6 | 2020:  no casado -0.0476  casado -0.0325
+  unbal | ingreso_a | D10 vs D7 | 2020:  no casado -0.0749  casado -0.0650
+  unbal | ingreso_a | D10 vs D8 | 2020:  no casado -0.0729  casado -0.0740
+  unbal | ingreso_a | D10 vs D9 | 2020:  no casado -0.0334  casado -0.0390
+  unbal | ingreso_b | D10 vs D6 | 2020:  no casado -0.0635  casado -0.0576
+  unbal | ingreso_b | D10 vs D7 | 2020:  no casado -0.0755  casado -0.0657
+  unbal | ingreso_b | D10 vs D8 | 2020:  no casado -0.0713  casado -0.0696
+  unbal | ingreso_b | D10 vs D9 | 2020:  no casado -0.0447  casado -0.0472
+  unbal | D1R_a | D10 vs D6 | 2020:  no casado  0.0182  casado  0.0177
+  unbal | D1R_a | D10 vs D7 | 2020:  no casado -0.0036  casado -0.0065
+  unbal | D1R_a | D10 vs D8 | 2020:  no casado -0.0200  casado -0.0120
+  unbal | D1R_a | D10 vs D9 | 2020:  no casado -0.0135  casado -0.0199
+  unbal | D1R_b | D10 vs D6 | 2020:  no casado  0.0160  casado  0.0075
+  unbal | D1R_b | D10 vs D7 | 2020:  no casado -0.0013  casado -0.0028
+  unbal | D1R_b | D10 vs D8 | 2020:  no casado -0.0180  casado -0.0203
+  unbal | D1R_b | D10 vs D9 | 2020:  no casado -0.0080  casado -0.0162
+  unbal | capital_a | D10 vs D6 | 2020:  no casado -0.4809  casado -0.7261
+  unbal | capital_a | D10 vs D7 | 2020:  no casado -0.3912  casado -0.6611
+  unbal | capital_a | D10 vs D8 | 2020:  no casado -0.3736  casado -0.6066
+  unbal | capital_a | D10 vs D9 | 2020:  no casado -0.3499  casado -0.5067
+  unbal | capital_b | D10 vs D6 | 2020:  no casado -0.7235  casado -1.0160
+  unbal | capital_b | D10 vs D7 | 2020:  no casado -0.6495  casado -0.9741
+  unbal | capital_b | D10 vs D8 | 2020:  no casado -0.7233  casado -0.9086
+  unbal | capital_b | D10 vs D9 | 2020:  no casado -0.4027  casado -0.7418
+  unbal | liq_107_a | D10 vs D6 | 2020:  no casado  0.0181  casado  0.0191
+  unbal | liq_107_a | D10 vs D7 | 2020:  no casado -0.0026  casado -0.0050
+  unbal | liq_107_a | D10 vs D8 | 2020:  no casado -0.0204  casado -0.0104
+  unbal | liq_107_a | D10 vs D9 | 2020:  no casado -0.0136  casado -0.0186
+  unbal | liq_107_b | D10 vs D6 | 2020:  no casado  0.0174  casado  0.0101
+  unbal | liq_107_b | D10 vs D7 | 2020:  no casado  0.0003  casado -0.0016
+  unbal | liq_107_b | D10 vs D8 | 2020:  no casado -0.0172  casado -0.0180
+  unbal | liq_107_b | D10 vs D9 | 2020:  no casado -0.0072  casado -0.0155
+  bal | ingreso_a | D10 vs D6 | 2020:  no casado -0.0474  casado -0.0282
+  bal | ingreso_a | D10 vs D7 | 2020:  no casado -0.0932  casado -0.0736
+  bal | ingreso_a | D10 vs D8 | 2020:  no casado -0.0752  casado -0.0719
+  bal | ingreso_a | D10 vs D9 | 2020:  no casado -0.0390  casado -0.0400
+  bal | ingreso_b | D10 vs D6 | 2020:  no casado -0.0849  casado -0.0670
+  bal | ingreso_b | D10 vs D7 | 2020:  no casado -0.0717  casado -0.0548
+  bal | ingreso_b | D10 vs D8 | 2020:  no casado -0.0740  casado -0.0654
+  bal | ingreso_b | D10 vs D9 | 2020:  no casado -0.0427  casado -0.0385
+  bal | D1R_a | D10 vs D6 | 2020:  no casado  0.0307  casado  0.0336
+  bal | D1R_a | D10 vs D7 | 2020:  no casado -0.0207  casado -0.0172
+  bal | D1R_a | D10 vs D8 | 2020:  no casado -0.0325  casado -0.0258
+  bal | D1R_a | D10 vs D9 | 2020:  no casado -0.0117  casado -0.0175
+  bal | D1R_b | D10 vs D6 | 2020:  no casado  0.0117  casado  0.0088
+  bal | D1R_b | D10 vs D7 | 2020:  no casado -0.0185  casado -0.0139
+  bal | D1R_b | D10 vs D8 | 2020:  no casado -0.0264  casado -0.0275
+  bal | D1R_b | D10 vs D9 | 2020:  no casado -0.0048  casado -0.0124
+  bal | capital_a | D10 vs D6 | 2020:  no casado -0.4891  casado -0.7411
+  bal | capital_a | D10 vs D7 | 2020:  no casado -0.4062  casado -0.6883
+  bal | capital_a | D10 vs D8 | 2020:  no casado -0.3730  casado -0.6103
+  bal | capital_a | D10 vs D9 | 2020:  no casado -0.3095  casado -0.5228
+  bal | capital_b | D10 vs D6 | 2020:  no casado -0.7251  casado -1.0405
+  bal | capital_b | D10 vs D7 | 2020:  no casado -0.6834  casado -0.9876
+  bal | capital_b | D10 vs D8 | 2020:  no casado -0.6668  casado -0.9072
+  bal | capital_b | D10 vs D9 | 2020:  no casado -0.4006  casado -0.7417
+  bal | liq_107_a | D10 vs D6 | 2020:  no casado  0.0318  casado  0.0349
+  bal | liq_107_a | D10 vs D7 | 2020:  no casado -0.0201  casado -0.0158
+  bal | liq_107_a | D10 vs D8 | 2020:  no casado -0.0323  casado -0.0247
+  bal | liq_107_a | D10 vs D9 | 2020:  no casado -0.0106  casado -0.0164
+  bal | liq_107_b | D10 vs D6 | 2020:  no casado  0.0130  casado  0.0111
+  bal | liq_107_b | D10 vs D7 | 2020:  no casado -0.0165  casado -0.0124
+  bal | liq_107_b | D10 vs D8 | 2020:  no casado -0.0270  casado -0.0260
+  bal | liq_107_b | D10 vs D9 | 2020:  no casado -0.0034  casado -0.0117
+. postclose `PH'
+. postclose `PK'
+. capture log close movlog

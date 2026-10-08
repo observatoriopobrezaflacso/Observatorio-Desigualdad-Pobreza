@@ -1,5 +1,5 @@
 *==============================================================================*
-* PRIMA SALARIAL DE LA EDUCACIÓN UNIVERSITARIA O MÁS — INGRESO POR HORA
+* PRIMA SALARIAL DE LA EDUCACIÓN SUPERIOR O MÁS — INGRESO POR HORA
 *
 * Variable dependiente: ln(ingreso laboral por hora)
 *   ingreso por hora = ingrl / (horas semanales * 4.33)
@@ -22,9 +22,19 @@
 *   regresión y no altera los coeficientes; en el modelo agrupado lo absorben
 *   los efectos fijos de año. Los niveles reportados (w_no, w_si) sí quedan en
 *   valores corrientes.
-* Educación: armonización replicada de armonizacion_educacion.do
-* Controles: edad, edad2 y efectos fijos de rama de actividad (i.rama_h).
-*            Muestra sin restricción de edad.
+* Educación: superior o más = superior no universitaria (institutos técnicos
+*            y tecnológicos), universitaria y posgrado. Hasta 2001 la ENEMDU
+*            tiene una sola categoría "superior" que ya incluye la no
+*            universitaria; desde 2002 viene aparte y se suma aquí, para que
+*            la definición sea la misma en toda la serie. (Se aparta de
+*            armonizacion_educacion.do, que desde 2002 la deja en el grupo 0.)
+* Controles: la serie del gráfico y de la hoja ancha (b_edad) controla por
+*            edad y edad2, el modelo que describe el paper. También se estiman
+*            el coeficiente sin controles (b_raw) y con efectos fijos de rama de
+*            actividad (b_adj, i.rama_h), que quedan en la hoja de coeficientes
+*            como robustez. Muestra sin restricción de edad y sin recorte por
+*            rama: los modelos con efectos fijos de rama (b_adj y el agrupado)
+*            descartan solos a quienes no la declaran.
 *==============================================================================*
 
 clear all
@@ -135,15 +145,15 @@ foreach amb of numlist 1 2 {
         rename rama1 rama_h
 
         *----------------------------------------------------------------------
-        * Armonización de educación universitaria (idéntica a
-        * armonizacion_educacion.do)
+        * Educación superior o más (universitaria, no universitaria y
+        * posgrado; ver el encabezado)
         *----------------------------------------------------------------------
         gen byte educ_univ = 0
         if (inrange(`y', 1990, 2000))  replace educ_univ = 1 if nivinst == 5
         if (`y' == 2001)               replace educ_univ = 1 if inlist(nivinst, 6, 7)
-        if (`y' == 2002)               replace educ_univ = 1 if inlist(nivinst, 7, 8)
-        if (inrange(`y', 2003, 2006))  replace educ_univ = 1 if inlist(nivinst, 9, 10)
-        if (`y' >= 2007)               replace educ_univ = 1 if inlist(p10a, 9, 10)
+        if (`y' == 2002)               replace educ_univ = 1 if inlist(nivinst, 6, 7, 8)
+        if (inrange(`y', 2003, 2006))  replace educ_univ = 1 if inlist(nivinst, 8, 9, 10)
+        if (`y' >= 2007)               replace educ_univ = 1 if inlist(p10a, 8, 9, 10)
         replace educ_univ = . if missing(`educvar')
 
         *----------------------------------------------------------------------
@@ -206,7 +216,7 @@ label define lbl_amb 1 "Nacional" 2 "Urbano", replace
 label values ambito lbl_amb
 label define lbl_sexo 1 "Hombre" 2 "Mujer", replace
 label values sexo lbl_sexo
-label define lbl_educ2 0 "Hasta secundaria" 1 "Universitaria o más", replace
+label define lbl_educ2 0 "Hasta secundaria" 1 "Superior o más", replace
 label values educ_univ lbl_educ2
 label var rama_h "Rama de actividad (CIIU 4, secciones A-U)"
 
@@ -221,9 +231,11 @@ keep if !missing(fexp) & fexp > 0
 keep if inrange(horas, 1, `maxhoras')
 
 *--------------------------------------------------------------- rama ---------
-* La rama sólo está definida para la población ocupada. Antes de recortar se
-* reporta la cobertura dentro de la muestra de perceptores, para que quede
-* claro cuánto cuesta el control.
+* La rama sólo está definida para la población ocupada. No se recorta la
+* muestra por rama: b_raw y b_edad (la serie del gráfico) usan a todos los
+* perceptores, y las regresiones con i.rama_h (b_adj y el modelo agrupado)
+* dejan fuera solas a quienes no la declaran. Se reporta la cobertura para que
+* quede claro cuánto cambia esa muestra (a lo sumo 0,2% por año).
 
 
 di as res "=== cobertura de rama en la muestra de perceptores (% no faltante) ==="
@@ -231,7 +243,6 @@ foreach a of numlist 2 1 {
     di as txt "--- ámbito `a' (2=Urbano, 1=Nacional)"
     tabstat tiene_rama if ambito==`a', by(anio) stat(mean n) format(%6.3f)
 }
-keep if !missing(rama_h)
 
 *------------------------------------------------------- pre-dolarización -----
 * Antes de 2000 el ingreso de estas bases está en sucres; se pasa a dólares al
@@ -346,15 +357,15 @@ esttab m1 m2 m3 m4 m5 m6 using "`out'/hora_tabla_pooled.rtf", replace ///
     keep(1.educ_univ) b(4) se(4) star(* 0.10 ** 0.05 *** 0.01) ///
     stats(N r2, fmt(%12.0fc %9.3f) labels("Observaciones" "R2")) ///
     mtitles("Urb Total" "Urb Hombres" "Urb Mujeres" "Nac Total" "Nac Hombres" "Nac Mujeres") ///
-    varlabels(1.educ_univ "Universitaria o más") ///
-    title("Prima salarial de la educación universitaria o más sobre ln(ingreso laboral por hora)") ///
+    varlabels(1.educ_univ "Superior o más") ///
+    title("Prima salarial de la educación superior o más sobre ln(ingreso laboral por hora)") ///
     addnotes("MCO ponderado por fexp, EE agrupados por año. Controles: edad, edad2 y efectos fijos de rama (CIIU 4). Horas = suma de todos los trabajos.")
 
 esttab m1 m2 m3 m4 m5 m6 using "`out'/hora_tabla_pooled.csv", replace ///
     keep(1.educ_univ) b(4) se(4) star(* 0.10 ** 0.05 *** 0.01) ///
     stats(N r2, fmt(%12.0f %9.3f) labels("Observaciones" "R2")) ///
     mtitles("UrbTotal" "UrbHombres" "UrbMujeres" "NacTotal" "NacHombres" "NacMujeres") ///
-    varlabels(1.educ_univ "Universitaria o mas") plain
+    varlabels(1.educ_univ "Superior o mas") plain
 
 esttab m1 m2 m3 m4 m5 m6, keep(1.educ_univ) b(4) se(4) ///
     star(* 0.10 ** 0.05 *** 0.01) stats(N r2, fmt(%12.0fc %9.3f)) ///
@@ -381,10 +392,10 @@ label var b_raw      "Coef. sin controles"
 label var b_edad     "Coef. con edad y edad2"
 label var b_adj      "Coef. con edad, edad2 y rama"
 label var w_no       "Ingreso/hora medio corriente: hasta secundaria"
-label var w_si       "Ingreso/hora medio corriente: universitaria o más"
+label var w_si       "Ingreso/hora medio corriente: superior o más"
 label var h_no       "Horas semanales: hasta secundaria"
-label var h_si       "Horas semanales: universitaria o más"
-label var share_univ "Proporción universitaria o más"
+label var h_si       "Horas semanales: superior o más"
+label var share_univ "Proporción superior o más"
 
 format b_* se_* w_* %7.3f
 format pct_* h_* %7.1f
@@ -401,7 +412,7 @@ export delimited using "`out'/hora_coef_educ_ingrl.csv", replace
 * 5. GRÁFICOS (sin intervalos de confianza)
 *==============================================================================*
 
-local nota  "MCO por año sobre ln(ingreso laboral por hora). Ponderado por fexp. Controles: edad, edad{sup:2} y rama de actividad (CIIU 4)."
+local nota  "MCO por año sobre ln(ingreso laboral por hora). Ponderado por fexp. Controles: edad y edad{sup:2}."
 local nota2 "Horas = suma de horas semanales de todos los trabajos (principal + secundario + otros)."
 local nota3 "Muestra: perceptores de ingreso laboral con horas > 0 y rama declarada, sin restricción de edad."
 local nota4 "1990 y 2002 no tienen base: se usan 1991 y 2003."
@@ -410,13 +421,13 @@ local xlab "xlabel(1991 1993 1996 1999 2003 2005 2008 2011 2014 2017 2021 2025, 
 
 * --- 5.1 Urbano ---
 twoway ///
-  (connected b_adj anio if ambito==2 & grupo==0, lcolor(black) mcolor(black) msymbol(O) msize(small)) ///
-  (connected b_adj anio if ambito==2 & grupo==1, lcolor(navy) mcolor(navy) msymbol(T) msize(small) lpattern(dash)) ///
-  (connected b_adj anio if ambito==2 & grupo==2, lcolor(cranberry) mcolor(cranberry) msymbol(S) msize(small) lpattern(shortdash)) ///
+  (connected b_edad anio if ambito==2 & grupo==0, lcolor(black) mcolor(black) msymbol(O) msize(small)) ///
+  (connected b_edad anio if ambito==2 & grupo==1, lcolor(navy) mcolor(navy) msymbol(T) msize(small) lpattern(dash)) ///
+  (connected b_edad anio if ambito==2 & grupo==2, lcolor(cranberry) mcolor(cranberry) msymbol(S) msize(small) lpattern(shortdash)) ///
   , ///
   ylabel(0(.2)1.4, angle(0) format(%3.1f) grid glcolor(gs14)) `xlab' ///
   ytitle("Coeficiente sobre ln(ingreso por hora)") xtitle("Año") ///
-  title("Prima salarial por hora de la educación universitaria o más", size(medium)) ///
+  title("Prima salarial por hora de la educación superior o más", size(medium)) ///
   subtitle("Ecuador urbano, ENEMDU 1991-2025", size(small)) ///
   legend(order(1 "Total" 2 "Hombres" 3 "Mujeres") rows(1) size(small) region(lstyle(none))) ///
   note("`nota'" "`nota2'" "`nota3'" "`nota4'", size(vsmall)) ///
@@ -427,14 +438,14 @@ graph save   "`out'/fig_hora_urbano.gph", replace
 
 * --- 5.2 Nacional ---
 twoway ///
-  (connected b_adj anio if ambito==1 & grupo==0, lcolor(black) mcolor(black) msymbol(O) msize(small)) ///
-  (connected b_adj anio if ambito==1 & grupo==1, lcolor(navy) mcolor(navy) msymbol(T) msize(small) lpattern(dash)) ///
-  (connected b_adj anio if ambito==1 & grupo==2, lcolor(cranberry) mcolor(cranberry) msymbol(S) msize(small) lpattern(shortdash)) ///
+  (connected b_edad anio if ambito==1 & grupo==0, lcolor(black) mcolor(black) msymbol(O) msize(small)) ///
+  (connected b_edad anio if ambito==1 & grupo==1, lcolor(navy) mcolor(navy) msymbol(T) msize(small) lpattern(dash)) ///
+  (connected b_edad anio if ambito==1 & grupo==2, lcolor(cranberry) mcolor(cranberry) msymbol(S) msize(small) lpattern(shortdash)) ///
   , ///
   ylabel(0(.2)1.4, angle(0) format(%3.1f) grid glcolor(gs14)) ///
   xlabel(2001 2003 2005 2008 2011 2014 2017 2021 2025, angle(45) labsize(small)) ///
   ytitle("Coeficiente sobre ln(ingreso por hora)") xtitle("Año") ///
-  title("Prima salarial por hora de la educación universitaria o más", size(medium)) ///
+  title("Prima salarial por hora de la educación superior o más", size(medium)) ///
   subtitle("Ecuador nacional, ENEMDU 2001-2025", size(small)) ///
   legend(order(1 "Total" 2 "Hombres" 3 "Mujeres") rows(1) size(small) region(lstyle(none))) ///
   note("`nota'" "`nota2'" "`nota3'" "`nota4'", size(vsmall)) ///
@@ -445,8 +456,8 @@ graph save   "`out'/fig_hora_nacional.gph", replace
 
 * --- 5.3 Urbano vs nacional (total) ---
 twoway ///
-  (connected b_adj anio if ambito==2 & grupo==0, lcolor(navy) mcolor(navy) msymbol(O) msize(small)) ///
-  (connected b_adj anio if ambito==1 & grupo==0, lcolor(cranberry) mcolor(cranberry) msymbol(S) msize(small) lpattern(dash)) ///
+  (connected b_edad anio if ambito==2 & grupo==0, lcolor(navy) mcolor(navy) msymbol(O) msize(small)) ///
+  (connected b_edad anio if ambito==1 & grupo==0, lcolor(cranberry) mcolor(cranberry) msymbol(S) msize(small) lpattern(dash)) ///
   , ///
   ylabel(0(.2)1.4, angle(0) format(%3.1f) grid glcolor(gs14)) `xlab' ///
   ytitle("Coeficiente sobre ln(ingreso por hora)") xtitle("Año") ///
@@ -490,13 +501,13 @@ export excel using "`xls'", sheet("coeficientes") firstrow(varlabels) replace
 
 *--- 6.2 Formato ancho: lo que se pega en la hoja prima_salarial ---------------
 use "`out'/hora_coef_educ_ingrl.dta", clear
-keep ambito grupo anio b_adj
+keep ambito grupo anio b_edad
 decode ambito, gen(amb)
 drop ambito
-reshape wide b_adj, i(amb anio) j(grupo)
-rename b_adj0 total
-rename b_adj1 hombres
-rename b_adj2 mujeres
+reshape wide b_edad, i(amb anio) j(grupo)
+rename b_edad0 total
+rename b_edad1 hombres
+rename b_edad2 mujeres
 rename amb ambito
 label var ambito  "Ámbito"
 label var anio    "Año"
@@ -536,7 +547,7 @@ gen double pct = 100*(exp(b)-1)
 gen double t   = b/se
 label var ambito "Ámbito"
 label var grupo  "Grupo"
-label var b      "Coeficiente universitaria o más"
+label var b      "Coeficiente superior o más"
 label var se     "Error estándar (cluster por año)"
 label var pct    "Prima en % sobre el ingreso por hora"
 label var t      "Estadístico t"
@@ -549,15 +560,15 @@ export excel using "`xls'", sheet("modelo_agrupado") firstrow(varlabels) sheetre
 clear
 set obs 10
 gen str244 nota = ""
-replace nota = "Prima salarial por hora de la educación universitaria o más." in 1
+replace nota = "Prima salarial por hora de la educación superior o más." in 1
 replace nota = "Variable dependiente: ln(ingreso laboral por hora)." in 2
 replace nota = "Ingreso por hora = ingrl / (horas semanales x 4.33), en valores corrientes." in 3
 replace nota = "Horas = suma del trabajo principal + secundario + otros trabajos." in 4
 replace nota = "MCO por año, ponderado por fexp, errores estándar robustos." in 5
-replace nota = "b_raw = sin controles. b_edad = con edad y edad^2 (especificación anterior)." in 6
-replace nota = "b_adj = con edad, edad^2 y efectos fijos de rama CIIU 4 (es la serie del gráfico)." in 7
+replace nota = "b_raw = sin controles. b_edad = con edad y edad^2 (es la serie del gráfico y de la hoja ancha)." in 6
+replace nota = "b_adj = con edad, edad^2 y efectos fijos de rama CIIU 4 (robustez)." in 7
 replace nota = "Fuente única: ENEMDU/Procesadas/ramas homogeneizadas/empleo<año>_isic4.dta (rama = rama1)." in 8
-replace nota = "Muestra: perceptores de ingreso laboral con horas > 0 y rama declarada, sin restricción de edad." in 9
+replace nota = "Muestra: perceptores de ingreso laboral con horas > 0, sin restricción de edad; b_adj y el modelo agrupado usan sólo a quienes declaran rama." in 9
 replace nota = "1990 y 2002 no tienen base: se usan 1991 y 2003. Generado por educ_ingrl_hora.do." in 10
 label var nota "Notas"
 export excel using "`xls'", sheet("notas") firstrow(varlabels) sheetreplace

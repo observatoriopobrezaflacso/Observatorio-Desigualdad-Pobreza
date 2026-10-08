@@ -34,12 +34,16 @@
 * - 1992-1999 la ENEMDU de diciembre es SÓLO URBANA (no existe la variable
 *   `area`). Con filtro = 0 esos años son urbanos y 2001-2024 nacionales; para
 *   una serie homogénea conviene correr el archivo con filtro = 1.
-* - 1992-1999 `nivinst` tiene una única categoría "superior" (código 5): no
-*   separa universitario de no universitario ni identifica posgrado. En 2001
-*   `nivinst` ya distingue posgrado (6 y 7) pero sigue sin separar el superior
-*   universitario del no universitario; desde 2010 `p10a` sí lo separa (9 y 10).
-*   Por eso "% con superior" no es estrictamente el mismo concepto en los tres
-*   bloques, y no se arman pares de crecimiento que crucen esos bloques.
+* - "Con educación superior" = superior universitaria o no universitaria, o
+*   posgrado, en todos los años. En 1992-1999 `nivinst` tiene una única
+*   categoría "superior" (5) y en 2001 "superior" y "posgrado" (6 y 7): ninguna
+*   separa lo universitario de lo no universitario. Desde 2010 `p10a` sí lo
+*   separa, así que se suman los tres códigos (8 no universitaria, 9
+*   universitaria, 10 posgrado) para que el grupo sea el mismo. Antes se
+*   tomaban sólo 9 y 10, y los pares 2001-2010 y 2001-2024 comparaban grupos
+*   distintos (el no universitario pasa de 0,8 % a 3,6 % de los ocupados entre
+*   2010 y 2024). Queda una diferencia: en los 90 no se identifica el posgrado,
+*   que en esos años es muy chico.
 * - El umbral de ingresos es nominal y en la moneda del año (sucres hasta 1999,
 *   USD desde 2000). Los niveles de empleo adecuado no son comparables a través
 *   de la dolarización, y dentro de los 90 la serie es volátil porque el SMV
@@ -62,8 +66,9 @@ global limpias  "$gd/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 global salarios "$gd/Bases/Salarios"
 global root     "$gd/Papers/Íconos"
 
-* Años comparados y pares de crecimiento. Los pares no cruzan bloques de
-* definición educativa (90s / 2001 / 2010+), que no son comparables entre sí.
+* Años comparados y pares de crecimiento. El par 1992-1999 queda aparte porque
+* los 90 son sólo urbanos; la educación superior se define igual en todos los
+* años (ver el encabezado).
 local anios  1992 1999 2001 2010 2011 2024
 local pares  1992-1999 2001-2010 2011-2024 2001-2024
 
@@ -83,10 +88,10 @@ scalar edadmin = 15
 
 local ambito : word `=`filtro'+1' of nacional urbano rural
 global outbase "$root/outputs/rama_educ"
-global out     "$outbase/`ambito'"
+global rama_out "$outbase/`ambito'"
 cap mkdir "$root/outputs"
 cap mkdir "$outbase"
-cap mkdir "$out"
+cap mkdir "$rama_out"
 
 * Estilo común y notas al pie reutilizadas por todos los gráficos.
 * Las notas deben ir en líneas cortas: Stata no las parte y una línea larga
@@ -94,7 +99,7 @@ cap mkdir "$out"
 global gopts  graphregion(color(white)) plotregion(color(white)) scheme(s2color)
 global fuente "Fuente: ENEMDU de diciembre (INEC), ponderada por el factor de expansión. Ámbito: `ambito'."
 global defs   "Empleo adecuado armonizado: ingreso laboral >= SBU vigente y jornada >= 40h, o menor sin desear más horas."
-global cav01  "En 1992-1999 y 2001 el nivel 'superior' no distingue universitario de no universitario."
+global cav01  "Educación superior: universitaria o no universitaria, o posgrado."
 global cav90  "1992-1999: muestra sólo urbana y 'superior' sin posgrado identificable."
 global cavdol "El umbral es nominal y en la moneda del año: los niveles no son comparables a través de la dolarización."
 
@@ -118,11 +123,11 @@ if `filtro' == 2 {
 cap program drop savefig
 program define savefig
     args f
-    graph export "${out}/`f'.pdf", replace
-    graph save   "${out}/`f'.gph", replace
-    cap graph export "${out}/`f'.png", replace width(2200)
-    if _rc shell sips -s format png --resampleWidth 2200 "${out}/`f'.pdf" ///
-        --out "${out}/`f'.png" > /dev/null 2>&1
+    graph export "${rama_out}/`f'.pdf", replace
+    graph save   "${rama_out}/`f'.gph", replace
+    cap graph export "${rama_out}/`f'.png", replace width(2200)
+    if _rc shell sips -s format png --resampleWidth 2200 "${rama_out}/`f'.pdf" ///
+        --out "${rama_out}/`f'.png" > /dev/null 2>&1
 end
 
 * Dispersión ponderada por empleo + recta MCO, con la pendiente en la leyenda.
@@ -316,13 +321,17 @@ save `umbrales', replace
 * Opera sobre la base en memoria y deja creadas petn, pean, empleo, w, t, d_d,
 * adec y adec_of. El umbral del año se toma de ${smin_<año>}.
 *
+* Debe coincidir línea por línea con aquel archivo: si se corrige allá, se
+* corrige aquí.
+*
 * Códigos que cambian con el cuestionario (documentados en aquel archivo):
-*   p21 "no realizó ninguna actividad" = 11 en 2000-2006, 12 en el resto
-*   p25 "no desea más horas"           = 2 en 1991-1992, 3 en 1993-1999, 9 en 2007+
-*   p27 "desea más horas"              = 1/2 hasta 2006, 1-3 sí / 4 no en 2007+
+*   p21 "no realizó ninguna actividad" = 11 en 2001-2006, 12 en el resto
+*   p25 "no desea más horas"           = 2 en 1991-1992, 3 en 1993-2000, 9 en 2007+
+*   p27 "desea más horas"              = se infiere del motivo hasta 2000,
+*                                        1/2 en 2001-2006, 1-3 sí / 4 no en 2007+
 *   p32 "buscó trabajo"                = 1/2 hasta 2006, 1-10 sí / 11 no en 2007+
-*   p34 desempleo oculto               = 7-8 en los 90, <=7 (sin 4) en 2000-2006,
-*                                        <=7 en 2007+
+*   p34 desempleo oculto               = 5-8 hasta 1998, 1-4 en 1999-2000,
+*                                        <=7 (sin 4) en 2001-2006, <=7 en 2007+
 *   p28 disponibilidad                 = sólo existe desde 2007
 
 cap program drop adec_armonizado
@@ -342,7 +351,7 @@ program define adec_armonizado
         capture rename hortrahp p51a
         capture rename hortrahs p51b
         capture rename hortraho p51c
-        if `y' >= 2000 capture rename hormas p27
+        if `y' >= 2001 capture rename hormas p27
     }
 
     * variables ausentes en algunos años: crearlas vacías para poder usarlas
@@ -359,20 +368,22 @@ program define adec_armonizado
         }
     }
 
-    *--- 3.2 p27 en 1991-1999: no se pregunta, se construye ---
-    * 1991-1992 traen ratmeh1; 1993-1999 traen hormas. Se replica el criterio
-    * del archivo de la serie: cualquier valor no missing cuenta como "desea
-    * trabajar más horas", porque la pregunta sólo se formulaba a quien lo
-    * deseaba. (En 1992 `hormas` sí es dicotómica 1/2 y esa regla también
-    * cuenta como "sí" al que responde 2; se conserva para no desalinear esta
-    * base respecto de la serie publicada.)
-    if `y' <= 1999 {
+    *--- 3.2 p27 en 1991-2000: no hay sí/no de "desea más horas", se infiere
+    * de tener motivo anotado. 1991-1992: el motivo está en ratmeh1, sólo con
+    * los códigos de mercado (3, 4, 5, 6, 9); los personales y de salud (7-8)
+    * no expresan deseo. En 1992 hormas es el sí/no y no sirve para inferir.
+    * 1993-2000: el motivo está en hormas.
+    if `y' <= 2000 {
         capture drop p27
         qui gen byte p27 = 2 if p20 == 1 | p22 == 1
-        capture confirm variable ratmeh1
-        if !_rc qui replace p27 = 1 if ratmeh1 < .
-        capture confirm variable hormas
-        if !_rc qui replace p27 = 1 if hormas  < .
+        if `y' <= 1992 {
+            capture confirm variable ratmeh1
+            if !_rc qui replace p27 = 1 if inlist(ratmeh1, 3, 4, 5, 6, 9)
+        }
+        else {
+            capture confirm variable hormas
+            if !_rc qui replace p27 = 1 if hormas < .
+        }
     }
 
     *--- 999 = no responde en las variables de horas ---
@@ -380,7 +391,9 @@ program define adec_armonizado
         qui replace `v' = . if `v' == 999
     }
 
-    local p00 = (`y' >= 2000 & `y' <= 2006)
+    * 2000 va con los noventa: el sí/no de "desea más horas" y la lista larga
+    * de actividades recién aparecen en 2001.
+    local p00 = (`y' >= 2001 & `y' <= 2006)
     local p07 = (`y' >= 2007)
 
     * categoría "no realizó ninguna actividad" de p21
@@ -409,9 +422,13 @@ program define adec_armonizado
     }
     else {
         qui replace pean = 1 if petn==1 & p20==2 & p21==`p21_no' & p22==2 & p32 == 1
-        * el tope "< ." evita que la condición sea verdadera con p34 missing
+        * Desempleo oculto: el bloque de desaliento de motnobus son los códigos
+        * 5-8 hasta 1998 y los 1-4 desde 1999 (la lista se reordena).
+        * inrange() ya excluye el missing.
+        if `y' <= 1998 local desalent "inrange(p34, 5, 8)"
+        else           local desalent "inrange(p34, 1, 4)"
         qui replace pean = 1 if petn==1 & p20==2 & p21==`p21_no' & p22==2 & p32 == 2 ///
-                              & p34 >= 7 & p34 < . & p35 == 1
+                              & `desalent' & p35 == 1
     }
     label variable pean "Población Económicamente Activa"
 
@@ -465,6 +482,9 @@ program define adec_armonizado
     qui egen double hh = rowtotal(p51a p51b p51c), missing
     qui replace hh = . if hh < 0
     qui replace horas = hh if pean == 1 & p20 == 2 & p21 == `p21_no' & p22 == 1
+
+    * quien trabajó pero no declaró p24: se usan sus horas habituales
+    qui replace horas = hh if empleo == 1 & horas >= . & hh < .
     label variable horas "Horas de trabajo semanal"
 
     capture drop t
@@ -542,10 +562,11 @@ end
 
 
 *----------------------------------------------------- 4. Base rama x año -----
-* Cada año trae su propia variable educativa:
+* Cada año trae su propia variable educativa; "superior" incluye lo no
+* universitario en todos los años (ver el encabezado):
 *   1992-1999  nivinst  5     = superior (una sola categoría, sin posgrado)
 *   2001       nivinst  6-7   = superior/posgrado
-*   2010-2024  p10a     9-10  = superior universitario/posgrado
+*   2010-2024  p10a     8-10  = superior no universitario/universitario/posgrado
 * La población de referencia son los OCUPADOS de 15 años y más con rama válida.
 
 tempfile pool
@@ -576,7 +597,7 @@ foreach y of local anios {
     }
     else {
         local educ "p10a"
-        local univ "9, 10"
+        local univ "8, 9, 10"
     }
 
     qui use "$limpias/empleo`y'_isic4.dta", clear
@@ -817,7 +838,7 @@ savefig "fig_educ_adec_panel"
 
 *------------------ 7b. Datos de los paneles, en formato largo ------------------
 * Una fila por círculo de cada panel, con sus coordenadas y su peso. El libro
-* vive un nivel arriba de $out —lleva el ámbito como columna— porque
+* vive un nivel arriba de $rama_out —lleva el ámbito como columna— porque
 * "master/consolidar_excel.do" lo lee de ahí y por el nombre de las hojas:
 * -panel_crecimiento- y -panel_educ_pleno- no se pueden renombrar sin tocar
 * también ese archivo.
@@ -934,11 +955,11 @@ format ocupados_* %12.0f
 format pct_*      %6.1f
 format var_pct_*  %7.1f
 compress
-save "$out/base_rama_educ.dta", replace
+save "$rama_out/base_rama_educ.dta", replace
 
 * nolabel: rama_cod sale como código numérico (el nombre ya está en rama)
 * datafmt: respeta los formatos de arriba en vez de volcar 15 decimales
-export delimited using "$out/base_rama_educ.csv", replace nolabel datafmt
+export delimited using "$rama_out/base_rama_educ.csv", replace nolabel datafmt
 
 local y_ini : word 1 of `anios'
 local y_fin : word `nan' of `anios'
@@ -968,8 +989,8 @@ preserve
     di as txt "{hline 78}"
     list, sep(0) noobs
 
-    save "$out/diagnostico_rama_educ.dta", replace
-    export delimited using "$out/diagnostico_rama_educ.csv", replace datafmt
+    save "$rama_out/diagnostico_rama_educ.dta", replace
+    export delimited using "$rama_out/diagnostico_rama_educ.csv", replace datafmt
 restore
 
 
@@ -1013,9 +1034,9 @@ foreach par of local pares {
     restore
 }
 
-copy "`xls'" "$out/tablas_rama_educ.xlsx", replace
+copy "`xls'" "$rama_out/tablas_rama_educ.xlsx", replace
 erase "`xls'"
 
-di as txt "Tablas por figura: $out/tablas_rama_educ.xlsx"
+di as txt "Tablas por figura: $rama_out/tablas_rama_educ.xlsx"
 
-di as txt _n "Listo. Salidas en: $out"
+di as txt _n "Listo. Salidas en: $rama_out"

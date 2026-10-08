@@ -76,10 +76,10 @@ global minobs 50                      // mínimo de casos por rama-año en las r
 
 local ambito : word `=`filtro'+1' of nacional urbano rural
 global outbase "$root/outputs/rama_educ_condact"
-global out     "$outbase/`ambito'"
+global rama_of_out "$outbase/`ambito'"
 cap mkdir "$root/outputs"
 cap mkdir "$outbase"
-cap mkdir "$out"
+cap mkdir "$rama_of_out"
 
 * Estilo común y notas al pie reutilizadas por todos los gráficos.
 * Las notas deben ir en líneas cortas: Stata no las parte y una línea larga
@@ -105,11 +105,11 @@ if "${cavamb}" != "" di as error _n "ADVERTENCIA: ${cavamb}"
 cap program drop savefig
 program define savefig
     args f
-    graph export "${out}/`f'.pdf", replace
-    graph save   "${out}/`f'.gph", replace
-    cap graph export "${out}/`f'.png", replace width(2200)
-    if _rc shell sips -s format png --resampleWidth 2200 "${out}/`f'.pdf" ///
-        --out "${out}/`f'.png" > /dev/null 2>&1
+    graph export "${rama_of_out}/`f'.pdf", replace
+    graph save   "${rama_of_out}/`f'.gph", replace
+    cap graph export "${rama_of_out}/`f'.png", replace width(2200)
+    if _rc shell sips -s format png --resampleWidth 2200 "${rama_of_out}/`f'.pdf" ///
+        --out "${rama_of_out}/`f'.png" > /dev/null 2>&1
 end
 
 * Dispersión ponderada por empleo + recta MCO, con la pendiente en la leyenda.
@@ -469,7 +469,7 @@ savefig "fig_educ_pleno_panel"
 
 *------------------ 6b. Datos de los paneles, en formato largo ------------------
 * Una fila por círculo de cada panel, con sus coordenadas y su peso. El libro
-* vive un nivel arriba de $out —lleva el ámbito como columna— porque
+* vive un nivel arriba de $rama_of_out —lleva el ámbito como columna— porque
 * "master/consolidar_excel.do" lo lee de ahí y por el nombre de las hojas:
 * -panel_crecimiento- y -panel_educ_pleno- no se pueden renombrar sin tocar
 * también ese archivo.
@@ -586,11 +586,11 @@ format ocupados_* %12.0f
 format pct_*      %6.1f
 format var_pct_*  %7.1f
 compress
-save "$out/base_rama_educ_condact.dta", replace
+save "$rama_of_out/base_rama_educ_condact.dta", replace
 
 * nolabel: rama_cod sale como código numérico (el nombre ya está en rama)
 * datafmt: respeta los formatos de arriba en vez de volcar 15 decimales
-export delimited using "$out/base_rama_educ_condact.csv", replace nolabel datafmt
+export delimited using "$rama_of_out/base_rama_educ_condact.csv", replace nolabel datafmt
 
 local y_ini : word 1 of `anios'
 local y_fin : word `nan' of `anios'
@@ -614,8 +614,8 @@ preserve
     di as txt "{hline 78}"
     list, sep(0) noobs
 
-    save "$out/diagnostico_rama_educ_condact.dta", replace
-    export delimited using "$out/diagnostico_rama_educ_condact.csv", replace datafmt
+    save "$rama_of_out/diagnostico_rama_educ_condact.dta", replace
+    export delimited using "$rama_of_out/diagnostico_rama_educ_condact.csv", replace datafmt
 restore
 
 
@@ -659,9 +659,9 @@ foreach par of local pares {
     restore
 }
 
-copy "`xls'" "$out/tablas_rama_educ.xlsx", replace
+copy "`xls'" "$rama_of_out/tablas_rama_educ.xlsx", replace
 erase "`xls'"
 
-di as txt "Tablas por figura: $out/tablas_rama_educ.xlsx"
+di as txt "Tablas por figura: $rama_of_out/tablas_rama_educ.xlsx"
 
-di as txt _n "Listo. Salidas en: $out"
+di as txt _n "Listo. Salidas en: $rama_of_out"

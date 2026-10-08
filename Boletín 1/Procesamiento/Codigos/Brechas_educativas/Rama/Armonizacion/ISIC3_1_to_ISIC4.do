@@ -1,92 +1,152 @@
 clear
 
+* Definicion de rutas globales para facilitar la portabilidad del codigo
 
-* Definición de rutas globales para facilitar la portabilidad del código
+if "`c(username)'" == "vero" global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+else                         global user_root "/Users/santiago/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad"
+global bases "$user_root/Bases/ENEMDU/Procesadas/Armonizacion/Variables base/Mensuales"
 
-global user_root "/Users/vero/Library/CloudStorage/GoogleDrive-observatorio.pobreza@flacso.edu.ec/Mi unidad" 
 
-global enemdu_diciembres "$user_root/Bases/ENEMDU/Originales/Diciembres/"
-global bases_90s "$enemdu_diciembres/1990-1999"
-global bases_2000_2006 "$enemdu_diciembres/2000-2006"
-global bases_2007_2017 "$enemdu_diciembres/2007-2017"
-global bases_2018_presente "$enemdu_diciembres/2018-presente/Trimestrales"
-
-global isic "$root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
-
+global isic "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 global out "$user_root/Bases/ENEMDU/Procesadas/ramas homogeneizadas"
 
 *-----------------------------------------------------------------------------
-* STEP 1: Prepare the Crosswalk (using the structure from your image)
-* ------------------------------------------------------------------------------
+* STEP 1: Preparar correspondencia CIIU Rev. 3.1 -> CIIU Rev. 4
+*------------------------------------------------------------------------------
 
-* Load your crosswalk file (assuming it is saved as crosswalk.dta)
 import delimited using "$isic/ISIC31_ISIC4.txt", clear
 
-
-* 1. Standardize the matching variable (ISIC 3.1)
-* Your 2011 dataset likely uses "p40" as a 4-digit string (e.g., "0111").
-* Your crosswalk has "isic31code" as numeric (e.g., 111). We must align them.
 tostring isic31code, replace
+tostring isic4code,  replace
+replace isic31code = strtrim(isic31code)
+replace isic4code  = strtrim(isic4code)
+drop if missing(isic31code) | missing(isic4code)
+
 replace isic31code = substr("0000" + isic31code, -4, .)
+replace isic4code  = substr("0000" + isic4code,  -4, .)
 
-* 2. Standardize the target variable (ISIC 4)
-* We also pad the target code to 4 digits for consistency with your 2024 data.
-tostring isic4code, replace
-replace isic4code = substr("0000" + isic4code, -4, .)
-
-* 3. Handle Duplicates (One-to-Many issue)
-* As seen in your image, code 111 maps to many Rev4 codes. 
-* We must keep only one to merge successfully. We will arbitrarily keep the first.
-* (Ideally, you would keep the one where partialisic31 == 0 if available, but most seem to be 1).
+* En codigos con multiples correspondencias se elige primero la SECCION a la
+* que apunta la mayoria de los destinos, y dentro de ella (o en empate) el
+* orden anterior: 1) correspondencia no parcial, 2) destino no parcial,
+* 3) mismo codigo, 4) codigo menor. Ojo: partialISIC4 = 0 no marca el destino
+* principal del codigo viejo, sino que la clase NUEVA sale entera de el; por
+* eso, ordenando solo por los parciales, el 4540 "terminacion de edificios"
+* iba al 3320 (instalacion de maquinaria, manufactura) y no a construccion.
+gen str2 _div = substr(isic4code, 1, 2)
+gen str1 _sec = ""
+replace _sec = "A" if _div >= "01" & _div <= "03"
+replace _sec = "B" if _div >= "05" & _div <= "09"
+replace _sec = "C" if _div >= "10" & _div <= "33"
+replace _sec = "D" if _div >= "35" & _div <= "35"
+replace _sec = "E" if _div >= "36" & _div <= "39"
+replace _sec = "F" if _div >= "41" & _div <= "43"
+replace _sec = "G" if _div >= "45" & _div <= "47"
+replace _sec = "H" if _div >= "49" & _div <= "53"
+replace _sec = "I" if _div >= "55" & _div <= "56"
+replace _sec = "J" if _div >= "58" & _div <= "63"
+replace _sec = "K" if _div >= "64" & _div <= "66"
+replace _sec = "L" if _div >= "68" & _div <= "68"
+replace _sec = "M" if _div >= "69" & _div <= "75"
+replace _sec = "N" if _div >= "77" & _div <= "82"
+replace _sec = "O" if _div >= "84" & _div <= "84"
+replace _sec = "P" if _div >= "85" & _div <= "85"
+replace _sec = "Q" if _div >= "86" & _div <= "88"
+replace _sec = "R" if _div >= "90" & _div <= "93"
+replace _sec = "S" if _div >= "94" & _div <= "96"
+replace _sec = "T" if _div >= "97" & _div <= "98"
+replace _sec = "U" if _div >= "99" & _div <= "99"
+bysort isic31code _sec: gen int _n_sec = _N
+bysort isic31code: egen int _max_sec = max(_n_sec)
+gen byte _en_modal = _n_sec == _max_sec
+gen byte exact_match = isic31code == isic4code
+gsort isic31code -_en_modal partialisic31 partialisic4 -exact_match isic4code
 duplicates drop isic31code, force
+drop _div _sec _n_sec _max_sec _en_modal
 
-* 4. Rename for merging
+* Tres codigos donde la mayoria de los destinos no es el destino principal:
+replace isic4code = "6820" if isic31code == "7020"   // corretaje inmobiliario -> L, no 8110
+replace isic4code = "9000" if isic31code == "9214"   // artes escenicas -> R, no 7990 (venta de entradas)
+replace isic4code = "9101" if isic31code == "9231"   // bibliotecas y archivos -> R, no 5912
+
 rename isic31code p40
-rename isic4code p40_rev4_new
+rename isic4code  p40_rev4_new
 
-* Save temporary crosswalk
+keep p40 p40_rev4_new
 tempfile crosswalk_clean
 save `crosswalk_clean'
 
+* Respaldo para codigos que no estan en la tabla: grupo de 3 digitos y, si
+* no, division de 2 digitos.
+gen str3 p3 = substr(p40, 1, 3)
+bysort p3 (p40): keep if _n == 1
+keep p3 p40_rev4_new
+rename p40_rev4_new p40_p3
+tempfile crosswalk_clean_p3
+save `crosswalk_clean_p3'
+use `crosswalk_clean', clear
+gen str2 p2 = substr(p40, 1, 2)
+bysort p2 (p40): keep if _n == 1
+keep p2 p40_rev4_new
+rename p40_rev4_new p40_p2
+tempfile crosswalk_clean_p2
+save `crosswalk_clean_p2'
+
+*-----------------------------------------------------------------------------
+* STEP 2: Actualizar bases 1991-2012 de CIIU Rev. 3.1 a Rev. 4
+*
+* Fuentes de entrada:
+*   - 1991-1999: $out/empleo`anio'_isic31.dta (salida de isic2_31.do)
+*   - 2000-2006: $out/empleo`anio'_isic31.dta (salida de isic3_31.do)
+*   - 2007-2012: empleo`anio'.dta original (ya estan en Rev. 3.1)
 *------------------------------------------------------------------------------
-* STEP 2: Update the 2011 Dataset ------------------------------------------------------------------------------
 
-foreach anio of numlist 2001 2010 2011 {
-		
-	* Load your dataset
+forval anio = 1991/2012 {
 
-	if (inrange(`anio', 1990, 1999)) local dir_bases $bases_90s
-	if (inrange(`anio', 2000, 2006)) local dir_bases $bases_2000_2006
-	if (inrange(`anio', 2007, 2017)) local dir_bases $bases_2007_2017
-	if (inrange(`anio', 2018, 2025)) local dir_bases $bases_2018_presente
-	
-	use "`dir_bases'/empleo`anio'.dta", clear 
+	di "********************************`anio'********************************"
 
-	if `anio' == 2001 gen p40 = rama
+	if (inrange(`anio', 1991, 2006)) {
+		capture noisily use "$out/empleo`anio'_isic31.dta", clear
+		if _rc {
+			di as error "  AVISO: falta empleo`anio'_isic31.dta. Ejecute isic2_31.do / isic3_31.do primero."
+			continue
+		}
+	}
+	else {
+		use "$bases/empleo`anio'.dta", clear
+	}
 
-	* Ensure p40 is string and 4 digits (e.g., "0111")
+	* Asegura que p40 sea string de 4 digitos (ej. "0111").
 	tostring p40, replace force
-	replace p40 = substr("0000" + p40, -4, .)
+	replace p40 = strtrim(p40)
+	replace p40 = substr("0000" + p40, -4, .) if p40 != "" & p40 != "."
 
-	* Merge with the crosswalk
+	* Fusiona con el crosswalk Rev. 3.1 -> Rev. 4.
 	merge m:1 p40 using `crosswalk_clean', keep(master match)
 
-	* Update p40 to the new ISIC 4 code
-	* We save the old one as backup and overwrite p40 with the 2024 standard
-	rename p40 p40_old_isic31
-	rename p40_rev4_new p40
+	drop _merge
 
-	* ------------------------------------------------------------------------------
-	* STEP 3: Generate the new 'rama' (1-digit Section) for 2024 Standards
-	* This maps the NEW p40 (ISIC 4) to the Sections A-U.
-	* ------------------------------------------------------------------------------
+	* Respaldo por grupo y division para los codigos que no estan en la tabla.
+	gen str3 p3 = substr(p40, 1, 3)
+	merge m:1 p3 using `crosswalk_clean_p3', keep(master match) nogen
+	gen str2 p2 = substr(p40, 1, 2)
+	merge m:1 p2 using `crosswalk_clean_p2', keep(master match) nogen
+	replace p40_rev4_new = p40_p3 if missing(p40_rev4_new) & !inlist(p40, "", ".", "0000")
+	replace p40_rev4_new = p40_p2 if missing(p40_rev4_new) & !inlist(p40, "", ".", "0000")
+	drop p3 p2 p40_p3 p40_p2
+
+	* Lista codigos que siguen sin mapear para revision manual.
+	tab p40 if missing(p40_rev4_new) & !inlist(p40, "", ".", "0000")
+
+	rename p40           p40_old_isic31
+	rename p40_rev4_new  p40
+
+	*--------------------------------------------------------------------------
+	* STEP 3: Generar la nueva 'rama1' (Secciones A-U) bajo CIIU Rev. 4
+	*--------------------------------------------------------------------------
 
 	gen rama_new = ""
-
-	* Extract first 2 digits for classification
 	gen isic2 = substr(p40, 1, 2)
 
-	* Mapping based on ISIC Rev. 4 Structure (UN Standard)
 	replace rama_new = "A" if isic2 >= "01" & isic2 <= "03"
 	replace rama_new = "B" if isic2 >= "05" & isic2 <= "09"
 	replace rama_new = "C" if isic2 >= "10" & isic2 <= "33"
@@ -109,50 +169,99 @@ foreach anio of numlist 2001 2010 2011 {
 	replace rama_new = "T" if isic2 >= "97" & isic2 <= "98"
 	replace rama_new = "U" if isic2 == "99"
 
-	* Update the main variable
-	* If your 2024 rama is numeric (1-21), use `encode` below.
-	* If it is string (A-U), just replace.
-
-	capture confirm variable rama1 
-
+	* Conserva la seccion anterior (Rev. 3.1) como respaldo si existia.
+	capture confirm variable rama1
 	if !_rc rename rama1 rama_old_isic31
-	rename rama_new rama1
 
-	* Cleanup
-	drop isic2
+	* Codificacion deterministica: la letra define directamente el numero
+	* (A=1, B=2, ..., U=21) independiente de las secciones presentes.
+	* strpos retorna 1 cuando la aguja es vacia, asi que se filtra explicito.
+	gen byte rama1 = strpos("ABCDEFGHIJKLMNOPQRSTU", rama_new) if rama_new != ""
+	replace rama1 = . if rama1 == 0
+	drop isic2 rama_new
 
+	label define rama_isic4 ///
+		1  "A. Agricultura, ganaderia, silvicultura y pesca" ///
+		2  "B. Explotacion de minas y canteras" ///
+		3  "C. Industrias manufactureras" ///
+		4  "D. Suministros de electricidad, gas, vapor y aire acondicionado" ///
+		5  "E. Distribucion de agua; alcantarillado, gestion de desechos y saneamiento" ///
+		6  "F. Construccion" ///
+		7  "G. Comercio al por mayor y al por menor; reparacion de vehiculos automotores y motocicletas" ///
+		8  "H. Transporte y almacenamiento" ///
+		9  "I. Actividades de alojamiento y de servicio de comidas" ///
+		10 "J. Informacion y comunicaciones" ///
+		11 "K. Actividades financieras y de seguros" ///
+		12 "L. Actividades inmobiliarias" ///
+		13 "M. Actividades profesionales, cientificas y tecnicas" ///
+		14 "N. Actividades de servicios administrativos y de apoyo" ///
+		15 "O. Administracion publica y defensa; seguridad social de afiliacion obligatoria" ///
+		16 "P. Ensenanza" ///
+		17 "Q. Actividades de atencion de la salud humana y de asistencia social" ///
+		18 "R. Actividades artisticas, de entretenimiento y recreativas" ///
+		19 "S. Otras actividades de servicios" ///
+		20 "T. Actividades de los hogares como empleadores" ///
+		21 "U. Actividades de organizaciones y organos extraterritoriales", replace
 
-	encode rama1, gen(rama_numeric)
-	drop rama1
-	rename rama_numeric rama1
+	label values rama1 rama_isic4
 
-
-	label define rama 1 "Agricultura, silvicultura y pesca" ///
-	2 "Explotación de minas y canteras" ///
-	3 "Industria manufacturera" ///
-	4 "Suministro de electricidad, gas, vapor y aire acondicionado" ///
-	5 "Suministro de agua; evacuación de aguas residuales, gestión de desechos y actividades de saneamiento" ///
-	6 "Construcción" ///
-	7 "Comercio al por mayor y al por menor; reparación de vehículos automotores y motocicletas" ///
-	8 "Transporte y almacenamiento" ///
-	9 "Actividades de alojamiento y de servicio de comidas" ///
-	10 "Información y comunicaciones" ///
-	11 "Actividades financieras y de seguros" ///
-	12 "Actividades inmobiliarias" ///
-	13 "Actividades profesionales, científicas y técnicas" ///
-	14 "Actividades de servicios administrativos y de apoyo" ///
-	15 "Administración pública y defensa; seguridad social de afiliación obligatoria" ///
-	16 "Educación" ///
-	17 "Actividades de atención de la salud humana y de asistencia social" ///
-	18 "Actividades artísticas, de entretenimiento y recreativas" ///
-	19 "Otras actividades de servicios" ///
-	20 "Actividades de los hogares como empleadores; actividades no diferenciadas de los hogares como productores de bienes y servicios para uso propio" ///
-	21 "Actividades de organizaciones y órganos extraterritoriales", replace
-
-	label values rama1 rama
-
-
-	save "$out/empleo`anio'.dta", replace
-
+	save "$out/empleo`anio'_isic4.dta", replace
 }
 
+*-----------------------------------------------------------------------------
+* STEP 4: Pass-through 2013-2025 (ya estan en CIIU Rev. 4 nativamente)
+*
+* Solo se renormaliza la etiqueta de rama1 al mismo formato Rev. 4 y se guarda
+* con sufijo _isic4 para mantener la nomenclatura uniforme de salida.
+*------------------------------------------------------------------------------
+
+forval anio = 2013/2025 {
+
+	di "********************************`anio' (nativo Rev. 4)********************************"
+
+	capture confirm file "$bases/empleo`anio'.dta"
+	if _rc continue
+	use "$bases/empleo`anio'.dta", clear
+
+	* Normaliza p40 a string de 4 digitos.
+	capture confirm variable p40
+	if !_rc {
+		tostring p40, replace force
+		replace p40 = strtrim(p40)
+		replace p40 = substr("0000" + p40, -4, .) if p40 != "" & p40 != "."
+	}
+
+	* Asegura tipo numerico de rama1 con la misma etiqueta Rev. 4.
+	capture confirm variable rama1
+	if !_rc {
+		capture confirm numeric variable rama1
+		if _rc {
+			destring rama1, replace force
+		}
+		label define rama_isic4 ///
+			1  "A. Agricultura, ganaderia, silvicultura y pesca" ///
+			2  "B. Explotacion de minas y canteras" ///
+			3  "C. Industrias manufactureras" ///
+			4  "D. Suministros de electricidad, gas, vapor y aire acondicionado" ///
+			5  "E. Distribucion de agua; alcantarillado, gestion de desechos y saneamiento" ///
+			6  "F. Construccion" ///
+			7  "G. Comercio al por mayor y al por menor; reparacion de vehiculos automotores y motocicletas" ///
+			8  "H. Transporte y almacenamiento" ///
+			9  "I. Actividades de alojamiento y de servicio de comidas" ///
+			10 "J. Informacion y comunicaciones" ///
+			11 "K. Actividades financieras y de seguros" ///
+			12 "L. Actividades inmobiliarias" ///
+			13 "M. Actividades profesionales, cientificas y tecnicas" ///
+			14 "N. Actividades de servicios administrativos y de apoyo" ///
+			15 "O. Administracion publica y defensa; seguridad social de afiliacion obligatoria" ///
+			16 "P. Ensenanza" ///
+			17 "Q. Actividades de atencion de la salud humana y de asistencia social" ///
+			18 "R. Actividades artisticas, de entretenimiento y recreativas" ///
+			19 "S. Otras actividades de servicios" ///
+			20 "T. Actividades de los hogares como empleadores" ///
+			21 "U. Actividades de organizaciones y organos extraterritoriales", replace
+		label values rama1 rama_isic4
+	}
+
+	save "$out/empleo`anio'_isic4.dta", replace
+}

@@ -1,0 +1,1933 @@
+-------------------------------------------------------------------------------------------------------------------------------------------
+      name:  movlog
+       log:  D:/DTO_ESTUDIOS_E1/B_INVESTIGADORES_EXTERNOS/2025.12.01_Santiago_Valdivieso//Proyectos/Impacto shocks/resultados/movilidad_v2/
+> covid/dos_anios/winsorized/regresiones/A3_permanencia_extremos_covid.log
+  log type:  text
+ opened on:   5 Oct 2026, 13:47:52
+
+. 
+. di as result _n "===================================================================="
+
+====================================================================
+
+. di as result    " (3) PERMANENCIA EN LOS EXTREMOS -- $shock_lab"
+ (3) PERMANENCIA EN LOS EXTREMOS -- covid | pre 2019 | orden a=2017 b=2015-2017 | base 2018 | origen D6-D10 | principal lg | solo 2019 vs 2
+> 020 | winsorizado p1
+
+. di as result    "===================================================================="
+====================================================================
+
+. 
+. local si = 0
+
+. foreach s of global samples {
+  2.     local si = `si' + 1
+  3. 
+.     di as result _n "%%%%%%%%%%%%%% MUESTRA: `s' %%%%%%%%%%%%%%"
+  4. 
+.     local c = 0
+  5.     foreach v of global inc_vars {
+  6.         foreach j in a b {
+  7.             local c = `c' + 1
+  8. 
+.             di as result _n "############ `v'  --  definicion de t0: (`j') ############"
+  9. 
+.             foreach ext in top bot {
+ 10. 
+.                 if "`ext'" == "top" local decl = $top_decile
+ 11.                 if "`ext'" == "bot" local decl = $bot_decile
+ 12. 
+.                 di as result _n "-- [A3] P(seguir en D`decl' | origen D`decl') -- MPL base $pre_year"
+ 13.                 capture noisily reg `ext'_`j'_`v' ib${pre_year}.anio ///
+>                     if muestra == `si', vce(cluster id)
+ 14.                 if !_rc {
+ 15.                     local rr = 0
+ 16.                     foreach y of global post_years {
+ 17.                         local rr = `rr' + 1
+ 18.                         local row = (`si' - 1) * $n_post + `rr'
+ 19.                         capture lincom `y'.anio
+ 20.                         if !_rc {
+ 21.                             if "`ext'" == "top" {
+ 22.                                 matrix A3_tdd[`row', `c'] = r(estimate)
+ 23.                                 matrix A3_tse[`row', `c'] = r(se)
+ 24.                                 matrix A3_tp[`row', `c']  = 2*ttail(r(df), abs(r(estimate)/r(se)))
+ 25.                             }
+ 26.                             else {
+ 27.                                 matrix A3_bdd[`row', `c'] = r(estimate)
+ 28.                                 matrix A3_bse[`row', `c'] = r(se)
+ 29.                                 matrix A3_bp[`row', `c']  = 2*ttail(r(df), abs(r(estimate)/r(se)))
+ 30.                             }
+ 31.                         }
+ 32.                     }
+ 33.                 }
+ 34. 
+.                 di as result _n "   Logit + efectos marginales promedio:"
+ 35.                 capture noisily logit `ext'_`j'_`v' ib${pre_year}.anio ///
+>                     if muestra == `si', vce(cluster id)
+ 36.                 if !_rc capture noisily margins, dydx(anio)
+ 37.             }
+ 38.         }
+ 39.     }
+ 40. }
+
+%%%%%%%%%%%%%% MUESTRA: unbal %%%%%%%%%%%%%%
+
+############ ingreso  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    485,081
+                                                F(1, 254192)      =    3191.68
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0036
+                                                Root MSE          =      .4248
+
+                               (Std. err. adjusted for 254,193 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_a_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0507585   .0008985   -56.49   0.000    -.0525195   -.0489975
+             |
+       _cons |   .7869076   .0008162   964.10   0.000     .7853078    .7885073
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -265919.52  
+Iteration 1:   log pseudolikelihood = -265059.59  
+Iteration 2:   log pseudolikelihood = -265058.43  
+Iteration 3:   log pseudolikelihood = -265058.43  
+
+Logistic regression                                    Number of obs = 485,081
+                                                       Wald chi2(1)  = 3203.74
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -265058.43                      Pseudo R2     =  0.0032
+
+                                (Std. err. adjusted for 254,193 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_a_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.2803365   .0049528   -56.60   0.000    -.2900438   -.2706292
+              |
+        _cons |   1.306385   .0048676   268.39   0.000     1.296845    1.315925
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 485,081
+Model VCE: Robust
+
+Expression: Pr(top_a_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0507585   .0008985   -56.50   0.000    -.0525195   -.0489976
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    478,884
+                                                F(1, 254192)      =    1683.80
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0023
+                                                Root MSE          =     .43645
+
+                               (Std. err. adjusted for 254,193 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_a_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0420985   .0010259   -41.03   0.000    -.0441094   -.0400877
+             |
+       _cons |   .2770628   .0008949   309.60   0.000     .2753088    .2788167
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -272889.25  
+Iteration 1:   log pseudolikelihood = -272333.73  
+Iteration 2:   log pseudolikelihood = -272333.32  
+Iteration 3:   log pseudolikelihood = -272333.32  
+
+Logistic regression                                    Number of obs = 478,884
+                                                       Wald chi2(1)  = 1664.82
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -272333.32                      Pseudo R2     =  0.0020
+
+                                (Std. err. adjusted for 254,193 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_a_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |   -.221411   .0054264   -40.80   0.000    -.2320467   -.2107754
+              |
+        _cons |  -.9590783   .0044678  -214.66   0.000     -.967835   -.9503216
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 478,884
+Model VCE: Robust
+
+Expression: Pr(bot_a_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0420985   .0010259   -41.03   0.000    -.0441093   -.0400877
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ ingreso  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    389,614
+                                                F(1, 203223)      =    2636.23
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0036
+                                                Root MSE          =     .41009
+
+                               (Std. err. adjusted for 203,224 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_b_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0495344   .0009648   -51.34   0.000    -.0514253   -.0476435
+             |
+       _cons |   .8089208   .0008763   923.10   0.000     .8072032    .8106383
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -202808.22  
+Iteration 1:   log pseudolikelihood = -202102.32  
+Iteration 2:   log pseudolikelihood = -202101.09  
+Iteration 3:   log pseudolikelihood = -202101.09  
+
+Logistic regression                                    Number of obs = 389,614
+                                                       Wald chi2(1)  = 2644.70
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -202101.09                      Pseudo R2     =  0.0035
+
+                                (Std. err. adjusted for 203,224 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_b_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.2936944   .0057109   -51.43   0.000    -.3048877   -.2825012
+              |
+        _cons |   1.443013   .0056694   254.53   0.000     1.431901    1.454125
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 389,614
+Model VCE: Robust
+
+Expression: Pr(top_b_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0495344   .0009648   -51.34   0.000    -.0514252   -.0476435
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    388,009
+                                                F(1, 203222)      =      23.50
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0000
+                                                Root MSE          =     .29639
+
+                               (Std. err. adjusted for 203,223 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_b_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   .0039683   .0008186     4.85   0.000     .0023638    .0055728
+             |
+       _cons |   .0954015   .0006562   145.39   0.000     .0941155    .0966876
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -123834.62  
+Iteration 1:   log pseudolikelihood = -123825.94  
+Iteration 2:   log pseudolikelihood = -123825.94  
+
+Logistic regression                                    Number of obs = 388,009
+                                                       Wald chi2(1)  =   23.53
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -123825.94                      Pseudo R2     =  0.0001
+
+                                (Std. err. adjusted for 203,223 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_b_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |   .0451503   .0093071     4.85   0.000     .0269087     .063392
+              |
+        _cons |  -2.249396   .0076034  -295.84   0.000    -2.264299   -2.234494
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 388,009
+Model VCE: Robust
+
+Expression: Pr(bot_b_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   .0039683   .0008186     4.85   0.000     .0023639    .0055727
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ D1R  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    433,513
+                                                F(1, 223759)      =    4023.97
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0046
+                                                Root MSE          =     .38448
+
+                               (Std. err. adjusted for 223,760 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_a_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0520772    .000821   -63.43   0.000    -.0536862   -.0504681
+             |
+       _cons |   .8439422   .0007695  1096.74   0.000      .842434    .8454504
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -205282.79  
+Iteration 1:   log pseudolikelihood = -204296.04  
+Iteration 2:   log pseudolikelihood = -204292.96  
+Iteration 3:   log pseudolikelihood = -204292.96  
+
+Logistic regression                                    Number of obs = 433,513
+                                                       Wald chi2(1)  = 4030.57
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -204292.96                      Pseudo R2     =  0.0048
+
+                               (Std. err. adjusted for 223,760 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_a_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.3516533    .005539   -63.49   0.000    -.3625095    -.340797
+             |
+       _cons |   1.687858   .0058427   288.88   0.000     1.676406    1.699309
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 433,513
+Model VCE: Robust
+
+Expression: Pr(top_a_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0520772    .000821   -63.43   0.000    -.0536862   -.0504681
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    427,349
+                                                F(1, 223758)      =     108.29
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0002
+                                                Root MSE          =     .43426
+
+                               (Std. err. adjusted for 223,759 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_a_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0112417   .0010803   -10.41   0.000    -.0133591   -.0091244
+             |
+       _cons |   .2576682   .0009302   276.99   0.000     .2558449    .2594914
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -241359.85  
+Iteration 1:   log pseudolikelihood = -241324.08  
+Iteration 2:   log pseudolikelihood = -241324.08  
+
+Logistic regression                                    Number of obs = 427,349
+                                                       Wald chi2(1)  =  108.09
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -241324.08                      Pseudo R2     =  0.0001
+
+                               (Std. err. adjusted for 223,759 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_a_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0596394   .0057365   -10.40   0.000    -.0708827   -.0483962
+             |
+       _cons |  -1.058124   .0048633  -217.57   0.000    -1.067656   -1.048592
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 427,349
+Model VCE: Robust
+
+Expression: Pr(bot_a_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0112417   .0010803   -10.41   0.000    -.0133591   -.0091244
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ D1R  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    347,192
+                                                F(1, 179161)      =    2511.31
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0036
+                                                Root MSE          =     .37318
+
+                               (Std. err. adjusted for 179,162 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_b_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0448272   .0008945   -50.11   0.000    -.0465804   -.0430739
+             |
+       _cons |   .8538505    .000837  1020.11   0.000       .85221    .8554911
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -157162.47  
+Iteration 1:   log pseudolikelihood = -156540.27  
+Iteration 2:   log pseudolikelihood = -156538.51  
+Iteration 3:   log pseudolikelihood = -156538.51  
+
+Logistic regression                                    Number of obs = 347,192
+                                                       Wald chi2(1)  = 2517.89
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -156538.51                      Pseudo R2     =  0.0040
+
+                               (Std. err. adjusted for 179,162 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_b_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.3214498   .0064061   -50.18   0.000    -.3340055    -.308894
+             |
+       _cons |   1.765126   .0067074   263.16   0.000      1.75198    1.778273
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 347,192
+Model VCE: Robust
+
+Expression: Pr(top_b_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0448272   .0008945   -50.11   0.000    -.0465804    -.043074
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    345,305
+                                                F(1, 179160)      =     429.13
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0009
+                                                Root MSE          =     .31748
+
+                               (Std. err. adjusted for 179,161 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_b_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   .0191843   .0009261    20.72   0.000     .0173692    .0209994
+             |
+       _cons |   .1045136   .0007265   143.85   0.000     .1030897    .1059376
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -122405.08  
+Iteration 1:   log pseudolikelihood = -122247.99  
+Iteration 2:   log pseudolikelihood = -122247.78  
+Iteration 3:   log pseudolikelihood = -122247.78  
+
+Logistic regression                                    Number of obs = 345,305
+                                                       Wald chi2(1)  =  430.16
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -122247.78                      Pseudo R2     =  0.0013
+
+                               (Std. err. adjusted for 179,161 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_b_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   .1901808   .0091696    20.74   0.000     .1722087    .2081529
+             |
+       _cons |  -2.148049   .0077629  -276.71   0.000    -2.163264   -2.132834
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 345,305
+Model VCE: Robust
+
+Expression: Pr(bot_b_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   .0191843   .0009261    20.72   0.000     .0173692    .0209994
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ capital  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =     18,514
+                                                F(1, 9703)        =     593.31
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0191
+                                                Root MSE          =     .49425
+
+                                 (Std. err. adjusted for 9,704 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_a_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.1379871    .005665   -24.36   0.000    -.1490916   -.1268826
+             |
+       _cons |   .5978952   .0050055   119.45   0.000     .5880833     .607707
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -12796.312  
+Iteration 1:   log pseudolikelihood =  -12619.11  
+Iteration 2:   log pseudolikelihood = -12619.092  
+Iteration 3:   log pseudolikelihood = -12619.092  
+
+Logistic regression                                     Number of obs = 18,514
+                                                        Wald chi2(1)  = 579.36
+                                                        Prob > chi2   = 0.0000
+Log pseudolikelihood = -12619.092                       Pseudo R2     = 0.0138
+
+                                  (Std. err. adjusted for 9,704 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_a_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.5574155   .0231582   -24.07   0.000    -.6028047   -.5120263
+              |
+        _cons |   .3967026   .0208196    19.05   0.000      .355897    .4375083
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                            Number of obs = 18,514
+Model VCE: Robust
+
+Expression: Pr(top_a_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.1379871   .0056648   -24.36   0.000      -.14909   -.1268843
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =     17,948
+                                                F(1, 9703)        =     195.08
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0095
+                                                Root MSE          =     .29419
+
+                                 (Std. err. adjusted for 9,704 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_a_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0576559    .004128   -13.97   0.000    -.0657475   -.0495642
+             |
+       _cons |    .123679   .0033679    36.72   0.000     .1170773    .1302807
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -5704.3116  
+Iteration 1:   log pseudolikelihood = -5618.7014  
+Iteration 2:   log pseudolikelihood = -5617.0786  
+Iteration 3:   log pseudolikelihood = -5617.0778  
+Iteration 4:   log pseudolikelihood = -5617.0778  
+
+Logistic regression                                     Number of obs = 17,948
+                                                        Wald chi2(1)  = 180.31
+                                                        Prob > chi2   = 0.0000
+Log pseudolikelihood = -5617.0778                       Pseudo R2     = 0.0153
+
+                                  (Std. err. adjusted for 9,704 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_a_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.6914035   .0514894   -13.43   0.000    -.7923208   -.5904863
+              |
+        _cons |  -1.958043   .0310729   -63.01   0.000    -2.018945   -1.897141
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                            Number of obs = 17,948
+Model VCE: Robust
+
+Expression: Pr(bot_a_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0576559   .0041278   -13.97   0.000    -.0657463   -.0495654
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ capital  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =      7,546
+                                                F(1, 3906)        =     521.53
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0463
+                                                Root MSE          =     .47855
+
+                                 (Std. err. adjusted for 3,907 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_b_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.2109897   .0092389   -22.84   0.000    -.2291033   -.1928761
+             |
+       _cons |   .7022704   .0073461    95.60   0.000     .6878679    .7166729
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -5079.5984  
+Iteration 1:   log pseudolikelihood = -4903.8593  
+Iteration 2:   log pseudolikelihood = -4903.4983  
+Iteration 3:   log pseudolikelihood = -4903.4983  
+
+Logistic regression                                     Number of obs =  7,546
+                                                        Wald chi2(1)  = 491.68
+                                                        Prob > chi2   = 0.0000
+Log pseudolikelihood = -4903.4983                       Pseudo R2     = 0.0347
+
+                                  (Std. err. adjusted for 3,907 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_b_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.8930137   .0402732   -22.17   0.000    -.9719476   -.8140797
+              |
+        _cons |   .8581327   .0351318    24.43   0.000     .7892757    .9269898
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                             Number of obs = 7,546
+Model VCE: Robust
+
+Expression: Pr(top_b_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.2109897   .0092383   -22.84   0.000    -.2290965   -.1928829
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =      7,209
+                                                F(1, 3906)        =       7.31
+                                                Prob > F          =     0.0069
+                                                R-squared         =     0.0009
+                                                Root MSE          =     .18536
+
+                                 (Std. err. adjusted for 3,907 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_b_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0113277   .0041895    -2.70   0.007    -.0195415   -.0031139
+             |
+       _cons |   .0409987   .0032152    12.75   0.000     .0346951    .0473022
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood =  -1109.204  
+Iteration 1:   log pseudolikelihood =  -1105.838  
+Iteration 2:   log pseudolikelihood = -1105.8178  
+Iteration 3:   log pseudolikelihood = -1105.8178  
+
+Logistic regression                                     Number of obs =  7,209
+                                                        Wald chi2(1)  =   7.11
+                                                        Prob > chi2   = 0.0077
+Log pseudolikelihood = -1105.8178                       Pseudo R2     = 0.0031
+
+                                  (Std. err. adjusted for 3,907 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_b_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.3351135   .1256627    -2.67   0.008    -.5814079    -.088819
+              |
+        _cons |  -3.152352   .0817681   -38.55   0.000    -3.312615    -2.99209
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                             Number of obs = 7,209
+Model VCE: Robust
+
+Expression: Pr(bot_b_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0113277   .0041892    -2.70   0.007    -.0195384   -.0031171
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ liq_107  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    431,823
+                                                F(1, 222845)      =    3940.04
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0045
+                                                Root MSE          =     .38513
+
+                               (Std. err. adjusted for 222,846 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_a_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0518301   .0008257   -62.77   0.000    -.0534485   -.0502117
+             |
+       _cons |   .8430563   .0007728  1090.88   0.000     .8415416     .844571
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood =  -204981.3  
+Iteration 1:   log pseudolikelihood = -204010.86  
+Iteration 2:   log pseudolikelihood = -204007.89  
+Iteration 3:   log pseudolikelihood = -204007.89  
+
+Logistic regression                                    Number of obs = 431,823
+                                                       Wald chi2(1)  = 3946.31
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -204007.89                      Pseudo R2     =  0.0047
+
+                                (Std. err. adjusted for 222,846 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_a_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.3488139   .0055526   -62.82   0.000    -.3596968   -.3379309
+              |
+        _cons |   1.681146   .0058409   287.83   0.000     1.669699    1.692594
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 431,823
+Model VCE: Robust
+
+Expression: Pr(top_a_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0518301   .0008257   -62.77   0.000    -.0534485   -.0502117
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    425,665
+                                                F(1, 222845)      =      30.71
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0000
+                                                Root MSE          =     .43546
+
+                               (Std. err. adjusted for 222,846 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_a_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0060705   .0010955    -5.54   0.000    -.0082176   -.0039234
+             |
+       _cons |   .2572433   .0009316   276.14   0.000     .2554174    .2590692
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -241362.14  
+Iteration 1:   log pseudolikelihood = -241351.81  
+Iteration 2:   log pseudolikelihood = -241351.81  
+
+Logistic regression                                    Number of obs = 425,665
+                                                       Wald chi2(1)  =   30.68
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -241351.81                      Pseudo R2     =  0.0000
+
+                                (Std. err. adjusted for 222,846 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_a_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |   -.032021    .005781    -5.54   0.000    -.0433516   -.0206905
+              |
+        _cons |  -1.060346   .0048756  -217.48   0.000    -1.069902    -1.05079
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 425,665
+Model VCE: Robust
+
+Expression: Pr(bot_a_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0060705   .0010955    -5.54   0.000    -.0082176   -.0039235
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ liq_107  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    345,190
+                                                F(1, 178102)      =    2436.13
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0035
+                                                Root MSE          =     .37341
+
+                               (Std. err. adjusted for 178,103 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_b_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0444523   .0009006   -49.36   0.000    -.0462175   -.0426871
+             |
+       _cons |   .8534183   .0008405  1015.40   0.000      .851771    .8550657
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -156394.22  
+Iteration 1:   log pseudolikelihood = -155786.62  
+Iteration 2:   log pseudolikelihood = -155784.93  
+Iteration 3:   log pseudolikelihood = -155784.93  
+
+Logistic regression                                    Number of obs = 345,190
+                                                       Wald chi2(1)  = 2442.44
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -155784.93                      Pseudo R2     =  0.0039
+
+                                (Std. err. adjusted for 178,103 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_b_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.3183614   .0064418   -49.42   0.000    -.3309872   -.3057357
+              |
+        _cons |   1.761667   .0067187   262.20   0.000     1.748499    1.774836
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 345,190
+Model VCE: Robust
+
+Expression: Pr(top_b_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0444523   .0009006   -49.36   0.000    -.0462175   -.0426871
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    343,303
+                                                F(1, 178102)      =     425.33
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0009
+                                                Root MSE          =     .31802
+
+                               (Std. err. adjusted for 178,103 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_b_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   .0191988   .0009309    20.62   0.000     .0173742    .0210233
+             |
+       _cons |   .1049511     .00073   143.76   0.000     .1035203     .106382
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -122008.87  
+Iteration 1:   log pseudolikelihood = -121852.98  
+Iteration 2:   log pseudolikelihood = -121852.77  
+Iteration 3:   log pseudolikelihood = -121852.77  
+
+Logistic regression                                    Number of obs = 343,303
+                                                       Wald chi2(1)  =  426.34
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -121852.77                      Pseudo R2     =  0.0013
+
+                                (Std. err. adjusted for 178,103 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_b_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |   .1896784   .0091862    20.65   0.000     .1716736    .2076831
+              |
+        _cons |  -2.143384   .0077715  -275.80   0.000    -2.158615   -2.128152
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 343,303
+Model VCE: Robust
+
+Expression: Pr(bot_b_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   .0191988   .0009309    20.62   0.000     .0173742    .0210233
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+%%%%%%%%%%%%%% MUESTRA: bal %%%%%%%%%%%%%%
+
+############ ingreso  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    430,346
+                                                F(1, 215172)      =    6663.19
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0070
+                                                Root MSE          =     .42265
+
+                               (Std. err. adjusted for 215,173 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_a_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0707617   .0008669   -81.63   0.000    -.0724607   -.0690626
+             |
+       _cons |   .8001794    .000862   928.25   0.000     .7984898    .8018689
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -234747.42  
+Iteration 1:   log pseudolikelihood = -233249.64  
+Iteration 2:   log pseudolikelihood = -233245.54  
+Iteration 3:   log pseudolikelihood = -233245.54  
+
+Logistic regression                                    Number of obs = 430,346
+                                                       Wald chi2(1)  = 6576.92
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -233245.54                      Pseudo R2     =  0.0064
+
+                                (Std. err. adjusted for 215,173 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_a_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.3957456   .0048798   -81.10   0.000    -.4053099   -.3861813
+              |
+        _cons |   1.387416   .0053913   257.34   0.000     1.376849    1.397983
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 430,346
+Model VCE: Robust
+
+Expression: Pr(top_a_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0707617   .0008669   -81.63   0.000    -.0724607   -.0690626
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    430,344
+                                                F(1, 215171)      =    7335.70
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0101
+                                                Root MSE          =     .45112
+
+                               (Std. err. adjusted for 215,172 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_a_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   -.091234   .0010652   -85.65   0.000    -.0933218   -.0891462
+             |
+       _cons |   .3348716   .0010174   329.14   0.000     .3328775    .3368658
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -258844.58  
+Iteration 1:   log pseudolikelihood = -256664.56  
+Iteration 2:   log pseudolikelihood = -256659.73  
+Iteration 3:   log pseudolikelihood = -256659.73  
+
+Logistic regression                                    Number of obs = 430,344
+                                                       Wald chi2(1)  = 7214.99
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -256659.73                      Pseudo R2     =  0.0084
+
+                                (Std. err. adjusted for 215,172 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_a_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.4466057   .0052578   -84.94   0.000    -.4569109   -.4363006
+              |
+        _cons |  -.6862328   .0045679  -150.23   0.000    -.6951857   -.6772798
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 430,344
+Model VCE: Robust
+
+Expression: Pr(bot_a_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   -.091234   .0010652   -85.65   0.000    -.0933218   -.0891462
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ ingreso  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    354,964
+                                                F(1, 177481)      =    5859.49
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0075
+                                                Root MSE          =       .406
+
+                               (Std. err. adjusted for 177,482 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_b_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0706832   .0009234   -76.55   0.000    -.0724931   -.0688734
+             |
+       _cons |   .8250301   .0009019   914.81   0.000     .8232625    .8267978
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood =  -182582.5  
+Iteration 1:   log pseudolikelihood = -181247.73  
+Iteration 2:   log pseudolikelihood = -181242.61  
+Iteration 3:   log pseudolikelihood = -181242.61  
+
+Logistic regression                                    Number of obs = 354,964
+                                                       Wald chi2(1)  = 5770.51
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -181242.61                      Pseudo R2     =  0.0073
+
+                                (Std. err. adjusted for 177,482 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_b_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.4288741   .0056458   -75.96   0.000    -.4399396   -.4178086
+              |
+        _cons |   1.550806   .0062475   248.23   0.000     1.538561    1.563051
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 354,964
+Model VCE: Robust
+
+Expression: Pr(top_b_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0706832   .0009234   -76.55   0.000     -.072493   -.0688734
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    354,964
+                                                F(1, 177481)      =    1379.69
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0025
+                                                Root MSE          =       .346
+
+                               (Std. err. adjusted for 177,482 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_b_ingr~o | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0343246   .0009241   -37.14   0.000    -.0361358   -.0325134
+             |
+       _cons |   .1566243   .0008627   181.55   0.000     .1549334    .1583152
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -143400.38  
+Iteration 1:   log pseudolikelihood =    -142965  
+Iteration 2:   log pseudolikelihood = -142963.84  
+Iteration 3:   log pseudolikelihood = -142963.84  
+
+Logistic regression                                    Number of obs = 354,964
+                                                       Wald chi2(1)  = 1370.25
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -142963.84                      Pseudo R2     =  0.0030
+
+                                (Std. err. adjusted for 177,482 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_b_ingreso | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |   -.287268   .0077605   -37.02   0.000    -.3024783   -.2720578
+              |
+        _cons |  -1.683562   .0065311  -257.78   0.000    -1.696363   -1.670762
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 354,964
+Model VCE: Robust
+
+Expression: Pr(bot_b_ingreso), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0343246   .0009241   -37.14   0.000    -.0361358   -.0325134
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ D1R  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    392,052
+                                                F(1, 196025)      =   10791.09
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0116
+                                                Root MSE          =     .37287
+
+                               (Std. err. adjusted for 196,026 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_a_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0807546   .0007774  -103.88   0.000    -.0822782   -.0792309
+             |
+       _cons |   .8710375    .000757  1150.65   0.000     .8695538    .8725212
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -178320.07  
+Iteration 1:   log pseudolikelihood = -176050.48  
+Iteration 2:   log pseudolikelihood = -176029.63  
+Iteration 3:   log pseudolikelihood = -176029.63  
+
+Logistic regression                                   Number of obs =  392,052
+                                                      Wald chi2(1)  = 10490.05
+                                                      Prob > chi2   =   0.0000
+Log pseudolikelihood = -176029.63                     Pseudo R2     =   0.0128
+
+                               (Std. err. adjusted for 196,026 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_a_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.5835318   .0056974  -102.42   0.000    -.5946985   -.5723651
+             |
+       _cons |   1.910163    .006739   283.45   0.000     1.896955    1.923372
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 392,052
+Model VCE: Robust
+
+Expression: Pr(top_a_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0807546   .0007774  -103.88   0.000    -.0822782   -.0792309
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    392,052
+                                                F(1, 196025)      =    6499.18
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0098
+                                                Root MSE          =     .47013
+
+                               (Std. err. adjusted for 196,026 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_a_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0937478   .0011629   -80.62   0.000     -.096027   -.0914686
+             |
+       _cons |   .3832145   .0010981   348.99   0.000     .3810623    .3853667
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -250355.91  
+Iteration 1:   log pseudolikelihood = -248423.98  
+Iteration 2:   log pseudolikelihood = -248421.66  
+Iteration 3:   log pseudolikelihood = -248421.66  
+
+Logistic regression                                    Number of obs = 392,052
+                                                       Wald chi2(1)  = 6403.57
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -248421.66                      Pseudo R2     =  0.0077
+
+                               (Std. err. adjusted for 196,026 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_a_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   -.422049   .0052741   -80.02   0.000    -.4323861   -.4117119
+             |
+       _cons |  -.4759265   .0046458  -102.44   0.000    -.4850321    -.466821
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 392,052
+Model VCE: Robust
+
+Expression: Pr(bot_a_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0937478   .0011629   -80.62   0.000     -.096027   -.0914686
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ D1R  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    322,202
+                                                F(1, 161100)      =    7670.69
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0096
+                                                Root MSE          =     .36994
+
+                               (Std. err. adjusted for 161,101 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_b_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0728301   .0008316   -87.58   0.000    -.0744599   -.0712002
+             |
+       _cons |    .870814   .0008356  1042.08   0.000     .8691761    .8724518
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -144617.83  
+Iteration 1:   log pseudolikelihood = -143073.29  
+Iteration 2:   log pseudolikelihood =  -143061.1  
+Iteration 3:   log pseudolikelihood =  -143061.1  
+
+Logistic regression                                    Number of obs = 322,202
+                                                       Wald chi2(1)  = 7490.72
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -143061.1                       Pseudo R2     =  0.0108
+
+                               (Std. err. adjusted for 161,101 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   top_b_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   -.534434   .0061749   -86.55   0.000    -.5465366   -.5223313
+             |
+       _cons |   1.908175   .0074282   256.88   0.000     1.893616    1.922734
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 322,202
+Model VCE: Robust
+
+Expression: Pr(top_b_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0728301   .0008316   -87.58   0.000    -.0744599   -.0712003
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    322,200
+                                                F(1, 161099)      =    1675.84
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0032
+                                                Root MSE          =      .3835
+
+                               (Std. err. adjusted for 161,100 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_b_D1R | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0436934   .0010673   -40.94   0.000    -.0457853   -.0416014
+             |
+       _cons |   .2017691   .0009999   201.79   0.000     .1998094    .2037288
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -151845.07  
+Iteration 1:   log pseudolikelihood = -151324.07  
+Iteration 2:   log pseudolikelihood = -151322.89  
+Iteration 3:   log pseudolikelihood = -151322.89  
+
+Logistic regression                                    Number of obs = 322,200
+                                                       Wald chi2(1)  = 1663.56
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -151322.89                      Pseudo R2     =  0.0034
+
+                               (Std. err. adjusted for 161,100 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+   bot_b_D1R | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.2973418   .0072902   -40.79   0.000    -.3116303   -.2830534
+             |
+       _cons |  -1.375274   .0062081  -221.53   0.000    -1.387442   -1.363106
+------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 322,200
+Model VCE: Robust
+
+Expression: Pr(bot_b_D1R), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0436934   .0010673   -40.94   0.000    -.0457853   -.0416014
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ capital  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =     16,692
+                                                F(1, 8345)        =     578.64
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0200
+                                                Root MSE          =     .49387
+
+                                 (Std. err. adjusted for 8,346 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_a_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.1411455   .0058676   -24.06   0.000    -.1526474   -.1296435
+             |
+       _cons |   .6043614    .005353   112.90   0.000     .5938682    .6148546
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood =  -11531.87  
+Iteration 1:   log pseudolikelihood = -11364.289  
+Iteration 2:   log pseudolikelihood = -11364.266  
+Iteration 3:   log pseudolikelihood = -11364.266  
+
+Logistic regression                                     Number of obs = 16,692
+                                                        Wald chi2(1)  = 563.21
+                                                        Prob > chi2   = 0.0000
+Log pseudolikelihood = -11364.266                       Pseudo R2     = 0.0145
+
+                                  (Std. err. adjusted for 8,346 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_a_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.5710737   .0240635   -23.73   0.000    -.6182373   -.5239102
+              |
+        _cons |   .4236711   .0223867    18.93   0.000      .379794    .4675481
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                            Number of obs = 16,692
+Model VCE: Robust
+
+Expression: Pr(top_a_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.1411455   .0058674   -24.06   0.000    -.1526454   -.1296455
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =     16,690
+                                                F(1, 8344)        =     219.34
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0119
+                                                Root MSE          =     .29044
+
+                                 (Std. err. adjusted for 8,345 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_a_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0638706   .0043126   -14.81   0.000    -.0723244   -.0554168
+             |
+       _cons |   .1261833   .0036353    34.71   0.000     .1190573    .1333094
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -5211.5797  
+Iteration 1:   log pseudolikelihood = -5112.4452  
+Iteration 2:   log pseudolikelihood = -5110.0688  
+Iteration 3:   log pseudolikelihood = -5110.0671  
+Iteration 4:   log pseudolikelihood = -5110.0671  
+
+Logistic regression                                     Number of obs = 16,690
+                                                        Wald chi2(1)  = 208.67
+                                                        Prob > chi2   = 0.0000
+Log pseudolikelihood = -5110.0671                       Pseudo R2     = 0.0195
+
+                                  (Std. err. adjusted for 8,345 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_a_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.7761156   .0537278   -14.45   0.000      -.88142   -.6708111
+              |
+        _cons |  -1.935135   .0329687   -58.70   0.000    -1.999752   -1.870517
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                            Number of obs = 16,690
+Model VCE: Robust
+
+Expression: Pr(bot_a_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0638706   .0043125   -14.81   0.000    -.0723229   -.0554183
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ capital  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =      6,838
+                                                F(1, 3418)        =     458.25
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0445
+                                                Root MSE          =     .47994
+
+                                 (Std. err. adjusted for 3,419 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_b_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.2070781   .0096735   -21.41   0.000    -.2260445   -.1881117
+             |
+       _cons |   .6984498   .0078504    88.97   0.000     .6830578    .7138418
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -4615.7955  
+Iteration 1:   log pseudolikelihood = -4462.6712  
+Iteration 2:   log pseudolikelihood = -4462.3773  
+Iteration 3:   log pseudolikelihood = -4462.3773  
+
+Logistic regression                                     Number of obs =  6,838
+                                                        Wald chi2(1)  = 430.20
+                                                        Prob > chi2   = 0.0000
+Log pseudolikelihood = -4462.3773                       Pseudo R2     = 0.0332
+
+                                  (Std. err. adjusted for 3,419 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_b_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.8744434   .0421598   -20.74   0.000    -.9570752   -.7918117
+              |
+        _cons |    .839927   .0372706    22.54   0.000     .7668779    .9129761
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                             Number of obs = 6,838
+Model VCE: Robust
+
+Expression: Pr(top_b_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.2070781   .0096728   -21.41   0.000    -.2260364   -.1881198
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =      6,836
+                                                F(1, 3417)        =       9.02
+                                                Prob > F          =     0.0027
+                                                R-squared         =     0.0012
+                                                Root MSE          =     .17718
+
+                                 (Std. err. adjusted for 3,418 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_b_capi~l | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0122879   .0040915    -3.00   0.003    -.0203099   -.0042659
+             |
+       _cons |   .0386191   .0032965    11.72   0.000     .0321557    .0450825
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood =  -979.2119  
+Iteration 1:   log pseudolikelihood = -975.11619  
+Iteration 2:   log pseudolikelihood = -975.08153  
+Iteration 3:   log pseudolikelihood = -975.08153  
+
+Logistic regression                                     Number of obs =  6,836
+                                                        Wald chi2(1)  =   8.90
+                                                        Prob > chi2   = 0.0028
+Log pseudolikelihood = -975.08153                       Pseudo R2     = 0.0042
+
+                                  (Std. err. adjusted for 3,418 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_b_capital | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.3956927   .1326042    -2.98   0.003    -.6555923   -.1357932
+              |
+        _cons |  -3.214624   .0887828   -36.21   0.000    -3.388635   -3.040613
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                             Number of obs = 6,836
+Model VCE: Robust
+
+Expression: Pr(bot_b_capital), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0122879   .0040912    -3.00   0.003    -.0203064   -.0042694
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ liq_107  --  definicion de t0: (a) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    390,652
+                                                F(1, 195325)      =   10597.76
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0115
+                                                Root MSE          =     .37345
+
+                               (Std. err. adjusted for 195,326 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_a_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0805218   .0007822  -102.95   0.000    -.0820548   -.0789887
+             |
+       _cons |   .8702886   .0007602  1144.78   0.000     .8687986    .8717787
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -178075.67  
+Iteration 1:   log pseudolikelihood =  -175833.8  
+Iteration 2:   log pseudolikelihood = -175813.53  
+Iteration 3:   log pseudolikelihood = -175813.53  
+
+Logistic regression                                   Number of obs =  390,652
+                                                      Wald chi2(1)  = 10305.63
+                                                      Prob > chi2   =   0.0000
+Log pseudolikelihood = -175813.53                     Pseudo R2     =   0.0127
+
+                                (Std. err. adjusted for 195,326 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_a_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.5799926   .0057133  -101.52   0.000    -.5911904   -.5687948
+              |
+        _cons |   1.903513   .0067344   282.65   0.000     1.890314    1.916712
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 390,652
+Model VCE: Robust
+
+Expression: Pr(top_a_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0805218   .0007822  -102.95   0.000    -.0820548   -.0789887
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    390,650
+                                                F(1, 195324)      =    6506.44
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0099
+                                                Root MSE          =     .47015
+
+                               (Std. err. adjusted for 195,325 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_a_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0939972   .0011653   -80.66   0.000    -.0962812   -.0917132
+             |
+       _cons |   .3834532   .0011002   348.54   0.000     .3812969    .3856095
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -249490.89  
+Iteration 1:   log pseudolikelihood = -247555.92  
+Iteration 2:   log pseudolikelihood = -247553.59  
+Iteration 3:   log pseudolikelihood = -247553.59  
+
+Logistic regression                                    Number of obs = 390,650
+                                                       Wald chi2(1)  = 6410.25
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -247553.59                      Pseudo R2     =  0.0078
+
+                                (Std. err. adjusted for 195,325 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_a_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.4231108   .0052847   -80.06   0.000    -.4334686   -.4127531
+              |
+        _cons |  -.4749166   .0046535  -102.06   0.000    -.4840373   -.4657958
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 390,650
+Model VCE: Robust
+
+Expression: Pr(bot_a_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0939972   .0011653   -80.66   0.000    -.0962812   -.0917132
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+############ liq_107  --  definicion de t0: (b) ############
+
+-- [A3] P(seguir en D10 | origen D10) -- MPL base 2019
+
+Linear regression                               Number of obs     =    320,450
+                                                F(1, 160224)      =    7520.82
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0095
+                                                Root MSE          =     .37018
+
+                               (Std. err. adjusted for 160,225 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+top_b_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0726291   .0008375   -86.72   0.000    -.0742706   -.0709877
+             |
+       _cons |   .8704509   .0008389  1037.57   0.000     .8688066    .8720952
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -143967.43  
+Iteration 1:   log pseudolikelihood = -142441.68  
+Iteration 2:   log pseudolikelihood = -142429.75  
+Iteration 3:   log pseudolikelihood = -142429.75  
+
+Logistic regression                                    Number of obs = 320,450
+                                                       Wald chi2(1)  = 7345.80
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -142429.75                      Pseudo R2     =  0.0107
+
+                                (Std. err. adjusted for 160,225 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+top_b_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.5322158   .0062097   -85.71   0.000    -.5443865    -.520045
+              |
+        _cons |   1.904952   .0074396   256.06   0.000      1.89037    1.919533
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 320,450
+Model VCE: Robust
+
+Expression: Pr(top_b_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |  -.0726291   .0008375   -86.72   0.000    -.0742706   -.0709877
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+-- [A3] P(seguir en D6 | origen D6) -- MPL base 2019
+
+Linear regression                               Number of obs     =    320,450
+                                                F(1, 160224)      =    1708.36
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.0033
+                                                Root MSE          =     .38421
+
+                               (Std. err. adjusted for 160,225 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+bot_b_li~107 | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   -.044294   .0010717   -41.33   0.000    -.0463944   -.0421935
+             |
+       _cons |   .2029459   .0010048   201.98   0.000     .2009765    .2049152
+------------------------------------------------------------------------------
+
+   Logit + efectos marginales promedio:
+
+Iteration 0:   log pseudolikelihood = -151445.54  
+Iteration 1:   log pseudolikelihood = -150915.04  
+Iteration 2:   log pseudolikelihood = -150913.82  
+Iteration 3:   log pseudolikelihood = -150913.82  
+
+Logistic regression                                    Number of obs = 320,450
+                                                       Wald chi2(1)  = 1695.58
+                                                       Prob > chi2   =  0.0000
+Log pseudolikelihood = -150913.82                      Pseudo R2     =  0.0035
+
+                                (Std. err. adjusted for 160,225 clusters in id)
+-------------------------------------------------------------------------------
+              |               Robust
+bot_b_liq_107 | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+         anio |
+        2020  |  -.3003096   .0072931   -41.18   0.000    -.3146038   -.2860155
+              |
+        _cons |  -1.367983   .0062116  -220.23   0.000    -1.380158   -1.355809
+-------------------------------------------------------------------------------
+
+Conditional marginal effects                           Number of obs = 320,450
+Model VCE: Robust
+
+Expression: Pr(bot_b_liq_107), predict()
+dy/dx wrt:  2020.anio
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+        anio |
+       2020  |   -.044294   .0010717   -41.33   0.000    -.0463944   -.0421936
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+. 
+. capture log close movlog

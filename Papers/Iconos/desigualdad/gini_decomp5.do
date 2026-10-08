@@ -2,6 +2,19 @@
 * GINI DECOMPOSITION ANALYSIS - ECUADOR INCOME INEQUALITY
 * Source: ENEMDU Survey Data (1991-2025)
 * Purpose: Compute Gini coefficients and decompose by income source
+*
+* Sample rule for every section below: people with missing total per
+* capita income are dropped. Missing means no income data (1.4-8.3% of
+* the sample in the 1990s, 5.9% in 2001), not zero income; counting them
+* as zero inflated the sgini Gini (2001: 0.606 instead of 0.580) and the
+* bottom quartile. Missing income COMPONENTS are still set to zero,
+* since the four components add up to ingtot_per.
+*
+* 2025 is kept, but it may be slightly distorted: the public sector's
+* décimo tercer sueldo was paid on 11-14 Nov 2025 and the December
+* survey asks about the previous month, so public employees' labour
+* income is inflated that year. The paper says so in a note under each
+* chart; only brechas/brechas_salariales.do drops 2025.
 *===============================================================
 
 clear all
@@ -15,13 +28,13 @@ set graphics off
 global user_root "$gd"
 
 global procesado      "$user_root/Bases/ENEMDU/Procesadas"          // Processed data directory
-global out            "$user_root/Papers/Íconos/outputs/Gini decomposition"  // Output directory
-global out_g          "$out/graficos"                               // Graph output directory
+global decomp_out     "$user_root/Papers/Íconos/outputs/Gini decomposition"  // Output directory
+global out_g          "$decomp_out/graficos"                        // Graph output directory
 global out_dash       "$gh_root/Dashboards/data/Data final/desigualdad"
 
 * Create output directories if they do not exist
 cap mkdir "$user_root/Papers/Íconos/outputs"
-cap mkdir "$out"
+cap mkdir "$decomp_out"
 cap mkdir "$out_g"
 
 
@@ -68,15 +81,18 @@ save "$procesado/casi_completa_urb.dta", replace
 
 
 *---------------------------------------------------------------
-* SECTION 3: OVERALL GINI COEFFICIENTS (NATIONAL, 1991–2025)
+* SECTION 3: OVERALL GINI COEFFICIENTS (1991–2025)
+* 1991-1999 are urban only (no national sample); national from 2000.
 * Uses both ineqdeco and sgini for cross-validation.
 * Results are exported to Excel.
 *---------------------------------------------------------------
 
 use "$procesado/casi_completa.dta", clear
 
-* Replace missing income components with zero so observations are retained
-recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
+* No income data is not zero income: drop those people (see header), then
+* set missing components to zero so the rest are retained.
+drop if missing(ingtot_per)
+recode inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
 
 *--- 3a. Gini via ineqdeco ---
 mat a = .   // initialise accumulator matrix
@@ -103,7 +119,7 @@ matrix colnames a = ineqdeco
 matlist a
 
 * Export to Excel (column A = year labels, column B = Gini values)
-putexcel set "$out/Gini.xlsx", replace
+putexcel set "$decomp_out/Gini.xlsx", replace
 putexcel A1 = ("")           // placeholder so row names align correctly
 putexcel A2 = matrix(a), names
 
@@ -190,7 +206,7 @@ foreach var of varlist slaboral srentas sbono sremesas {
 
 * Save results table
 
-export excel using "$out/gini_decomposition.xlsx", replace firstrow(var)
+export excel using "$decomp_out/gini_decomposition.xlsx", replace firstrow(var)
 export excel using "$out_dash/gini_decomposition.xlsx", replace firstrow(var)
 
 * Keep a copy for the data sheet of the figure workbook (Section 8).
@@ -265,7 +281,8 @@ foreach pref in s g e {
 *---------------------------------------------------------------
 
 use "$procesado/casi_completa_urb.dta", clear
-recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
+drop if missing(ingtot_per)
+recode inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
 
 * Initialise accumulator: 8 columns (s×2, g×2, r×2, e×2)
 mat a = ., ., ., ., ., ., ., .
@@ -301,7 +318,7 @@ foreach var of varlist slaboral srentas {
     replace `var' = `var' * 100
 }
 
-export excel using "$out/gini_decomposition_urbano.xlsx", replace firstrow(var)
+export excel using "$decomp_out/gini_decomposition_urbano.xlsx", replace firstrow(var)
 
 * Keep a copy for the data sheet of the figure workbook (Section 8)
 save "`c(tmpdir)'/gini_dat_urb.dta", replace
@@ -350,7 +367,8 @@ foreach pref in s g e {
 
 use ingtot_per inglab_per ingrent_per ingrem_per ingbo_per anio fexp ///
     using "$procesado/casi_completa.dta" if inrange(anio, 2001, 2025), clear
-recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
+drop if missing(ingtot_per)
+recode inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
 
 * Initialise accumulator: 16 columns × (7 years × 5 quintiles) rows
 mat b = ., ., ., ., ., ., ., ., ., ., ., ., ., ., ., .
@@ -406,7 +424,7 @@ foreach var of varlist slaboral srentas sremesas sbono {
     replace `var' = `var' * 100
 }
 
-export excel using "$out/gini_decomposition_quintiles.xlsx", replace firstrow(var)
+export excel using "$decomp_out/gini_decomposition_quintiles.xlsx", replace firstrow(var)
 
 *--- Plot income shares by quintile for each income source ---
 foreach suf in laboral rentas remesas bono {
@@ -437,7 +455,8 @@ foreach suf in laboral rentas remesas bono {
 
 use ingtot_per inglab_per ingrent_per ingrem_per ingbo_per anio fexp ///
     using "$procesado/casi_completa.dta" if inrange(anio, 2001, 2025), clear
-recode ingtot_per inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
+drop if missing(ingtot_per)
+recode inglab_per ingrent_per ingrem_per ingbo_per (. = 0)
 
 mat b = ., ., ., ., ., ., ., ., ., ., ., ., ., ., ., .
 
@@ -489,7 +508,7 @@ foreach var of varlist slaboral srentas sremesas sbono {
     replace `var' = `var' * 100
 }
 
-export excel using "$out/gini_decomposition_cuartiles.xlsx", replace firstrow(var)
+export excel using "$decomp_out/gini_decomposition_cuartiles.xlsx", replace firstrow(var)
 
 * Keep a copy for the data sheet of the figure workbook (Section 8)
 save "`c(tmpdir)'/gini_dat_cuartil.dta", replace
@@ -556,7 +575,7 @@ local d_cuartil_sbono    "Cuartiles - participación del bono"
 
 * Temporary folder for the PNG conversions and for assembling the workbook.
 * Building it locally avoids one rewrite per sheet of a file sitting on
-* Google Drive; the finished workbook is copied to $out at the end.
+* Google Drive; the finished workbook is copied to $decomp_out at the end.
 local tmp "`c(tmpdir)'/gini_png"
 cap mkdir "`tmp'"
 local wb  "`tmp'/graficos.xlsx"
@@ -626,7 +645,7 @@ foreach f of local figs {
 di "***** Figures written to workbook: `n' of `: word count `figs'' *****"
 
 * Move the finished workbook next to the other outputs
-copy "`wb'" "$out/graficos_decomposición_gini.xlsx", replace
+copy "`wb'" "$decomp_out/graficos_decomposición_gini.xlsx", replace
 erase "`wb'"
 
 di "***** DONE *****"

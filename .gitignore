@@ -22,3 +22,7 @@ Procesamiento/Bases/
 # Claude/Cursor
 .claude/
 .Rproj.user
+
+# Private paper code (kept locally, not tracked)
+Papers/Bunching/**/*.do
+Papers/impacto shocks/**/*.do
