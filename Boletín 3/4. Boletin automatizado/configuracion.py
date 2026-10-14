@@ -394,10 +394,10 @@ GRAFICOS = {
     ),
     "area": dict(
         titulo="Informalidad por área",
-        archivos=[
-            ("resultados", "Graficos/informal2_area.png"),
-            ("resultados", "informal2_area.png"),
-        ],
+        # Única salida del .do (línea `graph export "$out_results/informal2_area.png"`).
+        # La versión vieja de Graficos/ incluía la serie nacional y ya no se usa:
+        # no la reponga como alternativa o volvería a colarse el gráfico anterior.
+        archivos=[("resultados", "informal2_area.png")],
         fuente=FUENTE_ENEMDU,
         elaboracion=ELABORACION,
     ),

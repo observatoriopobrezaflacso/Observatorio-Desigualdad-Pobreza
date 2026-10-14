@@ -607,36 +607,30 @@ preserve
     * informal21 / ub1 / lb1 = Urban (area==1)
     * informal22 / ub2 / lb2 = Rural (area==2)
 
-    * Compute national series (population-weighted mean)
-    gen informal2_nac = (informal21 * N1 + informal22 * N2) / (N1 + N2)
-    gen N_nac         = N1 + N2
-    gen se_nac        = sqrt((informal2_nac/100 * (1 - informal2_nac/100)) / N_nac) * 100
-    gen ub_nac        = min(informal2_nac + 1.96 * se_nac, 100)
-    gen lb_nac        = max(informal2_nac - 1.96 * se_nac,   0)
-
-    list anio informal2_nac informal21 informal22, sepby(anio)
+    * Solo se grafican urbano y rural. La serie nacional no se calcula aqui:
+    * (rawsum) N es el conteo muestral sin ponderar, por lo que promediar
+    * urbano y rural con N pesaba por tamano de muestra y no por poblacion,
+    * y no coincidia con la serie nacional del grafico informal_con_y_sin_ruc.
+    list anio informal21 informal22, sepby(anio)
 
     * --- Etiquetas de valor solo en años seleccionados ---
-    gen lbl_nac = informal2_nac if inlist(anio, 2003, 2006, 2014, 2020, 2025)
-    gen lbl_urb = informal21    if inlist(anio, 2003, 2006, 2014, 2020, 2025)
-    gen lbl_rur = informal22    if inlist(anio, 2003, 2006, 2014, 2020, 2025)
-    format lbl_nac lbl_urb lbl_rur %9.1f
+    gen lbl_urb = informal21 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    gen lbl_rur = informal22 if inlist(anio, 2003, 2006, 2014, 2020, 2025)
+    format lbl_urb lbl_rur %9.1f
 
     twoway ///
-        (connected informal2_nac anio,   sort lcolor(navy)         mcolor(navy)         lwidth(medium)) ///
         (connected informal21 anio,  sort lcolor(maroon)       mcolor(maroon)       lwidth(medium)) ///
         (connected informal22 anio,  sort lcolor(forest_green) mcolor(forest_green) lwidth(medium)) ///
-        (scatter lbl_nac anio, msymbol(none) mlabel(lbl_nac) mlabposition(6)  mlabcolor(navy)         mlabsize(vsmall)) ///
         (scatter lbl_urb anio, msymbol(none) mlabel(lbl_urb) mlabposition(12) mlabcolor(maroon)       mlabsize(vsmall)) ///
         (scatter lbl_rur anio, msymbol(none) mlabel(lbl_rur) mlabposition(6)  mlabcolor(forest_green) mlabsize(vsmall)), ///
-        legend(order(1 "Nacional" 2 "Urbano" 3 "Rural") position(6) rows(1) size(small)) ///
+        legend(order(1 "Urbano" 2 "Rural") position(6) rows(1) size(small)) ///
         yscale(range(50 100)) ylabel(50(10)100, format(%9.0f)) ///
         ytitle("Informalidad (%)") ///
         xtitle("") ///
         xscale(range(2003 2024)) xlabel(2003(3)2024, angle(90)) ///
         graphregion(color(white)) ///
         name(informal2_area, replace)
-		
+			
     graph export "$out_results/informal2_area.png", replace width(3000)
 restore
 

@@ -301,6 +301,8 @@ foreach yr of numlist 2010(1)2024 {
 	*   rimpe        1 = sujeto a RIMPE (suj_reg_rimpe_4896 = SI; desde 2022)
 	*   rimpe_bruto  ingresos brutos gravados RIMPE (bas_imp_grav_reg_rimpe_5687)
 	*   emp_bruto    ingresos empresariales brutos (ingresos_aem_rie_1280)
+	*   emp_ded      deducciones de la actividad empresarial (deducciones_aem_rie_1290);
+	*                sirve para verificar si 5687 es ingreso bruto o neto
 	*   Umbrales de la obligación de llevar contabilidad (personas naturales;
 	*   se evalúan con el ejercicio anterior):
 	*   cont_ing     ingresos brutos de la actividad: el mayor entre el total
@@ -394,6 +396,7 @@ foreach yr of numlist 2010(1)2024 {
 	else gen double rimpe_bruto = .
 
 	gen double emp_bruto = ingresos_aem_rie_1280
+	gen double emp_ded   = deducciones_aem_rie_1290
 
 	foreach v in total_ingresos_1440 total_costos_gastos_2760 tot_patrimonio_neto_1330 ///
 	             total_activo_830 ingr_regimen_micro_noob_4825 {
@@ -695,7 +698,7 @@ foreach yr of numlist 2010(1)2024 {
     local final_vars PreTaxHHI PostTaxHHI capital capital_comparable B2R B3R B2B3R D1R D4R D4N D62R D7R D7N D5P D61P B5R D11R D121R D41R D42R D4P D611P D613P D7P B6R liq_107 ing_syo_trabajo_rde_3240
 
     * Variables de bunching: (max) para conservar los missing
-    local bunch_vars base102 rimpe rimpe_bruto emp_bruto ///
+    local bunch_vars base102 rimpe rimpe_bruto emp_bruto emp_ded ///
         n_emp_107 base107_max base107_sum otr_emp_107 gp_107 grav_107 ///
         cont_ing cont_cyg cont_cap cont_oblig rimpe_cat rimpe_simpl    ///
         publico_107 tasa_iess_107
@@ -709,6 +712,7 @@ foreach yr of numlist 2010(1)2024 {
     label var rimpe          "Bunching: sujeto a RIMPE (desde 2022)"
     label var rimpe_bruto    "Bunching: ingresos brutos gravados RIMPE (5687)"
     label var emp_bruto      "Bunching: ingresos empresariales brutos (1280)"
+    label var emp_ded        "Bunching: deducciones de la actividad empresarial (1290)"
     label var n_emp_107      "Bunching: número de empleadores distintos (F107)"
     label var base107_max    "Bunching: base imponible F107 más alta entre empleadores"
     label var base107_sum    "Bunching: suma de bases imponibles F107"
