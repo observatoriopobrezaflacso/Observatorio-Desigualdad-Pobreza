@@ -12,6 +12,7 @@
 *                 empleo adecuado), el diseno muestral, las 4 desagregaciones
 *                 y merge_informal.do                      -> bases armonizadas
 *   informalidad  analisis_descriptivo.do                  -> Graficos 1-8, Tablas 1-2
+*                 cuidado_horas_sexo.do                    -> serie cuida_sexo
 *   ic            analisis_descriptivo_ic.do               -> graficos con IC
 *   pobreza       2. Pobreza laboral/corregido/run_all.do  -> Graficos 9-11 y series
 *   homicidios    graficos_homicidios_nna.do               -> Grafico 12
@@ -117,6 +118,7 @@ foreach tarea in ///
     "armonizacion|`armoniz'/desagregaciones/rama/master_rama.do" ///
     "armonizacion|`analisis'/merge_informal.do" ///
     "informalidad|`analisis'/analisis_descriptivo.do" ///
+    "informalidad|`analisis'/cuidado_horas_sexo.do" ///
     "ic|`analisis'/analisis_descriptivo_ic.do" ///
     "pobreza|`pobreza'/run_all.do" ///
     "homicidios|`homicidios'/graficos_homicidios_nna.do" {

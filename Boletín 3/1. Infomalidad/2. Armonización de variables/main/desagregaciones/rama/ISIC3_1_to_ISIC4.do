@@ -25,11 +25,48 @@ drop if missing(isic31code) | missing(isic4code)
 replace isic31code = substr("0000" + isic31code, -4, .)
 replace isic4code  = substr("0000" + isic4code,  -4, .)
 
-* En codigos con multiples correspondencias se prioriza:
-* 1) correspondencia no parcial, 2) destino no parcial, 3) mismo codigo.
+* En codigos con multiples correspondencias se elige primero la SECCION a la
+* que apunta la mayoria de los destinos, y dentro de ella (o en empate) el
+* orden anterior: 1) correspondencia no parcial, 2) destino no parcial,
+* 3) mismo codigo, 4) codigo menor. Ojo: partialISIC4 = 0 no marca el destino
+* principal del codigo viejo, sino que la clase NUEVA sale entera de el; por
+* eso, ordenando solo por los parciales, el 4540 "terminacion de edificios"
+* iba al 3320 (instalacion de maquinaria, manufactura) y no a construccion.
+gen str2 _div = substr(isic4code, 1, 2)
+gen str1 _sec = ""
+replace _sec = "A" if _div >= "01" & _div <= "03"
+replace _sec = "B" if _div >= "05" & _div <= "09"
+replace _sec = "C" if _div >= "10" & _div <= "33"
+replace _sec = "D" if _div >= "35" & _div <= "35"
+replace _sec = "E" if _div >= "36" & _div <= "39"
+replace _sec = "F" if _div >= "41" & _div <= "43"
+replace _sec = "G" if _div >= "45" & _div <= "47"
+replace _sec = "H" if _div >= "49" & _div <= "53"
+replace _sec = "I" if _div >= "55" & _div <= "56"
+replace _sec = "J" if _div >= "58" & _div <= "63"
+replace _sec = "K" if _div >= "64" & _div <= "66"
+replace _sec = "L" if _div >= "68" & _div <= "68"
+replace _sec = "M" if _div >= "69" & _div <= "75"
+replace _sec = "N" if _div >= "77" & _div <= "82"
+replace _sec = "O" if _div >= "84" & _div <= "84"
+replace _sec = "P" if _div >= "85" & _div <= "85"
+replace _sec = "Q" if _div >= "86" & _div <= "88"
+replace _sec = "R" if _div >= "90" & _div <= "93"
+replace _sec = "S" if _div >= "94" & _div <= "96"
+replace _sec = "T" if _div >= "97" & _div <= "98"
+replace _sec = "U" if _div >= "99" & _div <= "99"
+bysort isic31code _sec: gen int _n_sec = _N
+bysort isic31code: egen int _max_sec = max(_n_sec)
+gen byte _en_modal = _n_sec == _max_sec
 gen byte exact_match = isic31code == isic4code
-gsort isic31code partialisic31 partialisic4 -exact_match isic4code
+gsort isic31code -_en_modal partialisic31 partialisic4 -exact_match isic4code
 duplicates drop isic31code, force
+drop _div _sec _n_sec _max_sec _en_modal
+
+* Tres codigos donde la mayoria de los destinos no es el destino principal:
+replace isic4code = "6820" if isic31code == "7020"   // corretaje inmobiliario -> L, no 8110
+replace isic4code = "9000" if isic31code == "9214"   // artes escenicas -> R, no 7990 (venta de entradas)
+replace isic4code = "9101" if isic31code == "9231"   // bibliotecas y archivos -> R, no 5912
 
 rename isic31code p40
 rename isic4code  p40_rev4_new
@@ -37,6 +74,22 @@ rename isic4code  p40_rev4_new
 keep p40 p40_rev4_new
 tempfile crosswalk_clean
 save `crosswalk_clean'
+
+* Respaldo para codigos que no estan en la tabla: grupo de 3 digitos y, si
+* no, division de 2 digitos.
+gen str3 p3 = substr(p40, 1, 3)
+bysort p3 (p40): keep if _n == 1
+keep p3 p40_rev4_new
+rename p40_rev4_new p40_p3
+tempfile crosswalk_clean_p3
+save `crosswalk_clean_p3'
+use `crosswalk_clean', clear
+gen str2 p2 = substr(p40, 1, 2)
+bysort p2 (p40): keep if _n == 1
+keep p2 p40_rev4_new
+rename p40_rev4_new p40_p2
+tempfile crosswalk_clean_p2
+save `crosswalk_clean_p2'
 
 *-----------------------------------------------------------------------------
 * STEP 2: Actualizar bases 1991-2012 de CIIU Rev. 3.1 a Rev. 4
@@ -70,9 +123,19 @@ forval anio = 1991/2012 {
 	* Fusiona con el crosswalk Rev. 3.1 -> Rev. 4.
 	merge m:1 p40 using `crosswalk_clean', keep(master match)
 
-	* Lista codigos no mapeados para revision manual.
-	tab p40 if missing(p40_rev4_new) & p40 != ""
 	drop _merge
+
+	* Respaldo por grupo y division para los codigos que no estan en la tabla.
+	gen str3 p3 = substr(p40, 1, 3)
+	merge m:1 p3 using `crosswalk_clean_p3', keep(master match) nogen
+	gen str2 p2 = substr(p40, 1, 2)
+	merge m:1 p2 using `crosswalk_clean_p2', keep(master match) nogen
+	replace p40_rev4_new = p40_p3 if missing(p40_rev4_new) & !inlist(p40, "", ".", "0000")
+	replace p40_rev4_new = p40_p2 if missing(p40_rev4_new) & !inlist(p40, "", ".", "0000")
+	drop p3 p2 p40_p3 p40_p2
+
+	* Lista codigos que siguen sin mapear para revision manual.
+	tab p40 if missing(p40_rev4_new) & !inlist(p40, "", ".", "0000")
 
 	rename p40           p40_old_isic31
 	rename p40_rev4_new  p40

@@ -140,6 +140,12 @@ Series de informalidad: `inf`, `inf_sin_ruc`, `no_adec`, `no_remun`, `no_iess`,
 `inf_educ`, `inf_decil`, `inf_prov`, `inf_rama` y los componentes por área y
 por sexo (`no_adec_sexo`, `no_remun_area`, …).
 
+`cuida_sexo` (grupos `Hombre` y `Mujer`) es el porcentaje de ocupados que
+trabajan menos de 40 horas y dan el cuidado de un familiar como razón para no
+querer trabajar más. Empieza en 2022: la pregunta `p29a` no existe antes. La
+produce `3. Analisis/cuidado_horas_sexo.do`, que lee la ENEMDU original en vez
+de las variables base armonizadas, porque `p29a` no está entre ellas.
+
 Series de pobreza laboral (las produce `2. Pobreza laboral/corregido`):
 
 | Serie | Qué es | Grupos |

@@ -43,8 +43,9 @@ capture mkdir "$out/logs"
 global run_decomp    1     // gini_decomp     (Gráficos 8, 9, 10, 11)
 global run_prima     1     // prima_salarial  (Gráficos 16, 17)
 global run_adecuado  1     // empleo_adec     (Gráfico 15)
+global run_adec_sim  1     // empleo adecuado simulado con el SBU 2025 deflactado
 global run_rama      1     // panel_educ_pleno(Gráficos 21, 22)
-global run_calif     1     // empleo_calificados (ya no alimenta el libro)
+global run_calif     0     // empleo_calificados: reemplazado por el bloque 3.4 (ver 3.5)
 global run_rama_of   0     // empleo_pleno_rama_condact: definición oficial
 global run_ginipalma 1     // gini y palma   (Gráficos 1, 2, 3)
 global run_brechas   1     // brechas        (Gráficos 12, 13)
@@ -129,15 +130,29 @@ if $run_adecuado {
 }
 
 *------------------------------------------------------------------------------
+* 3.3b Empleo adecuado simulado -> hoja adecuado_simulado
+*      Umbral de ingreso = SBU 2025 (USD 470) deflactado por el IPC oct-dic y
+*      llevado a sucres hasta 1999 con el factor de la dolarización (25.000).
+*      La serie oficial que trae es la misma del bloque 3.3.
+*      Salida: $out/empleo adecuado/historico_adec_sim.dta
+*              $out/empleo adecuado/serie_empleo_adecuado_simulado_1991_2025.xlsx
+*------------------------------------------------------------------------------
+if $run_adec_sim {
+    di as res _n "=== [3b/5] Empleo adecuado simulado ==="
+    capture noisily do "$cod/empleo adecuado/empleo_adecuado_simulacion.do"
+    if _rc global fallos "$fallos empleo_adecuado_simulacion(_rc=`=_rc')"
+}
+
+*------------------------------------------------------------------------------
 * 3.4 Empleo pleno y educación por rama -> hoja panel_educ_pleno (G. 21 y 22)
-*     Salida: $out/empleo adecuado/base_rama_educ.dta / .csv
+*     Salida: $out/rama_educ/nacional/base_rama_educ.dta / .csv
 *             $out/rama_educ/nacional/tablas_rama_educ.xlsx  (hojas
 *             crecimiento_<par>, que alimentan los Gráficos 14, 15 y 16)
 *             $out/rama_educ/datos_paneles.xlsx
 *------------------------------------------------------------------------------
 if $run_rama {
     di as res _n "=== [4/5] Empleo pleno por rama ==="
-    capture noisily do "$cod/empleo adecuado/empleo_pleno_rama.do"
+    capture noisily do "$cod/calificados_vs_no_calificados/empleo_pleno_rama.do"
     if _rc global fallos "$fallos empleo_pleno_rama(_rc=`=_rc')"
 }
 
@@ -154,7 +169,7 @@ if $run_rama {
 *------------------------------------------------------------------------------
 if $run_rama_of {
     di as res _n "=== [4b/5] Empleo pleno por rama, definición oficial ==="
-    capture noisily do "$cod/empleo adecuado/empleo_pleno_rama_condact.do"
+    capture noisily do "$cod/calificados_vs_no_calificados/empleo_pleno_rama_condact.do"
     if _rc global fallos "$fallos empleo_pleno_rama_condact(_rc=`=_rc')"
 }
 
@@ -166,6 +181,12 @@ if $run_rama_of {
 *     ocupados por "universitaria" y no por "superior", así que no empataban
 *     con el período 1992-1999. Los cuatro períodos de los Gráficos 14, 15 y 16
 *     salen ahora de tablas_rama_educ.xlsx, del bloque 3.4.
+*     APAGADO: el archivo está reemplazado por empleo_pleno_rama.do (3.4) y
+*     además no corre desde fe41e8f: rotula la educación "uni_"/"nouni_" y
+*     después busca n<año>_uni / n<año>_nouni, sin el guion bajo final
+*     (r(111)). Su método también quedó atrás: sólo urbano, sólo universitaria
+*     desde 2010, y excluye la rama 18 (Artes, en CIIU 4) como si fuera "no
+*     especificado". No se arregla porque no alimenta ningún gráfico.
 *------------------------------------------------------------------------------
 if $run_calif {
     di as res _n "=== [5/5] Crecimiento del empleo por calificación ==="
@@ -248,13 +269,15 @@ di as err "{hline 78}"
 di as txt "Ya no falta código para gini, palma ni brechas: los generan"
 di as txt "gini_palma_serie.do y brechas_salariales.do (bloques 3.0 y 3.0b)."
 di as txt ""
-di as txt "Quedan tres hojas que no se generan desde las bases porque su fuente"
-di as txt "no es la ENEMDU:"
+di as txt "Cinco hojas no se generan desde las bases porque su fuente no es la"
+di as txt "ENEMDU; sus datos están tecleados en consolidar_excel.do, que calcula"
+di as txt "lo demás (crecimiento del PIB, dólares de 2015, Gini de gini_serie):"
 di as txt ""
-di as txt "1) PIB (Gráfico 4) — Banco Central del Ecuador."
-di as txt "2) sal_min (Gráfico 14) — Ministerio del Trabajo + IPC."
-di as txt "3) tributacion (Gráfico 23) — tablas del impuesto a la renta del SRI."
-di as txt "   Se copian de Cuadros_Boletin_1_sv.xlsx, hoja 'Impuesto a la renta'."
+di as txt "1) participacion_sri (Gráfico 4) — registros del SRI."
+di as txt "2) pib_gini (Gráfico 5) — PIB real del Banco Central del Ecuador."
+di as txt "3) salario_basico (Gráfico 15) — Ministerio del Trabajo + IPC del INEC."
+di as txt "4) tributacion (Gráfico 16) — tablas del impuesto a la renta del SRI."
+di as txt "5) gini_sri (Gráfico 17) — registros del SRI."
 di as txt ""
 di as txt "Y dos series del libro que NO reproducen a los do-files:"
 di as txt ""

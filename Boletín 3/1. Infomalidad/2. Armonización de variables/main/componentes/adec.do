@@ -186,7 +186,9 @@ tempfile adec_acumulado
 save `adec_acumulado', replace
 
 
-foreach y of numlist 1991(1)2025 {
+* 2002 queda fuera: la tasa nacional salta a 57,6 % (40,3 % en 2001 y 41,9 % en
+* 2003), un nivel que no es comparable con el resto de la serie.
+foreach y of numlist 1991/2001 2003/2025 {
 
     di "*****************   `y'   ************************"
 
@@ -556,7 +558,7 @@ preserve
     save `urb'
 restore
 
-collapse (mean) adec adec_sim if anio != 2002, by(anio)
+collapse (mean) adec adec_sim, by(anio)
 rename (adec adec_sim) (adec_nac adec_sim_nac)
 merge 1:1 anio using `urb', nogen
 sort anio

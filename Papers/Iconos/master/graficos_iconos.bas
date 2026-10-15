@@ -3,36 +3,39 @@ Attribute VB_Name = "GraficosIconos"
 ' GRÁFICOS DEL PAPER "ÍCONOS" DENTRO DEL LIBRO CONSOLIDADO
 '
 ' Dibuja, sobre las hojas de Iconos_resultados.xlsx, los gráficos del documento
-'   "Reducción de la desigualdad en Ecuador durante los 2000s_sv.docx"
-' que se pueden armar con los datos que produce el master:
+'   "Reducción de la desigualdad en Ecuador durante los 2000s_final 22092026.docx"
+' que se arman con los datos que produce el master. Sólo se dibujan los que
+' están en el paper, con su número:
 '
 '   G01  Gráfico 1   Gini urbano                        -> gini_serie
 '   G02  Gráfico 2   Gini nacional                      -> gini_serie
 '   G03  Gráfico 3   Índice de Palma                    -> palma_serie
+'   G04  Gráfico 4   Participación en el ingreso (SRI)  -> participacion_sri
+'   G05  Gráfico 5   Crecimiento del PIB y Gini urbano  -> pib_gini
 '   G06  Gráfico 6   GIC urbano                         -> gic_urbano
 '   G07  Gráfico 7   GIC nacional                       -> gic_nacional
 '   G08  Gráfico 8   Composición del ingreso            -> decomp_nacional
-'   G09  Gráfico 9   Remesas por cuartil                -> decomp_cuartiles
-'   G10  Gráfico 10  Bono por cuartil                   -> decomp_cuartiles
+'   G09  Gráfico 9   Remesas por cuartil                -> remesas_cuartil
+'   G10  Gráfico 10  Bono por cuartil                   -> bono_cuartil
 '   G11  Gráfico 11  Elasticidad ingreso-Gini           -> decomp_nacional
 '   G12  Gráfico 12  Brechas salariales                 -> brechas
-'   G13  Gráfico 13  Prima salarial (urbano)            -> prima_ancho
-'   G13b (sin pie)   Horas semanales por nivel educ.    -> prima_horas_muestra
-'   G13c (sin pie)   Ingreso por hora por nivel educ.   -> prima_horas_muestra
-'   G14  Gráfico 14  Crecimiento del empleo 1992-1999   -> crec_1992_1999
-'   G15  Gráfico 15  Crecimiento del empleo 2001-2010   -> crec_2001_2010
-'   G16  Gráfico 16  Crecimiento del empleo 2011-2024   -> crec_2011_2024
-'   G16b (sin pie)   Crecimiento del empleo 2001-2024   -> crec_2001_2024
-'   G17  Gráfico 17  Empleo adecuado (urbano)           -> adecuado_serie
+'   G13  Gráfico 13  Prima salarial (urbano)            -> prima_urbano
+'   G14  Gráfico 14  Empleo adecuado (urbano)           -> adecuado_urbano
+'   G15  Gráfico 15  Salario básico real y Gini         -> salario_basico
+'   G16  Gráfico 16  Rango superior del impuesto a la renta -> tributacion
+'   G17  Gráfico 17  Gini SRI, antes y después de imp.  -> gini_sri
 '
-' Los Gráficos 14, 15 y 16 son pies de figura sin figura en el documento: el
-' Word nunca los tuvo insertados, así que su formato es el de la casa, en
-' barras. Los cuatro períodos salen del mismo libro, tablas_rama_educ.xlsx de
-' empleo_pleno_rama.do, con el empleo adecuado armonizado.
+' Cada gráfico se dibuja en la hoja de la derecha y lee sólo de ella. Las hojas
+' remesas_cuartil, bono_cuartil, prima_urbano y adecuado_urbano las escribe
+' consolidar_excel.do con la forma que pide el gráfico (filtrada al urbano, de
+' largo a ancho), así que la macro no arma datos por su cuenta ni usa hojas
+' ocultas. Las columnas se buscan por su encabezado, no por su posición.
 '
-' Quedan fuera los cuatro gráficos cuya fuente no es la ENEMDU y por lo tanto
-' no está en este libro: Gráfico 4 (registros del SRI), Gráfico 5 (PIB del
-' BCE), Gráfico 18 (salario básico) y Gráfico 19 (impuesto a la renta).
+' Los Gráficos 4, 5, 15, 16 y 17 no salen de la ENEMDU (SRI, BCE, Ministerio
+' del Trabajo): sus hojas las escribe consolidar_excel.do con los valores
+' tecleados y calcula lo que se puede calcular (crecimiento del PIB, dólares de
+' 2015); el Gini de los Gráficos 5 y 15 es el de gini_serie. Así todos los
+' gráficos del paper leen sólo de este libro, que trae sólo sus 15 hojas.
 '
 ' El formato sale del XML de los gráficos del propio documento: dispersión con
 ' líneas rectas y marcadores, sin título, leyenda abajo, líneas de división
@@ -62,6 +65,9 @@ Private Const VINO As String = "90353B"
 Private Const VERDE As String = "55752F"
 Private Const NARANJA As String = "E37E00"
 Private Const NEGRO As String = "000000"
+Private Const VERDE_PIB As String = "339966"     ' barras del Gráfico 5
+Private Const GRIS_VERDE As String = "6E8E84"    ' Gráfico 4
+Private Const MORADO As String = "7B6888"        ' Gráfico 4
 
 ' Grises de ejes y texto.
 Private Const GRIS_TITULO As String = "404040"
@@ -75,9 +81,9 @@ Private Const FUENTE As String = "Arial"
 ' escala legítima (el eje X del GIC arranca justo en 0).
 Private Const AUTO As Double = -1E+30
 
-' Hoja auxiliar donde se arman las series que hay que filtrar o empalmar
-' antes de graficarlas. Se regenera en cada corrida y queda oculta.
-Private Const HOJA_AUX As String = "graficos_datos"
+' Hoja oculta que usaban versiones anteriores de esta macro. Ya no se usa; si
+' el libro la trae, se borra (ver BorrarHojaAuxiliarVieja).
+Private Const HOJA_AUX_VIEJA As String = "graficos_datos"
 
 Private mLibro As Workbook
 Private mHechos As Long
@@ -106,8 +112,10 @@ Public Sub CrearGraficosIconos()
     ' no quedaba rastro de por qué.
     On Error Resume Next
 
-    ArmarDatosAuxiliares
-    Anotar "datos auxiliares"
+    BorrarHojaAuxiliarVieja
+    Anotar "hoja auxiliar vieja"
+    BorrarGraficosViejos
+    Anotar "graficos viejos"
 
     Grafico01_GiniUrbano
     Anotar "G01"
@@ -115,6 +123,10 @@ Public Sub CrearGraficosIconos()
     Anotar "G02"
     Grafico03_Palma
     Anotar "G03"
+    Grafico04_ParticipacionSRI
+    Anotar "G04"
+    Grafico05_PibGini
+    Anotar "G05"
     Grafico06_GicUrbano
     Anotar "G06"
     Grafico07_GicNacional
@@ -131,19 +143,13 @@ Public Sub CrearGraficosIconos()
     Anotar "G12"
     Grafico13_Prima
     Anotar "G13"
-    Grafico13b_HorasSemanales
-    Anotar "G13b"
-    Grafico13c_IngresoHora
-    Anotar "G13c"
-    Grafico14_Crecimiento
+    Grafico14_EmpleoAdecuado
     Anotar "G14"
-    Grafico15_Crecimiento
+    Grafico15_SalarioBasico
     Anotar "G15"
-    Grafico16_Crecimiento
+    Grafico16_Tributacion
     Anotar "G16"
-    Grafico16b_Crecimiento
-    Anotar "G16b"
-    Grafico17_EmpleoAdecuado
+    Grafico17_GiniSRI
     Anotar "G17"
 
     On Error GoTo 0
@@ -172,199 +178,54 @@ Private Sub Anotar(etq As String)
 End Sub
 
 '==============================================================================
-' HOJA AUXILIAR
+' HOJA AUXILIAR DE VERSIONES ANTERIORES
 '
-' Tres series del paper no salen de una columna suelta:
-'   - remesas y bono por cuartil: hay que separar decomp_cuartiles por q
-'   - prima salarial: hay que quedarse con las filas del ámbito urbano
-'   - empleo adecuado urbano: hasta 1999 la ENEMDU era sólo urbana, así que la
-'     serie del paper empalma la columna nacional de esos años con la urbana
-'     desde 2000. Ese empalme se arma aquí.
+' Antes seis gráficos leían de una hoja oculta, graficos_datos, que esta macro
+' armaba filtrando y reordenando otras tablas. Ahora esa forma la arma
+' consolidar_excel.do y cada gráfico lee de su propia hoja. Si el libro todavía
+' trae la hoja vieja, se borra para que no quede una copia desactualizada.
 '==============================================================================
-Private Sub ArmarDatosAuxiliares()
-
-    Dim wsAux As Worksheet
-
-    Set wsAux = Hoja(HOJA_AUX)
-    If wsAux Is Nothing Then
-        Set wsAux = mLibro.Worksheets.Add(After:=mLibro.Worksheets(mLibro.Worksheets.Count))
-        wsAux.Name = HOJA_AUX
-    End If
-
-    wsAux.Visible = xlSheetVisible
-    wsAux.Cells.Clear
-
-    AuxCuartiles wsAux, "sremesas", 1     ' A:E
-    AuxCuartiles wsAux, "sbono", 7        ' G:K
-    AuxPrimaUrbana wsAux, 13              ' M:P
-    AuxAdecuadoUrbano wsAux, 18           ' R:T
-    AuxPrimaHoras wsAux, 22               ' V:Z
-
-    wsAux.Visible = xlSheetHidden
-
-End Sub
-
-' decomp_cuartiles viene en formato largo (una fila por año y cuartil). Aquí
-' se pasa a ancho: una columna por cuartil.
-Private Sub AuxCuartiles(wsAux As Worksheet, campo As String, colIni As Long)
+Private Sub BorrarHojaAuxiliarVieja()
 
     Dim ws As Worksheet
-    Dim colT As Long, colQ As Long, colV As Long
-    Dim f As Long, ult As Long
-    Dim q As Long, fila As Long
-    Dim anio As Variant
 
-    Set ws = Hoja("decomp_cuartiles")
+    Set ws = Hoja(HOJA_AUX_VIEJA)
     If ws Is Nothing Then Exit Sub
 
-    colT = Columna(ws, "t")
-    colQ = Columna(ws, "q")
-    colV = Columna(ws, campo)
-    If colT = 0 Or colQ = 0 Or colV = 0 Then Exit Sub
-
-    ult = ws.Cells(ws.Rows.Count, colT).End(xlUp).Row
-
-    wsAux.Cells(1, colIni).Value = "anio"
-    For q = 1 To 4
-        wsAux.Cells(1, colIni + q).Value = "Cuartil " & q
-    Next q
-
-    fila = 1
-    For f = 2 To ult
-        anio = ws.Cells(f, colT).Value
-        q = CLng(ws.Cells(f, colQ).Value)
-        If q = 1 Then
-            fila = fila + 1
-            wsAux.Cells(fila, colIni).Value = anio
-        End If
-        If fila > 1 And q >= 1 And q <= 4 Then
-            wsAux.Cells(fila, colIni + q).Value = ws.Cells(f, colV).Value
-        End If
-    Next f
+    Application.DisplayAlerts = False
+    ws.Visible = xlSheetVisible
+    ws.Delete
+    Application.DisplayAlerts = True
 
 End Sub
 
-' prima_ancho trae ámbito nacional y urbano apilados; el paper grafica urbano.
-Private Sub AuxPrimaUrbana(wsAux As Worksheet, colIni As Long)
-
-    Dim ws As Worksheet
-    Dim cAmb As Long, cAnio As Long, cTot As Long, cHom As Long, cMuj As Long
-    Dim f As Long, ult As Long, fila As Long
-
-    Set ws = Hoja("prima_ancho")
-    If ws Is Nothing Then Exit Sub
-
-    cAmb = Columna(ws, Ac("{A}mbito"))
-    If cAmb = 0 Then cAmb = 1
-    cAnio = Columna(ws, Ac("A{n}o"))
-    cTot = Columna(ws, "Total")
-    cHom = Columna(ws, "Hombres")
-    cMuj = Columna(ws, "Mujeres")
-    If cAnio = 0 Or cTot = 0 Then Exit Sub
-
-    ult = ws.Cells(ws.Rows.Count, cAnio).End(xlUp).Row
-
-    wsAux.Cells(1, colIni).Value = "anio"
-    wsAux.Cells(1, colIni + 1).Value = "Total"
-    wsAux.Cells(1, colIni + 2).Value = "Hombres"
-    wsAux.Cells(1, colIni + 3).Value = "Mujeres"
-
-    fila = 1
-    For f = 2 To ult
-        If StrComp(CStr(ws.Cells(f, cAmb).Value), "Urbano", vbTextCompare) = 0 Then
-            fila = fila + 1
-            wsAux.Cells(fila, colIni).Value = ws.Cells(f, cAnio).Value
-            wsAux.Cells(fila, colIni + 1).Value = ws.Cells(f, cTot).Value
-            wsAux.Cells(fila, colIni + 2).Value = ws.Cells(f, cHom).Value
-            wsAux.Cells(fila, colIni + 3).Value = ws.Cells(f, cMuj).Value
-        End If
-    Next f
-
-End Sub
-
- ' Horas semanales y salario por hora, urbano: prima_horas_muestra trae también
-' las filas nacionales, así que aquí se filtran.
-Private Sub AuxPrimaHoras(wsAux As Worksheet, colIni As Long)
-
-    Dim ws As Worksheet
-    Dim f As Long, ult As Long, fila As Long
-    Dim c As Long
-
-    Set ws = Hoja("prima_horas_muestra")
-    If ws Is Nothing Then Exit Sub
-
-    ult = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
-
-    wsAux.Cells(1, colIni).Value = "anio"
-    wsAux.Cells(1, colIni + 1).Value = "Hasta secundaria"
-    wsAux.Cells(1, colIni + 2).Value = Ac("Universitaria o m{a}s")
-    wsAux.Cells(1, colIni + 3).Value = "Hasta secundaria"
-    wsAux.Cells(1, colIni + 4).Value = Ac("Universitaria o m{a}s")
-
-    fila = 1
-    For f = 2 To ult
-        If StrComp(CStr(ws.Cells(f, 1).Value), "Urbano", vbTextCompare) = 0 Then
-            fila = fila + 1
-            wsAux.Cells(fila, colIni).Value = ws.Cells(f, 2).Value
-            For c = 0 To 3
-                wsAux.Cells(fila, colIni + 1 + c).Value = ws.Cells(f, 3 + c).Value
-            Next c
-        End If
-    Next f
-
-End Sub
-
-' Empleo adecuado urbano, 1991-2025.
+'==============================================================================
+' GRÁFICOS DE VERSIONES ANTERIORES
 '
-' Hasta 1999 la ENEMDU de diciembre no tiene variable `area`: la muestra es
-' urbana por diseño (lo dice el propio empleo_adecuado_serie.do). Según la
-' versión del do-file que haya generado el libro, ese dato queda archivado en
-' la columna "urbano" o en la columna "nacional", que en esos años son lo
-' mismo. Por eso la regla es: usar la columna urbana, y sólo cuando el año no
-' tenga dato urbano, usar el nacional. Así la serie sale continua sin depender
-' de cuál de las dos versiones escribió el libro.
-Private Sub AuxAdecuadoUrbano(wsAux As Worksheet, colIni As Long)
+' Versiones anteriores de esta macro dibujaban gráficos que no están en el
+' paper (horas e ingreso por hora por nivel educativo, crecimiento del empleo)
+' y numeraban distinto el empleo adecuado (G17) y el Gini del SRI (G04). Si el
+' libro todavía los trae, se borran para que queden sólo los del paper.
+'==============================================================================
+Private Sub BorrarGraficosViejos()
 
-    Dim ws As Worksheet
-    Dim cAnio As Long, cNac As Long, cUrb As Long
-    Dim cSimNac As Long, cSimUrb As Long
-    Dim f As Long, ult As Long, fila As Long
-    Dim anio As Long, v As Variant
+    Dim viejos As Variant, ws As Worksheet, i As Long, k As Long
 
-    Set ws = Hoja("adecuado_serie")
-    If ws Is Nothing Then Exit Sub
+    viejos = Array("G04_gini_sri", "G13b_horas_semanales", "G13c_ingreso_hora", _
+                   "G14_crecimiento_1992_1999", "G15_crecimiento_2001_2010", _
+                   "G16_crecimiento_2011_2024", "G16b_crecimiento_2001_2024", _
+                   "G17_empleo_adecuado")
 
-    ' Los encabezados que escribe Stata vienen sin espacios ni paréntesis, así
-    ' que estas cuatro columnas se toman por posición: año, adecuado nacional,
-    ' adecuado urbano, simulado nacional, simulado urbano.
-    cAnio = 1
-    cNac = 2
-    cUrb = 3
-    cSimNac = 4
-    cSimUrb = 5
-
-    ult = ws.Cells(ws.Rows.Count, cAnio).End(xlUp).Row
-
-    wsAux.Cells(1, colIni).Value = "anio"
-    wsAux.Cells(1, colIni + 1).Value = "Observado"
-    wsAux.Cells(1, colIni + 2).Value = "Simulado"
-
-    fila = 1
-    For f = 2 To ult
-        If IsNumeric(ws.Cells(f, cAnio).Value) And ws.Cells(f, cAnio).Value <> "" Then
-            anio = CLng(ws.Cells(f, cAnio).Value)
-            fila = fila + 1
-            wsAux.Cells(fila, colIni).Value = anio
-
-            v = ws.Cells(f, cUrb).Value
-            If v = "" Then v = ws.Cells(f, cNac).Value
-            If v <> "" Then wsAux.Cells(fila, colIni + 1).Value = v
-
-            v = ws.Cells(f, cSimUrb).Value
-            If v = "" Then v = ws.Cells(f, cSimNac).Value
-            If v <> "" Then wsAux.Cells(fila, colIni + 2).Value = v
-        End If
-    Next f
+    For Each ws In mLibro.Worksheets
+        For i = ws.ChartObjects.Count To 1 Step -1
+            For k = LBound(viejos) To UBound(viejos)
+                If StrComp(ws.ChartObjects(i).Name, viejos(k), vbTextCompare) = 0 Then
+                    ws.ChartObjects(i).Delete
+                    Exit For
+                End If
+            Next k
+        Next i
+    Next ws
 
 End Sub
 
@@ -428,6 +289,37 @@ Private Sub Grafico03_Palma()
     Base ch, False
     EjeX ch, "", 2000, 2025, AUTO, "0", False
     EjeY ch, Ac("Raz{o}n"), AUTO, AUTO, AUTO, "0.0", True
+    Listo
+
+End Sub
+
+' Gráfico 17: Gini de los registros del SRI. Columnas: anio, gini_antes,
+' gini_despues.
+Private Sub Grafico17_GiniSRI()
+
+    Dim ws As Worksheet, ch As Chart, s As Series, n As Long
+
+    Dim cX As Long
+
+    Set ws = HojaOAviso("gini_sri", "G17")
+    If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,gini_antes,gini_despues") Then Exit Sub
+
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
+
+    Set ch = Lienzo(ws, "G17_gini_sri", 425, 238, 6)
+
+    ' Las dos series van a 0,01 una de otra: las etiquetas de la primera van
+    ' arriba y las de la segunda abajo para que no se encimen.
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "gini_antes"), n, "Antes de impuestos", AZUL)
+    Etiquetas s, "PRIMERO,2016,2019,ULTIMO", "0.00", "t", AZUL
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "gini_despues"), n, Ac("Despu{e}s de impuestos"), VINO)
+    Etiquetas s, "PRIMERO,2016,2019,ULTIMO", "0.00", "b", VINO
+
+    Base ch, True
+    EjeX ch, "", 2010, 2024, AUTO, "0", False
+    EjeY ch, "Coeficiente de Gini", AUTO, AUTO, AUTO, "0.00", True
     Listo
 
 End Sub
@@ -530,7 +422,7 @@ End Sub
 
 Private Sub Grafico09_RemesasCuartil()
 
-    GraficoCuartiles "G09_remesas_cuartil", 1, 300, 202, _
+    GraficoCuartiles "remesas_cuartil", "G09_remesas_cuartil", 300, 202, _
                      Ac("Participaci{o}n en el ingreso (%)"), "0.0", _
                      "PRIMERO,ULTIMO", "r", "", "", "", "", "PRIMERO,ULTIMO", "t"
 
@@ -538,42 +430,43 @@ End Sub
 
 Private Sub Grafico10_BonoCuartil()
 
-    GraficoCuartiles "G10_bono_cuartil", 7, 310, 227, _
+    GraficoCuartiles "bono_cuartil", "G10_bono_cuartil", 310, 227, _
                      Ac("Participaci{o}n en el ingreso (%)"), "0.0", _
                      "PRIMERO,2009,ULTIMO", "t", "PRIMERO,ULTIMO", "b", _
                      "ULTIMO", "r", "ULTIMO", "r"
 
 End Sub
 
-' Los dos gráficos por cuartil son el mismo dibujo con distinta columna de
-' origen y distintas etiquetas, así que comparten este armador.
-Private Sub GraficoCuartiles(nombre As String, colIni As Long, _
+' Los dos gráficos por cuartil son el mismo dibujo con distinta hoja de
+' origen y distintas etiquetas, así que comparten este armador. La hoja
+' (remesas_cuartil o bono_cuartil) la escribe consolidar_excel.do con las
+' columnas anio, cuartil_1 ... cuartil_4.
+Private Sub GraficoCuartiles(nomHoja As String, nombre As String, _
                              ancho As Single, alto As Single, _
                              tituloY As String, fmtY As String, _
                              e1 As String, p1 As String, e2 As String, p2 As String, _
                              e3 As String, p3 As String, e4 As String, p4 As String)
 
-    Dim wsAux As Worksheet, ws As Worksheet, ch As Chart, s As Series
-    Dim n As Long, q As Long
+    Dim ws As Worksheet, ch As Chart, s As Series
+    Dim n As Long, q As Long, cX As Long
     Dim etq As String, pos As String
     Dim colores As Variant
 
-    Set wsAux = Hoja(HOJA_AUX)
-    Set ws = HojaOAviso("decomp_cuartiles", nombre)
-    If ws Is Nothing Or wsAux Is Nothing Then Exit Sub
+    Set ws = HojaOAviso(nomHoja, nombre)
+    If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,cuartil_1,cuartil_2,cuartil_3,cuartil_4") Then Exit Sub
 
-    n = UltimaFila(wsAux, colIni)
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
     If n < 2 Then Exit Sub
 
     colores = Array(AZUL, VINO, VERDE, NARANJA)
 
-    Set ch = Lienzo(ws, nombre, ancho, alto, IIf(colIni = 1, 20, 40))
+    Set ch = Lienzo(ws, nombre, ancho, alto, 6)
 
     For q = 1 To 4
-        Set s = Serie(ch, "Cuartil " & q, _
-                      wsAux.Range(wsAux.Cells(2, colIni), wsAux.Cells(n, colIni)), _
-                      wsAux.Range(wsAux.Cells(2, colIni + q), wsAux.Cells(n, colIni + q)), _
-                      CStr(colores(q - 1)), xlMarkerStyleCircle, 6)
+        Set s = SerieCol(ch, ws, cX, Columna(ws, "cuartil_" & q), n, _
+                         "Cuartil " & q, CStr(colores(q - 1)))
         Select Case q
             Case 1: etq = e1: pos = p1
             Case 2: etq = e2: pos = p2
@@ -649,42 +542,38 @@ Private Sub Grafico12_Brechas()
 
 End Sub
 
+' Hoja prima_urbano (la escribe consolidar_excel.do con las filas urbanas de
+' prima_ancho): anio, total, hombres, mujeres.
 Private Sub Grafico13_Prima()
 
-    Dim wsAux As Worksheet, ws As Worksheet, ch As Chart, s As Series
-    Dim n As Long
-    Const COLINI As Long = 13
+    Dim ws As Worksheet, ch As Chart, s As Series
+    Dim n As Long, cX As Long
 
-    Set wsAux = Hoja(HOJA_AUX)
-    Set ws = HojaOAviso("prima_ancho", "G13")
-    If ws Is Nothing Or wsAux Is Nothing Then Exit Sub
+    Set ws = HojaOAviso("prima_urbano", "G13")
+    If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,total,hombres,mujeres") Then Exit Sub
 
-    n = UltimaFila(wsAux, COLINI)
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
     If n < 2 Then Exit Sub
 
     Set ch = Lienzo(ws, "G13_prima_salarial", 425, 302, 7)
 
-    Set s = Serie(ch, "Total", _
-                  wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-                  wsAux.Range(wsAux.Cells(2, COLINI + 1), wsAux.Cells(n, COLINI + 1)), _
+    Set s = Serie(ch, "Total", Rango(ws, cX, n), Rango(ws, Columna(ws, "total"), n), _
                   NEGRO, xlMarkerStyleCircle, 6)
     Etiquetas s, "1991:r,1999:r,2011:t,2025:t", "0.00", "r", NEGRO
 
-    Serie ch, "Hombres", _
-          wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-          wsAux.Range(wsAux.Cells(2, COLINI + 2), wsAux.Cells(n, COLINI + 2)), _
+    Serie ch, "Hombres", Rango(ws, cX, n), Rango(ws, Columna(ws, "hombres"), n), _
           AZUL, xlMarkerStyleTriangle, 6
 
-    Serie ch, "Mujeres", _
-          wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-          wsAux.Range(wsAux.Cells(2, COLINI + 3), wsAux.Cells(n, COLINI + 3)), _
+    Serie ch, "Mujeres", Rango(ws, cX, n), Rango(ws, Columna(ws, "mujeres"), n), _
           VINO, xlMarkerStyleSquare, 6
 
     Base ch, True
 
     ' Éste es el único gráfico del paper que lleva título dentro del gráfico.
     ch.HasTitle = True
-    ch.ChartTitle.Text = Ac("Prima salarial de la educaci{o}n universitaria. " _
+    ch.ChartTitle.Text = Ac("Prima salarial de la educaci{o}n superior. " _
                             & "Urbano, 1991{-}2025")
     ch.ChartTitle.Font.Name = FUENTE
     ch.ChartTitle.Font.Size = 10
@@ -697,176 +586,224 @@ Private Sub Grafico13_Prima()
 
 End Sub
 
-Private Sub Grafico17_EmpleoAdecuado()
+' Hoja adecuado_urbano (la escribe consolidar_excel.do desde adecuado_simulado):
+' anio, observado, simulado. Tasas sobre la PEA urbana; 1991-1999 es la
+' muestra urbana por diseño de la ENEMDU de diciembre.
+Private Sub Grafico14_EmpleoAdecuado()
 
-    Dim wsAux As Worksheet, ws As Worksheet, ch As Chart, s As Series
-    Dim n As Long
-    Const COLINI As Long = 18
+    Dim ws As Worksheet, ch As Chart, s As Series
+    Dim n As Long, cX As Long
 
-    Set wsAux = Hoja(HOJA_AUX)
-    Set ws = HojaOAviso("adecuado_serie", "G17")
-    If ws Is Nothing Or wsAux Is Nothing Then Exit Sub
+    Set ws = HojaOAviso("adecuado_urbano", "G14")
+    If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,observado,simulado") Then Exit Sub
 
-    n = UltimaFila(wsAux, COLINI)
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
     If n < 2 Then Exit Sub
 
-    Set ch = Lienzo(ws, "G17_empleo_adecuado", 425, 238, 11)
+    Set ch = Lienzo(ws, "G14_empleo_adecuado", 425, 238, 6)
 
-    Set s = Serie(ch, "Observado", _
-                  wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-                  wsAux.Range(wsAux.Cells(2, COLINI + 1), wsAux.Cells(n, COLINI + 1)), _
-                  AZUL, xlMarkerStyleCircle, 5)
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "observado"), n, "Observado", AZUL)
+    s.MarkerSize = 5
     Etiquetas s, "1999:r,2013:t,ULTIMO:t", "0.0", "t", AZUL
 
     ' El paper no la trae; se agrega para ver el contrafactual al lado.
-    Set s = Serie(ch, "Simulado con el SBU de 2025", _
-                  wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-                  wsAux.Range(wsAux.Cells(2, COLINI + 2), wsAux.Cells(n, COLINI + 2)), _
-                  VINO, xlMarkerStyleCircle, 5)
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "simulado"), n, _
+                     "Simulado con el SBU de 2025", VINO)
+    s.MarkerSize = 5
     Etiquetas s, "PRIMERO:b,ULTIMO:b", "0.0", "b", VINO
 
     Base ch, True
     EjeX ch, Ac("A{n}o"), 1990, 2025, AUTO, "0", False
-    EjeY ch, "Porcentaje de ocupados (%)", AUTO, AUTO, AUTO, "0.0", True
+    EjeY ch, "Porcentaje de la PEA (%)", AUTO, AUTO, AUTO, "0.0", True
     Listo
 
 End Sub
 
-' Horas semanales trabajadas por nivel educativo. No está en el Word: es el
-' insumo de la prima por hora, y en el libro vive en prima_horas_muestra.
-Private Sub Grafico13b_HorasSemanales()
 
-    Dim wsAux As Worksheet, ws As Worksheet, ch As Chart, s As Series
-    Dim n As Long
-    Const COLINI As Long = 22
-
-    Set wsAux = Hoja(HOJA_AUX)
-    Set ws = HojaOAviso("prima_horas_muestra", "G13b")
-    If ws Is Nothing Or wsAux Is Nothing Then Exit Sub
-
-    n = UltimaFila(wsAux, COLINI)
-    If n < 2 Then Exit Sub
-
-    Set ch = Lienzo(ws, "G13b_horas_semanales", 425, 238, 6)
-
-    Set s = Serie(ch, "Hasta secundaria", _
-                  wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-                  wsAux.Range(wsAux.Cells(2, COLINI + 1), wsAux.Cells(n, COLINI + 1)), _
-                  AZUL, xlMarkerStyleCircle, 6)
-    Etiquetas s, "PRIMERO:t,ULTIMO:t", "0.0", "t", AZUL
-
-    Set s = Serie(ch, Ac("Universitaria o m{a}s"), _
-                  wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-                  wsAux.Range(wsAux.Cells(2, COLINI + 2), wsAux.Cells(n, COLINI + 2)), _
-                  VINO, xlMarkerStyleCircle, 6)
-    Etiquetas s, "PRIMERO:b,ULTIMO:b", "0.0", "b", VINO
-
-    Base ch, True
-    EjeX ch, Ac("A{n}o"), 1990, 2025, AUTO, "0", False
-    EjeY ch, "Horas semanales", AUTO, AUTO, AUTO, "0", True
-    Listo
-
-End Sub
-
-' Ingreso medio por hora por nivel educativo, la otra mitad de la prima.
-' Son valores corrientes: educ_ingrl_hora.do pasa los años en sucres a dólares
-' al tipo de fijación de enero de 2000, pero no los deflacta.
-Private Sub Grafico13c_IngresoHora()
-
-    Dim wsAux As Worksheet, ws As Worksheet, ch As Chart, s As Series
-    Dim n As Long
-    Const COLINI As Long = 22
-
-    Set wsAux = Hoja(HOJA_AUX)
-    Set ws = HojaOAviso("prima_horas_muestra", "G13c")
-    If ws Is Nothing Or wsAux Is Nothing Then Exit Sub
-
-    n = UltimaFila(wsAux, COLINI)
-    If n < 2 Then Exit Sub
-
-    Set ch = Lienzo(ws, "G13c_ingreso_hora", 425, 238, 26)
-
-    Set s = Serie(ch, "Hasta secundaria", _
-                  wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-                  wsAux.Range(wsAux.Cells(2, COLINI + 3), wsAux.Cells(n, COLINI + 3)), _
-                  AZUL, xlMarkerStyleCircle, 6)
-    Etiquetas s, "PRIMERO:b,ULTIMO:b", "0.00", "b", AZUL
-
-    Set s = Serie(ch, Ac("Universitaria o m{a}s"), _
-                  wsAux.Range(wsAux.Cells(2, COLINI), wsAux.Cells(n, COLINI)), _
-                  wsAux.Range(wsAux.Cells(2, COLINI + 4), wsAux.Cells(n, COLINI + 4)), _
-                  VINO, xlMarkerStyleCircle, 6)
-    Etiquetas s, "PRIMERO:t,ULTIMO:t", "0.00", "t", VINO
-
-    Base ch, True
-    EjeX ch, Ac("A{n}o"), 1990, 2025, AUTO, "0", False
-    EjeY ch, "Ingreso medio por hora (USD corrientes)", AUTO, AUTO, AUTO, "0.00", True
-    Listo
-
-End Sub
-
-' Gráficos 15 y 16 del paper: crecimiento del empleo por rama, calificados
-' contra no calificados. En el documento son pies sin figura, así que el
-' formato es el mismo de la casa, en barras.
-' Gráfico 14 del paper: el período urbano de los noventa (en 1992-1999 la
-' ENEMDU de diciembre es urbana por diseño).
-Private Sub Grafico14_Crecimiento()
-    GraficoCrecimiento "crec_1992_1999", "G14_crecimiento_1992_1999"
-End Sub
-
-Private Sub Grafico15_Crecimiento()
-    GraficoCrecimiento "crec_2001_2010", "G15_crecimiento_2001_2010"
-End Sub
-
-Private Sub Grafico16_Crecimiento()
-    GraficoCrecimiento "crec_2011_2024", "G16_crecimiento_2011_2024"
-End Sub
-
-' Éste no tiene pie en el paper, pero la hoja existe y es el período completo.
-Private Sub Grafico16b_Crecimiento()
-    GraficoCrecimiento "crec_2001_2024", "G16b_crecimiento_2001_2024"
-End Sub
-
-Private Sub GraficoCrecimiento(nomHoja As String, nombre As String)
+' Gráfico 4: participación en el ingreso nacional antes de impuestos por grupo,
+' registros del SRI. Hoja participacion_sri.
+Private Sub Grafico04_ParticipacionSRI()
 
     Dim ws As Worksheet, ch As Chart, s As Series
-    Dim n As Long
+    Dim n As Long, cX As Long
 
-    Set ws = HojaOAviso(nomHoja, nombre)
+    Set ws = HojaOAviso("participacion_sri", "G04")
     If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,top01,top1,top10,clase_media,bottom50,bottom35") Then Exit Sub
 
-    n = UltimaFila(ws, 1)
-    If n < 2 Then Exit Sub
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
 
-    Set ch = Lienzo(ws, nombre, 425, 260, 9)
-    ch.ChartType = xlColumnClustered
+    Set ch = Lienzo(ws, "G04_participacion_sri", 425, 260, 6)
 
-    Set s = SerieBarra(ch, "Calificados", _
-                       ws.Range(ws.Cells(2, 1), ws.Cells(n, 1)), _
-                       ws.Range(ws.Cells(2, 2), ws.Cells(n, 2)), AZUL)
-    EtiquetasTodas s, "0", AZUL
-
-    Set s = SerieBarra(ch, "No calificados", _
-                       ws.Range(ws.Cells(2, 1), ws.Cells(n, 1)), _
-                       ws.Range(ws.Cells(2, 3), ws.Cells(n, 3)), VINO)
-    EtiquetasTodas s, "0", VINO
-
-    ch.ChartGroups(1).GapWidth = 60
-    ch.ChartGroups(1).Overlap = 0
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "top01"), n, Ac("0,1% m{a}s rico"), AZUL)
+    Etiquetas s, "PRIMERO,2015,2020,ULTIMO", "0.0%", "b", AZUL
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "top1"), n, Ac("1% m{a}s rico"), VINO)
+    Etiquetas s, "PRIMERO,2020", "0.0%", "r", VINO
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "top10"), n, Ac("10% m{a}s rico"), VERDE)
+    Etiquetas s, "PRIMERO,2015,2020,ULTIMO", "0.0%", "b", VERDE
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "clase_media"), n, "Clase media (P50-P90)", NARANJA)
+    Etiquetas s, "PRIMERO,2015,2020,ULTIMO", "0.0%", "t", NARANJA
+    Set s = SerieCol(ch, ws, cX, Columna(ws, "bottom50"), n, Ac("50% m{a}s pobre"), GRIS_VERDE)
+    Etiquetas s, "PRIMERO,2015,2020,ULTIMO", "0.0%", "t", GRIS_VERDE
+    SerieCol ch, ws, cX, Columna(ws, "bottom35"), n, Ac("35% m{a}s pobre"), MORADO
 
     Base ch, True
-    EjeCategorias ch
-    EjeY ch, "Crecimiento del empleo (%)", AUTO, AUTO, AUTO, "0", True
+    EjeX ch, Ac("A{n}o"), 2009, 2024, AUTO, "0", False
+    EjeY ch, Ac("Participaci{o}n en el ingreso nacional"), AUTO, AUTO, AUTO, "0%", True
     Listo
 
 End Sub
 
+' Gráfico 5: crecimiento anual del PIB (barras), su promedio en cada período
+' (líneas negras) y el Gini urbano en el eje derecho. Hoja pib_gini.
+Private Sub Grafico05_PibGini()
+
+    Dim ws As Worksheet, ch As Chart, s As Series
+    Dim n As Long, cX As Long, k As Long
+    Dim proms As Variant
+
+    Set ws = HojaOAviso("pib_gini", "G05")
+    If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,crecimiento,prom_1990_1999,prom_2000_2010,prom_2011_2017,prom_2018_2024,gini_urbano") Then Exit Sub
+
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
+
+    Set ch = Lienzo(ws, "G05_pib_gini", 425, 260, 6)
+    ch.ChartType = xlColumnClustered
+
+    Set s = SerieBarra(ch, "Crecimiento PIB", Rango(ws, cX, n), Rango(ws, Columna(ws, "crecimiento"), n), VERDE_PIB)
+
+    proms = Array("prom_1990_1999", "prom_2000_2010", "prom_2011_2017", "prom_2018_2024")
+    For k = 0 To 3
+        Set s = ch.SeriesCollection.NewSeries
+        s.XValues = Rango(ws, cX, n)
+        s.Values = Rango(ws, Columna(ws, CStr(proms(k))), n)
+        s.Name = Ac("Promedio del per{i}odo")
+        s.ChartType = xlLine
+        s.MarkerStyle = xlMarkerStyleNone
+        With s.Format.Line
+            .Visible = msoTrue
+            .ForeColor.RGB = Col(NEGRO)
+            .Weight = 1.5
+        End With
+    Next k
+
+    Set s = ch.SeriesCollection.NewSeries
+    s.XValues = Rango(ws, cX, n)
+    s.Values = Rango(ws, Columna(ws, "gini_urbano"), n)
+    s.Name = "Gini urbano"
+    s.ChartType = xlLine
+    s.AxisGroup = xlSecondary
+    s.MarkerStyle = xlMarkerStyleNone
+    With s.Format.Line
+        .Visible = msoTrue
+        .ForeColor.RGB = Col(NARANJA)
+        .Weight = 1.75
+    End With
+
+    Base ch, True
+    ' Una sola entrada de leyenda para los cuatro promedios.
+    On Error Resume Next
+    ch.Legend.LegendEntries(5).Delete
+    ch.Legend.LegendEntries(4).Delete
+    ch.Legend.LegendEntries(3).Delete
+    Err.Clear
+    On Error GoTo 0
+
+    EjeCat ch, ""
+    EjeY ch, "", -0.1, 0.15, AUTO, "0%", True
+    EjeY2 ch, "", 0.2, AUTO, AUTO, "0.00"
+    Listo
+
+End Sub
+
+' Gráfico 15: salario básico real (barras, dólares de 2015) y Gini nacional
+' en el eje derecho. Hoja salario_basico (cada dos años desde 2001: 2002 y
+' 2004 no tienen Gini).
+Private Sub Grafico15_SalarioBasico()
+
+    Dim ws As Worksheet, ch As Chart, s As Series
+    Dim n As Long, cX As Long
+
+    Set ws = HojaOAviso("salario_basico", "G15")
+    If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,salario_real,gini_nacional") Then Exit Sub
+
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
+
+    Set ch = Lienzo(ws, "G15_salario_basico", 425, 260, 6)
+    ch.ChartType = xlColumnClustered
+
+    Set s = SerieBarra(ch, Ac("Salario b{a}sico real (d{o}lares de 2015)"), _
+                       Rango(ws, cX, n), Rango(ws, Columna(ws, "salario_real"), n), AZUL)
+    Etiquetas s, "PRIMERO,2015,ULTIMO", "$#,##0", "outend", AZUL
+
+    Set s = ch.SeriesCollection.NewSeries
+    s.XValues = Rango(ws, cX, n)
+    s.Values = Rango(ws, Columna(ws, "gini_nacional"), n)
+    s.Name = "Gini nacional"
+    s.ChartType = xlLineMarkers
+    s.AxisGroup = xlSecondary
+    s.MarkerStyle = xlMarkerStyleCircle
+    s.MarkerSize = 6
+    s.MarkerBackgroundColor = Col(VINO)
+    s.MarkerForegroundColor = Col(VINO)
+    With s.Format.Line
+        .Visible = msoTrue
+        .ForeColor.RGB = Col(VINO)
+        .Weight = 1.75
+    End With
+
+    Base ch, True
+    EjeCat ch, Ac("A{n}o")
+    EjeY ch, Ac("D{o}lares de 2015 por mes"), AUTO, AUTO, AUTO, "$#,##0", True
+    EjeY2 ch, "Coeficiente de Gini", AUTO, AUTO, AUTO, "0.00"
+    Listo
+
+End Sub
+
+' Gráfico 16: valor mensual del límite inferior del rango superior del impuesto
+' a la renta (dólares de 2015) y tasa marginal máxima en el eje derecho. Hoja
+' tributacion (sólo los años con cambios normativos).
+Private Sub Grafico16_Tributacion()
+
+    Dim ws As Worksheet, ch As Chart, s As Series
+    Dim n As Long, cX As Long
+
+    Set ws = HojaOAviso("tributacion", "G16")
+    If ws Is Nothing Then Exit Sub
+    If Not HayColumnas(ws, "anio,tasa,valor_mensual_2015") Then Exit Sub
+
+    cX = Columna(ws, "anio")
+    n = UltimaFila(ws, cX)
+
+    Set ch = Lienzo(ws, "G16_tributacion", 425, 260, 6)
+
+    SerieCol ch, ws, cX, Columna(ws, "valor_mensual_2015"), n, "Valor mensual del rango superior", AZUL
+    Set s = Serie(ch, "Tasa sobre el rango superior", Rango(ws, cX, n), _
+                  Rango(ws, Columna(ws, "tasa"), n), VINO, xlMarkerStyleSquare, 6)
+    s.AxisGroup = xlSecondary
+    s.Format.Line.DashStyle = msoLineDash
+
+    Base ch, True
+    EjeX ch, Ac("A{n}o"), 2000, 2026, AUTO, "0", False
+    EjeY ch, Ac("D{o}lares de 2015 por mes"), AUTO, AUTO, AUTO, "$#,##0", True
+    EjeY2 ch, Ac("Tasa marginal m{a}xima"), AUTO, AUTO, AUTO, "0%"
+    Listo
+
+End Sub
 
 '==============================================================================
 ' AYUDANTES
 '==============================================================================
 
-' Serie de barras: se pinta el relleno, no la línea.
+
+' Serie de barras: se pinta el relleno, no la línea (Gráficos 5 y 15).
 Private Function SerieBarra(ch As Chart, nombre As String, rx As Range, ry As Range, _
                             colorHex As String) As Series
 
@@ -888,54 +825,74 @@ Private Function SerieBarra(ch As Chart, nombre As String, rx As Range, ry As Ra
 
 End Function
 
-' Etiqueta todos los puntos de la serie, que es lo que se estila en barras.
-Private Sub EtiquetasTodas(s As Series, fmt As String, colorHex As String)
-
-    On Error Resume Next
-
-    s.HasDataLabels = True
-    With s.DataLabels
-        .ShowValue = True
-        .ShowSeriesName = False
-        .ShowCategoryName = False
-        .NumberFormatLocal = FormatoLocal(fmt)
-        .Position = xlLabelPositionOutsideEnd
-        .Font.Name = FUENTE
-        .Font.Size = 8
-        .Font.Bold = False
-    End With
-
-    PintarTexto s.DataLabels, colorHex
-
-    Err.Clear
-    On Error GoTo 0
-
-End Sub
-
-' Eje de categorías (barras): no tiene escala, sólo formato.
-Private Sub EjeCategorias(ch As Chart)
+' Eje de categorías de los gráficos de barras: no tiene escala, sólo formato.
+' Las etiquetas van abajo porque hay barras negativas (Gráfico 5).
+Private Sub EjeCat(ch As Chart, titulo As String)
 
     With ch.Axes(xlCategory)
-        .HasTitle = False
+
+        .HasTitle = (titulo <> "")
+        If titulo <> "" Then
+            .AxisTitle.Text = titulo
+            .AxisTitle.Font.Name = FUENTE
+            .AxisTitle.Font.Size = 10
+            .AxisTitle.Font.Bold = False
+            .AxisTitle.Font.Color = Col(GRIS_TITULO)
+        End If
+
         .HasMajorGridlines = False
         .HasMinorGridlines = False
         .MajorTickMark = xlTickMarkOutside
         .MinorTickMark = xlTickMarkNone
-
-        ' Hay ramas con crecimiento negativo, así que el eje cruza por encima
-        ' del piso del gráfico. Sin esto los nombres de las ramas quedan
-        ' colgando en la mitad, encima de las barras que bajan.
         .TickLabelPosition = xlTickLabelPositionLow
         .TickLabels.Font.Name = FUENTE
         .TickLabels.Font.Size = 9
         .TickLabels.Font.Color = Col(GRIS_TEXTO)
+
         .Format.Line.Visible = msoTrue
         .Format.Line.ForeColor.RGB = Col(GRIS_EJE_X)
         .Format.Line.Weight = 0.75
+
     End With
 
 End Sub
 
+' Eje vertical derecho (series con AxisGroup = xlSecondary), sin líneas de
+' división para que no se crucen con las del eje izquierdo.
+Private Sub EjeY2(ch As Chart, titulo As String, minimo As Double, maximo As Double, _
+                  unidad As Double, fmt As String)
+
+    With ch.Axes(xlValue, xlSecondary)
+
+        .HasTitle = (titulo <> "")
+        If titulo <> "" Then
+            .AxisTitle.Text = titulo
+            .AxisTitle.Font.Name = FUENTE
+            .AxisTitle.Font.Size = 10
+            .AxisTitle.Font.Bold = False
+            .AxisTitle.Font.Color = Col(GRIS_TITULO)
+        End If
+
+        If minimo <> AUTO Then .MinimumScale = minimo Else .MinimumScaleIsAuto = True
+        If maximo <> AUTO Then .MaximumScale = maximo Else .MaximumScaleIsAuto = True
+        If unidad <> AUTO Then .MajorUnit = unidad Else .MajorUnitIsAuto = True
+
+        .HasMajorGridlines = False
+        .HasMinorGridlines = False
+        .MajorTickMark = xlTickMarkOutside
+        .MinorTickMark = xlTickMarkNone
+        .TickLabels.NumberFormatLocal = FormatoLocal(fmt)
+        .TickLabels.Font.Name = FUENTE
+        .TickLabels.Font.Size = 9
+        .TickLabels.Font.Color = Col(GRIS_TEXTO)
+
+        .Format.Line.Visible = msoTrue
+        .Format.Line.ForeColor.RGB = Col(GRIS_EJE_Y)
+        .Format.Line.Weight = 0.75
+
+    End With
+
+End Sub
 
 Private Sub Listo()
     mHechos = mHechos + 1
@@ -1065,6 +1022,13 @@ Private Function SerieCol(ch As Chart, ws As Worksheet, colX As Long, colY As Lo
                          ws.Range(ws.Cells(2, colX), ws.Cells(n, colX)), _
                          ws.Range(ws.Cells(2, colY), ws.Cells(n, colY)), _
                          colorHex, xlMarkerStyleCircle, 6)
+
+End Function
+
+' Columna `laCol` de la fila 2 a la `n`: el rango de una serie.
+Private Function Rango(ws As Worksheet, laCol As Long, n As Long) As Range
+
+    Set Rango = ws.Range(ws.Cells(2, laCol), ws.Cells(n, laCol))
 
 End Function
 
