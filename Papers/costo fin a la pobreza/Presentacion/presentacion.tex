@@ -1,0 +1,535 @@
+% =============================================================================
+% ¿Cuánto costaría eliminar la pobreza con un bono uniforme por hogar?
+% Presentación (Beamer, tema metropolis). Compilar con XeLaTeX:  xelatex presentacion.tex
+% Las cifras y figuras salen de insumos/ (node insumos/generar_insumos.js), que usa
+% el mismo modelo del simulador y los resultados del análisis en R (Code/).
+% =============================================================================
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme{metropolis}
+\metroset{numbering=fraction, progressbar=frametitle, block=fill, sectionpage=progressbar}
+
+\usepackage{fontspec}
+% Fira Sans (paquete fira de TeX Live), cargada por archivo para no depender de las fuentes del sistema
+\setsansfont{FiraSans}[Extension=.otf, UprightFont=*-Book, BoldFont=*-SemiBold,
+  ItalicFont=*-BookItalic, BoldItalicFont=*-SemiBoldItalic, Numbers={Lining}]
+\newfontfamily\FiraLight{FiraSans}[Extension=.otf, UprightFont=*-Light, Numbers={Lining}]
+\usepackage{polyglossia}
+\setmainlanguage{spanish}
+\usepackage{booktabs, multirow, array, amsmath, amssymb}
+\usepackage{pgfplots, pgfplotstable}
+\pgfplotsset{compat=1.18}
+\usepackage{qrcode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+
+% ---- Paleta sobria
+\definecolor{azul}{HTML}{1F3A5F}
+\definecolor{acento}{HTML}{C0392B}
+\definecolor{verde}{HTML}{2E7D5B}
+\definecolor{gris}{HTML}{7F8C8D}
+\definecolor{grisclaro}{HTML}{ECEFF1}
+\setbeamercolor{frametitle}{bg=azul, fg=white}
+\setbeamercolor{progress bar}{fg=acento, bg=grisclaro}
+\setbeamercolor{alerted text}{fg=acento}
+\setbeamercolor{block title}{bg=grisclaro, fg=azul}
+\setbeamercolor{block body}{bg=grisclaro!50}
+\setbeamercolor{title separator}{fg=acento}
+
+\pgfplotsset{
+  econ/.style={width=\linewidth, height=0.62\textheight, axis lines=left,
+    tick label style={font=\scriptsize}, label style={font=\footnotesize},
+    legend style={font=\scriptsize, draw=none, fill=none},
+    ymajorgrids, grid style={gris!25}, every axis plot/.append style={line width=1.2pt}},
+  /pgf/number format/.cd, use comma, 1000 sep={.}
+}
+
+\input{insumos/cifras.tex}
+\newcommand{\urlsimulador}{https://observatoriopobrezaflacso.github.io/Observatorio-Desigualdad-Pobreza/simulador-bono/}
+\newcommand{\usd}[1]{\text{USD~#1}}
+\newcommand{\MM}{millones}
+\urlstyle{same}
+
+\title{¿Cuánto costaría eliminar la pobreza con un bono uniforme por hogar?}
+\subtitle{Una simulación con microdatos de la ENEMDU anual 2025}
+\author{Observatorio de Desigualdad y Pobreza}
+\institute{FLACSO Ecuador}
+\date{Octubre de 2026}
+
+\begin{document}
+
+\maketitle
+
+% =============================================================================
+\section{Motivación}
+% =============================================================================
+
+\begin{frame}{Motivación}
+  \begin{itemize}
+    \item En 2025, el \textbf{\cPobInc\%} de la población de Ecuador (\cPobPer{} personas) vivía en hogares
+      con ingreso per cápita bajo la línea de pobreza; el \textbf{\cExtInc\%}, bajo la de pobreza extrema.
+    \item La brecha agregada es pequeña frente a la economía: completar exactamente el ingreso de cada hogar
+      pobre costaría \usd{\cBrechaAnual}~\MM{} al año, el \textbf{\cBrechaAnualPIB\%} del PIB.
+    \item Pero ningún programa puede pagar a cada hogar \emph{exactamente} lo que le falta: el ingreso no se
+      observa, los montos se fijan por reglas simples y las transferencias mueven precios.
+  \end{itemize}
+  \vspace{0.6em}
+  \begin{block}{Pregunta}
+    ¿Cuánto costaría eliminar la pobreza con una regla simple —\textbf{el mismo monto para todos los hogares
+    beneficiarios}— una vez que se toman en cuenta los errores de focalización y el efecto de la transferencia
+    sobre los precios?
+  \end{block}
+\end{frame}
+
+\begin{frame}{Qué hacemos}
+  \begin{itemize}
+    \item Simulación \textbf{estática de microdatos} sobre los \cNHog{} hogares de la ENEMDU anual 2025.
+    \item Un bono uniforme por hogar, fijado como el mínimo que saca de la pobreza a un hogar de cuatro personas
+      sin ningún ingreso: $T = 4\,z$.
+    \item Cuatro fenómenos que separan el costo del programa del costo ``contable'' de la brecha:
+      \begin{enumerate}
+        \item \alert{Uniformidad}: un monto igual frente a brechas muy distintas.
+        \item \alert{Filtración}: hogares no pobres que reciben el bono, con errores concentrados cerca de la línea.
+        \item \alert{Inflación}: la inyección de dinero encarece la línea de pobreza.
+        \item \alert{Interacción}: la filtración protege a los hogares vecinos a la línea del alza de precios.
+      \end{enumerate}
+    \item La filtración se \textbf{calibra con el Bono de Desarrollo Humano} observado en la misma encuesta.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+\section{Datos}
+% =============================================================================
+
+\begin{frame}{Datos: ENEMDU anual 2025}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{itemize}\small
+        \item Doce meses de 2025: \cNHog{} hogares y \cNPer{} personas con ingreso.
+        \item Diseño complejo (estratos y UPM); los conteos son proporción $\times$ población conocida.
+        \item Ingresos de cada mes a \textbf{precios de diciembre de 2025}:
+          $y_i^{dic} = y_i \cdot z^{dic}/z^{m(i)}$, con líneas mensuales entre \usd{\cLineaMin} y \usd{\cLineaMax}.
+        \item Se reproducen exactamente las tasas oficiales del INEC.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{block}{¿Por qué la base anual?}\small
+        \begin{itemize}
+          \item Doce veces más muestra: IC de la pobreza de $\pm$1,6~p.p.\ (frente a $\pm$4,2~p.p.\ en un mes).
+          \item Representa un mes promedio, coherente con un costo anual.
+          \item Diluye rarezas de un mes (el décimo tercero de 2025 se pagó en noviembre).
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Punto de partida}
+  \centering\small
+  \begin{tabular}{lrr}
+    \toprule
+                                       & Pobreza            & Pobreza extrema \\
+    \midrule
+    Línea per cápita mensual (dic.\ 2025) & \usd{\cLP}        & \usd{\cLPE} \\
+    Incidencia en personas             & \cPobInc\%         & \cExtInc\% \\
+    \quad IC 95\%                      & [\cPobLi; \cPobLs] & [\cExtLi; \cExtLs] \\
+    Personas                           & \cPobPer           & \cExtPer \\
+    Hogares                            & \cPobHog{} (\cPobHogInc\%) & \cExtHog{} (\cExtHogInc\%) \\
+    Brecha media del hogar pobre (mensual) & \usd{\cBrechaMedia} & \usd{\cBrechaMediaE} \\
+    Brecha agregada anual              & \usd{\cBrechaAnual}~\MM & \usd{\cBrechaAnualE}~\MM \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8em}
+  \raggedright\footnotesize
+  Los hogares pobres son más grandes: \cTamPobre{} personas frente a \cTamNoPobre{} en los no pobres.
+  Gini del ingreso per cápita: \cGini.
+\end{frame}
+
+% =============================================================================
+\section{El programa y el modelo}
+% =============================================================================
+
+\begin{frame}{El programa: un bono uniforme por hogar}
+  \begin{itemize}
+    \item Todos los hogares beneficiarios reciben el mismo monto mensual $T$, sin ajustar por tamaño ni brecha.
+    \item Monto de referencia: lo mínimo que saca de la pobreza a un hogar de cuatro personas con ingreso nulo,
+      \[ T^{ref} = 4\, z\,(1+\pi), \qquad 4 \times \usd{\cLP} = \usd{\cMontoRefSinInfl}. \]
+    \item La medición oficial es per cápita, sin escalas de equivalencia: la composición del hogar de referencia
+      (dos adultos y dos niñas/os) no altera el umbral.
+    \item Hay \cRefHog{} hogares de ese tipo; \cRefPob{} son pobres, con una brecha media de \usd{\cRefBrechaMedia}
+      y máxima de \usd{\cRefBrechaMax}: $T^{ref}$ cubre al 100\% de ellos.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Modelo}
+  Hogar $i$ con $n_i$ miembros, ingreso per cápita $y_i$ y factor de expansión $w_i$. Línea $z$, inflación $\pi$.
+  \begin{align*}
+    \text{Línea encarecida:}\quad & z' = z\,(1+\pi) \quad\text{(ingresos nominales fijos)}\\
+    \text{Sale de la pobreza:}\quad & T \;\ge\; (z' - y_i)\, n_i \qquad (y_i < z)\\
+    \text{Cae en la pobreza:}\quad & z \le y_i < z' \;\;\text{y}\;\; \bigl(\text{no recibe } T \;\text{ó}\; y_i + T/n_i < z'\bigr)\\
+    \text{Inclusión de no pobres:}\quad & p(y_i) = \min\!\Bigl\{1,\; c \cdot 2^{-\frac{y_i - z}{h\,z}}\Bigr\} \qquad (y_i \ge z)\\
+    \text{Calibración de } c:\quad & \textstyle\sum_{y_i\ge z} w_i\, n_i\, p(y_i) \;=\; \phi \sum_{y_i<z} w_i\, n_i\\
+    \text{Costo anual:}\quad & C = 12\, T\, (1+a) \Bigl[\textstyle\sum_{y_i<z} w_i + \sum_{y_i\ge z} w_i\, p(y_i)\Bigr]
+  \end{align*}
+  \footnotesize $\phi$: personas no pobres por persona pobre beneficiaria; $h$: vida media de la inclusión
+  (fracción de la línea); $a$: costo administrativo. Los pobres se identifican antes del programa.
+\end{frame}
+
+% =============================================================================
+\section{Fenómenos contemplados}
+% =============================================================================
+
+\begin{frame}{Fenómeno 1: uniformidad del monto}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[econ, ybar, bar width=11pt, ymin=0, ymax=112,
+            xlabel={Miembros del hogar pobre}, ylabel={\% que sale de la pobreza},
+            xtick={1,...,8}, xticklabels={1,2,3,4,5,6,7,8+},
+            nodes near coords={\pgfmathprintnumber[fixed,precision=0]{\pgfplotspointmeta}},
+            every node near coord/.append style={font=\tiny}, ymajorgrids=false]
+          \addplot[fill=azul, draw=none] table[x=tam, y=salen] {insumos/tamano.dat};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}\footnotesize
+      Con $T = \usd{\cMonto}$ (precios +\cDefInfl\%):
+      \begin{itemize}
+        \item Sale el \cSalenHog\% de los hogares pobres, pero solo el \cSalenPer\% de las personas pobres.
+        \item Hogares de 8+ miembros: brecha media de \usd{\cTamBrechaH}; sale el \cTamSalenH\%.
+        \item Hogares de 1--4 miembros: brecha media de \usd{\cTamBrechaA}--\cTamBrechaD; salen todos.
+        \item \alert{\cSobrepago\%} de lo transferido a hogares pobres excede su brecha.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Fenómeno 2: filtración no aleatoria}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[econ, xmin=1, xmax=3, ymin=0, ymax=145, ytick={0,20,...,100},
+            xlabel={Ingreso per cápita del hogar no pobre ($y/z$)},
+            ylabel={Probabilidad de recibirlo (\%)},
+            legend pos=north east, legend cell align=left]
+          \addplot[azul, no marks] table[x=rel, y=base] {insumos/perfil.dat};
+          \addlegendentry{Modelo, $h=\cDefHL\%$ (por defecto)}
+          \addplot[gris, dashed, no marks] table[x=rel, y=hlbaja] {insumos/perfil.dat};
+          \addlegendentry{Modelo, $h=25\%$}
+          \addplot[only marks, mark=*, mark size=2.4pt, acento] table[x=rel, y=prob] {insumos/perfil_bdh.dat};
+          \addlegendentry{BDH observado (ENEMDU)}
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}\small
+      \begin{itemize}
+        \item Errores de inclusión concentrados cerca de la línea: el supuesto de un índice de vulnerabilidad imperfecto.
+        \item En el BDH: \textbf{\cBdhFil} personas no pobres por pobre (IC 95\%: \cBdhFilLi--\cBdhFilLs) y vida
+          media de \textbf{\cBdhHL\%} de la línea.
+        \item Por defecto: $\phi=\text{\cDefFil}$ y $h=\cDefHL\%$.
+        \item El nivel difiere: el BDH llega al \cBdhCob\% de los hogares pobres; el bono simulado, a todos.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Fenómenos 3 y 4: inflación e interacción con la filtración}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[econ, height=0.50\textheight, xmin=0, xmax=40, ymin=0, ymax=27,
+            xlabel={Inflación provocada por el programa (\%)}, ylabel={Pobreza después (\%)},
+            legend style={at={(0.5,-0.38)}, anchor=north, /tikz/every even column/.append style={column sep=6pt}}, legend columns=2, legend cell align=left]
+          \addplot[gris, dotted, no marks] table[x=infl, y=antes] {insumos/inflacion.dat};
+          \addlegendentry{Antes del programa}
+          \addplot[acento, no marks] table[x=infl, y=sinfil] {insumos/inflacion.dat};
+          \addlegendentry{Sin filtración}
+          \addplot[azul, no marks] table[x=infl, y=base] {insumos/inflacion.dat};
+          \addlegendentry{Filtración, $h=\cDefHL\%$}
+          \addplot[verde, dashed, no marks] table[x=infl, y=hlbaja] {insumos/inflacion.dat};
+          \addlegendentry{Filtración, $h=25\%$}
+        \end{axis}
+      \end{tikzpicture}
+      {\tiny Monto fijo en \usd{\cMonto}.}
+    \end{column}
+    \begin{column}{0.42\textwidth}\small
+      \begin{itemize}
+        \item El alza de precios erosiona el bono y empuja bajo la línea a hogares que estaban apenas por encima.
+        \item Con \cDefInfl\% de inflación caerían \cCaenSin{} personas; la filtración protege a una parte y quedan
+          \textbf{\cCaen}.
+        \item El resultado depende de la \alert{forma} del perfil: si es muy concentrado ($h=25\%$), todo hogar
+          hasta \cBandaHLBaja$\,z$ recibe el bono y nadie cae.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+\section{Supuestos por defecto}
+% =============================================================================
+
+\begin{frame}{Supuestos por defecto}
+  \centering\small
+  \begin{tabular}{>{\raggedright}p{0.30\textwidth} >{\raggedright}p{0.19\textwidth} >{\raggedright\arraybackslash}p{0.43\textwidth}}
+    \toprule
+    Parámetro & Valor & Fundamento \\
+    \midrule
+    Monto por hogar $T$ & \usd{\cMonto} & $4\,z\,(1+\pi)$: mínimo para un hogar de cuatro sin ingreso \\
+    Inflación provocada $\pi$ & \cDefInfl\% & Supuesto ilustrativo; se explora de 0 a 40\% \\
+    Filtración $\phi$ & \cDefFil & BDH en la ENEMDU: \cBdhFil{} [\cBdhFilLi; \cBdhFilLs] \\
+    Concentración $h$ & \cDefHL\% de la línea & BDH en la ENEMDU: \cBdhHL\% \\
+    Costo administrativo $a$ & \cDefAdm\% del monto & Supuesto del usuario \\
+    Cobertura de los pobres & 100\% & Sin errores de exclusión \\
+    Grupo objetivo & Todos los hogares & Alternativas: con menores de 5 o con personas de 65+ \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Supuestos de mantenimiento}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Sobre los hogares}\small
+        \begin{itemize}
+          \item Sin respuestas de comportamiento: oferta laboral, remesas y ahorro no cambian.
+          \item Los no pobres incluidos suman el bono a su ingreso.
+          \item Se mantienen las transferencias existentes: el costo es adicional.
+          \item Distribución y composición de los hogares de 2025 constantes durante el año.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Sobre los precios}\small
+        \begin{itemize}
+          \item Ningún ingreso nominal se ajusta a la inflación en el período: es el caso de corto plazo más desfavorable.
+          \item Inflación pareja para todos los hogares, sin diferencias por canasta.
+          \item El monto de referencia sigue a la línea encarecida; el costo depende del monto y de los beneficiarios.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+\section{Resultados}
+% =============================================================================
+
+\begin{frame}{Escenario base}
+  \centering\small
+  \begin{tabular}{lrr}
+    \toprule
+                                           & Pobreza                 & Pobreza extrema \\
+    \midrule
+    Monto mensual por hogar                & \usd{\cMonto}           & \usd{\cMontoE} \\
+    Hogares beneficiarios                  & \cHogBenef              & \cHogBenefE \\
+    \quad de ellos, no pobres (filtración) & \cHogNP                 & \cHogNPE \\
+    Costo anual (\MM{} de USD)             & \textbf{\cCosto}        & \textbf{\cCostoE} \\
+    \quad IC 95\%                          & [\cCostoLi; \cCostoLs]  & [\cCostoLiE; \cCostoLsE] \\
+    \quad \% del PIB 2025                  & \cCostoPIB\%            & \cCostoPIBE\% \\
+    \quad \% del PGE 2025                  & \cCostoPGE\%            & \cCostoPGEE\% \\
+    Personas que salen de la pobreza       & \cPerSalen              & \cPerSalenE \\
+    Personas que caen por la inflación     & \cCaen                  & \cCaenE \\
+    Incidencia antes $\to$ después         & \cAntes\% $\to$ \textbf{\cDespues\%} & \cAntesE\% $\to$ \textbf{\cDespuesE\%} \\
+    Costo anual por persona que sale       & \usd{\cCostoPorPer}     & \usd{\cCostoPorPerE} \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Del costo de la brecha al costo del programa}
+  \begin{columns}[c]
+    \begin{column}{0.58\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[econ, ybar, bar width=20pt, ymin=0, ymax=11500,
+            ylabel={Costo anual (\MM{} de USD)}, xtick={1,...,5},
+            xticklabels={Brecha exacta, Bono uniforme, + inflación, + filtración, + costo adm.},
+            xticklabel style={font=\tiny, align=center, text width=1.5cm},
+            nodes near coords={\pgfmathprintnumber[fixed,precision=0]{\pgfplotspointmeta}},
+            every node near coord/.append style={font=\tiny}, ymajorgrids=false,
+            scaled y ticks=false, yticklabel style={/pgf/number format/fixed}]
+          \addplot[fill=azul, draw=none] table[x=paso, y=costo] {insumos/descomposicionP.dat};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.40\textwidth}\small
+      Meta: pobreza, todos los hogares.
+      \begin{itemize}
+        \item Brecha exacta: \cDescBrechaPIB\% del PIB.
+        \item Uniformidad: $\times$2,5, a \cDescUniformePIB\% del PIB.
+        \item Inflación de \cDefInfl\%: \cDescInflacionPIB\%.
+        \item Filtración: \alert{\cDescFiltracionPIB\%}. Los hogares no pobres son más pequeños, así que
+          \cDefFil{} personas por pobre son \cHogNP{} hogares.
+        \item Costo administrativo: \cDescAdmPIB\%.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Qué logra cada monto}
+  \begin{columns}[c]
+    \begin{column}{0.49\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[econ, xmin=0, xmax=700, ymin=0, xlabel={Monto mensual por hogar (USD)},
+            ylabel={Personas que salen (millones)}, title={\footnotesize Personas que salen de la pobreza},
+            yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=1}]
+          \addplot[verde, no marks] table[x=monto, y=salen] {insumos/monto.dat};
+          \draw[gris, dashed, thin] (axis cs:388.08,0) -- (axis cs:388.08,4.2);
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[econ, xmin=0, xmax=700, ymin=0, xlabel={Monto mensual por hogar (USD)},
+            ylabel={Costo anual (\MM{} de USD)}, title={\footnotesize Costo anual del programa},
+            scaled y ticks=false, yticklabel style={/pgf/number format/fixed}]
+          \addplot[azul, no marks] table[x=monto, y=costo] {insumos/monto.dat};
+          \draw[gris, dashed, thin] (axis cs:388.08,0) -- (axis cs:388.08,18000);
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+  \footnotesize La línea vertical marca el monto de referencia (\usd{\cMonto}). Con filtración e inflación por
+  defecto, el costo crece linealmente con el monto, mientras que las personas que salen se aplanan: los últimos
+  hogares en salir son los más numerosos y más pobres.
+\end{frame}
+
+\begin{frame}{Sensibilidad: inflación y filtración}
+  \centering\small
+  Pobreza después del programa (\%) y personas que caen por la inflación (miles), meta de pobreza
+  \vspace{0.4em}
+
+  \begin{tabular}{lcccc}
+    \toprule
+    Inflación provocada                 & 0\%  & 5\%  & 10\% & 20\% \\
+    \midrule
+    Sin filtración                      & \cSensSinFilCeroDesp{} (\cSensSinFilCeroCaen) & \cSensSinFilCincoDesp{} (\cSensSinFilCincoCaen) & \cSensSinFilDiezDesp{} (\cSensSinFilDiezCaen) & \cSensSinFilVeinteDesp{} (\cSensSinFilVeinteCaen) \\
+    Filtración por defecto ($h=\cDefHL\%$) & \cSensBaseCeroDesp{} (\cSensBaseCeroCaen) & \textbf{\cSensBaseCincoDesp{} (\cSensBaseCincoCaen)} & \cSensBaseDiezDesp{} (\cSensBaseDiezCaen) & \cSensBaseVeinteDesp{} (\cSensBaseVeinteCaen) \\
+    Filtración concentrada ($h=25\%$)   & \cSensHLBajaCeroDesp{} (\cSensHLBajaCeroCaen) & \cSensHLBajaCincoDesp{} (\cSensHLBajaCincoCaen) & \cSensHLBajaDiezDesp{} (\cSensHLBajaDiezCaen) & \cSensHLBajaVeinteDesp{} (\cSensHLBajaVeinteCaen) \\
+    \midrule
+    Costo anual, filtración por defecto (\MM) & \cSensBaseCeroCosto & \cSensBaseCincoCosto & \cSensBaseDiezCosto & \cSensBaseVeinteCosto \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.6em}
+  \raggedright\footnotesize
+  El monto sigue a la línea encarecida ($T = 4z(1+\pi)$). Sin inflación, la pobreza residual (\cSensBaseCeroDesp\%)
+  corresponde a los hogares grandes que el bono uniforme no alcanza a sacar.
+\end{frame}
+
+\begin{frame}{El costo de la filtración}
+  \begin{columns}[c]
+    \begin{column}{0.56\textwidth}
+      \begin{tikzpicture}
+        \begin{axis}[econ, xmin=0, xmax=3.5, ymin=0, xlabel={Personas no pobres por persona pobre ($\phi$)},
+            ylabel={Costo anual (\MM{} de USD)}, scaled y ticks=false, yticklabel style={/pgf/number format/fixed}]
+          \fill[acento, opacity=0.12] (axis cs:0.94,0) rectangle (axis cs:1.18,30000);
+          \addplot[azul, no marks] table[x=fil, y=costo] {insumos/filtracion.dat};
+          \node[font=\tiny, acento, anchor=south west] at (axis cs:1.2,500) {IC del BDH};
+        \end{axis}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.42\textwidth}\small
+      \begin{itemize}
+        \item Sin filtración: \usd{\cCostoSinFil}~\MM{} y \usd{\cCostoPorPerSinFil} por persona que sale.
+        \item Con $\phi=\text{\cDefFil}$: \usd{\cCosto}~\MM{} y \usd{\cCostoPorPer} por persona.
+        \item El \cTransfNPShare\% de lo transferido llega a hogares no pobres.
+        \item La filtración no saca a nadie más de la pobreza; con inflación, evita que parte de los vecinos a la
+          línea caigan.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Focalización demográfica}
+  \centering\small
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{llrrrrr}
+    \toprule
+    Grupo objetivo & Meta & Hogares pobres & \% que sale & \multicolumn{2}{c}{Costo anual (\MM)} & Pobreza nacional \\
+    \cmidrule(lr){5-6}
+                   &      & del grupo      &             & sin filtr. & con filtr. & antes $\to$ después \\
+    \midrule
+    \multirow{2}{*}{Todos}           & Pobreza & \cEscTotPHog   & \cEscTotPSalen   & \cEscTotPSinFil   & \cEscTotPConFil   & \cEscTotPAntes{} $\to$ \cEscTotPDesp \\
+                                     & Extrema & \cEscTotEHog   & \cEscTotESalen   & \cEscTotESinFil   & \cEscTotEConFil   & \cEscTotEAntes{} $\to$ \cEscTotEDesp \\
+    \multirow{2}{*}{Con menores de 5}& Pobreza & \cEscCincoPHog & \cEscCincoPSalen & \cEscCincoPSinFil & \cEscCincoPConFil & \cEscCincoPAntes{} $\to$ \cEscCincoPDesp \\
+                                     & Extrema & \cEscCincoEHog & \cEscCincoESalen & \cEscCincoESinFil & \cEscCincoEConFil & \cEscCincoEAntes{} $\to$ \cEscCincoEDesp \\
+    \multirow{2}{*}{Con personas 65+}& Pobreza & \cEscMayorPHog & \cEscMayorPSalen & \cEscMayorPSinFil & \cEscMayorPConFil & \cEscMayorPAntes{} $\to$ \cEscMayorPDesp \\
+                                     & Extrema & \cEscMayorEHog & \cEscMayorESalen & \cEscMayorESinFil & \cEscMayorEConFil & \cEscMayorEAntes{} $\to$ \cEscMayorEDesp \\
+    \bottomrule
+  \end{tabular}}
+
+  \vspace{0.6em}
+  \raggedright\footnotesize
+  Cada escenario usa su monto de referencia, inflación de \cDefInfl\% y la filtración por defecto, tomada del mismo
+  grupo (la condición demográfica es verificable; el ingreso no). Fuera del grupo nadie recibe el bono ni queda
+  protegido del alza de precios.
+\end{frame}
+
+\begin{frame}{Magnitud fiscal}
+  \centering
+  \pgfplotstableread[col sep=tab]{insumos/gasto.dat}\tablagasto
+  \begin{tikzpicture}
+    \begin{axis}[xbar, width=0.82\linewidth, height=0.80\textheight, bar width=7pt, xmin=0, xmax=\cGastoMax,
+        axis lines=left, xlabel={\footnotesize Millones de USD al año},
+        ytick=data, yticklabels from table={\tablagasto}{etiqueta},
+        y tick label style={font=\tiny}, x tick label style={font=\tiny},
+        scaled x ticks=false, xticklabel style={/pgf/number format/fixed},
+        nodes near coords={\pgfmathprintnumber[fixed,precision=0]{\pgfplotspointmeta}},
+        every node near coord/.append style={font=\tiny}, enlarge y limits=0.05]
+      \addplot[fill=gris!60, draw=none, bar shift=0pt] table[y=id, x=monto] {\tablagasto};
+      \addplot[fill=acento, draw=none, bar shift=0pt, nodes near coords={}] coordinates {(\cGastoValorBase,\cGastoIdBase)};
+    \end{axis}
+  \end{tikzpicture}
+
+  {\tiny PGE 2025 por sectorial (MEF); subsidios de la Proforma 2025; gasto tributario del SRI. Comparación solo de
+  magnitud: no implica sustituibilidad ni espacio fiscal disponible.}
+\end{frame}
+
+% =============================================================================
+\section{Conclusiones}
+% =============================================================================
+
+\begin{frame}{Limitaciones}
+  \begin{itemize}
+    \item \textbf{Estática}: sin efectos sobre el empleo, las remesas o el ahorro, ni multiplicadores.
+    \item \textbf{Inflación exógena}: el tamaño del alza es un supuesto, no una estimación; se aplica a todos por igual.
+    \item \textbf{Focalización}: se supone cobertura total de los pobres. El BDH real cubre al \cBdhCob\% de los
+      hogares pobres: con errores de exclusión, la pobreza residual sería mayor.
+    \item \textbf{Calibración}: la forma del perfil se toma del BDH, un programa de monto mucho menor; con un bono
+      de \usd{\cMonto}, los incentivos a declarar menos ingresos serían mayores.
+    \item \textbf{Muestra}: los intervalos de confianza recogen solo el error de muestreo, no la incertidumbre de los
+      supuestos.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusiones}
+  \begin{enumerate}
+    \item Completar exactamente la brecha costaría \cDescBrechaPIB\% del PIB; un bono uniforme bien focalizado,
+      \cDescUniformePIB\%. La uniformidad paga de más a los hogares pequeños y no alcanza a los grandes.
+    \item Con la filtración observada en el BDH, el costo sube a \textbf{\cCostoPIB\% del PIB}
+      (\usd{\cCosto}~\MM{}, \cCostoPGE\% del PGE): la focalización es el principal determinante del costo.
+    \item Ni siquiera ese gasto elimina la pobreza: la incidencia baja de \cAntes\% a \cDespues\%, por los hogares
+      grandes y por quienes caen con el alza de precios.
+    \item La pobreza extrema es mucho más barata de atacar: \cCostoPIBE\% del PIB, con una incidencia final de
+      \cDespuesE\%.
+    \item El efecto de la inflación sobre la pobreza depende de a quién llega la filtración: los mismos errores de
+      inclusión que encarecen el programa protegen a los hogares vecinos a la línea.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[standout]
+  \begin{columns}[c]
+    \begin{column}{0.42\textwidth}
+      \centering
+      \colorbox{white}{\color{black}\qrcode[height=4.2cm]{\urlsimulador}}
+    \end{column}
+    \begin{column}{0.55\textwidth}
+      \raggedright
+      Simulador interactivo\\[0.4em]
+      {\normalsize\mdseries Cambie el monto, la meta, el grupo objetivo, la filtración, su concentración, la
+      inflación y el costo administrativo.}\\[0.8em]
+      {\tiny\mdseries\url{\urlsimulador}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\end{document}

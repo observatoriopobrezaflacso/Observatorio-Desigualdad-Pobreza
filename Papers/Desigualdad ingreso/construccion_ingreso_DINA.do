@@ -303,6 +303,24 @@ foreach yr of numlist 2010(1)2024 {
 	*   emp_bruto    ingresos empresariales brutos (ingresos_aem_rie_1280)
 	*   emp_ded      deducciones de la actividad empresarial (deducciones_aem_rie_1290);
 	*                sirve para verificar si 5687 es ingreso bruto o neto
+	*   imp102       impuesto a la renta causado declarado en el F102
+	*                (imp_renta_causado_3490), antes de la corrección de la
+	*                sección 3.11 (que lo reemplaza por el del F107 si es mayor)
+	*   gp102        gastos personales declarados en el F102 (total, campo
+	*                3330; si viene vacío, la suma de los rubros). Hasta 2021
+	*                se deducen de la base; desde 2022 sirven para la rebaja
+	*                del impuesto. Rubros: gp102_viv (3310), gp102_sal
+	*                (3290), gp102_edu (3280 hasta 2018; 5040 educación, arte
+	*                y cultura desde 2021; 4580 arte y cultura en 2018),
+	*                gp102_ali (3300), gp102_ves (3320), gp102_tur (3325,
+	*                desde 2021). reb102: rebaja del impuesto causado por
+	*                gastos personales (3503, desde 2023). Campos y casilleros
+	*                por año: SRI/Insumos/Variables_IRPN.xlsx (matriz de
+	*                equivalencia del F102)
+	*   imp107       impuesto a la renta causado del F107 (suma de empleadores;
+	*                vacío sin F107). imp102 e imp107 sirven para verificar si
+	*                la base imponible es la base sobre la que se calcula el
+	*                impuesto (diagnostico_f102_umbral1.do)
 	*   Umbrales de la obligación de llevar contabilidad (personas naturales;
 	*   se evalúan con el ejercicio anterior):
 	*   cont_ing     ingresos brutos de la actividad: el mayor entre el total
@@ -335,7 +353,12 @@ foreach yr of numlist 2010(1)2024 {
 	local bunch102 base_imponible_3480 suj_reg_rimpe_4896 bas_imp_grav_reg_rimpe_5687 ///
 		total_ingresos_1440 total_costos_gastos_2760 tot_patrimonio_neto_1330      ///
 		total_activo_830 ingr_regimen_micro_noob_4825 cat_reg_rimpe_4897          ///
-		pag_reg_rimpe_neg_pop_4898
+		pag_reg_rimpe_neg_pop_4898                                                ///
+		ded_gto_prn_vivienda_3310 ded_gto_prn_salud_3290 ded_gto_prn_educacion_3280 ///
+		ded_gto_prn_educ_art_5040 gasto_dedu_arte_cultura_4580                    ///
+		ded_gto_prn_alimentacion_3300 ded_gto_prn_vestimenta_3320                 ///
+		ded_gto_prn_turismo_3325 tot_ded_gto_personales_3330                      ///
+		reb_imp_cau_gast_perso_3503
 	local faltan ""
 	foreach v of local bunch102 {
 		capture confirm variable `v'
@@ -397,6 +420,32 @@ foreach yr of numlist 2010(1)2024 {
 
 	gen double emp_bruto = ingresos_aem_rie_1280
 	gen double emp_ded   = deducciones_aem_rie_1290
+
+	capture confirm variable imp_renta_causado_3490
+	if !_rc {
+		capture destring imp_renta_causado_3490, replace force
+		gen double imp102 = imp_renta_causado_3490 if inlist(_merge, 2, 3)
+	}
+	else gen double imp102 = .
+	gen double imp107 = imp_renta_causado_f107 if inlist(_merge, 1, 3)
+
+	foreach v in ded_gto_prn_vivienda_3310 ded_gto_prn_salud_3290 ded_gto_prn_educacion_3280 ded_gto_prn_educ_art_5040 gasto_dedu_arte_cultura_4580 ded_gto_prn_alimentacion_3300 ded_gto_prn_vestimenta_3320 ded_gto_prn_turismo_3325 tot_ded_gto_personales_3330 reb_imp_cau_gast_perso_3503 {
+		capture confirm variable `v'
+		if _rc gen double `v' = .
+		else capture destring `v', replace force
+	}
+	gen double gp102_viv = ded_gto_prn_vivienda_3310     if inlist(_merge, 2, 3)
+	gen double gp102_sal = ded_gto_prn_salud_3290        if inlist(_merge, 2, 3)
+	egen double gp102_edu = rowtotal(ded_gto_prn_educacion_3280 ded_gto_prn_educ_art_5040 ///
+		gasto_dedu_arte_cultura_4580) if inlist(_merge, 2, 3), missing
+	gen double gp102_ali = ded_gto_prn_alimentacion_3300 if inlist(_merge, 2, 3)
+	gen double gp102_ves = ded_gto_prn_vestimenta_3320   if inlist(_merge, 2, 3)
+	gen double gp102_tur = ded_gto_prn_turismo_3325      if inlist(_merge, 2, 3)
+	egen double _gp_rub = rowtotal(gp102_viv gp102_sal gp102_edu gp102_ali gp102_ves gp102_tur), missing
+	gen double gp102 = cond(tot_ded_gto_personales_3330 > 0 & !missing(tot_ded_gto_personales_3330), ///
+		tot_ded_gto_personales_3330, _gp_rub) if inlist(_merge, 2, 3)
+	drop _gp_rub
+	gen double reb102 = reb_imp_cau_gast_perso_3503 if inlist(_merge, 2, 3)
 
 	foreach v in total_ingresos_1440 total_costos_gastos_2760 tot_patrimonio_neto_1330 ///
 	             total_activo_830 ingr_regimen_micro_noob_4825 {
@@ -516,6 +565,20 @@ foreach yr of numlist 2010(1)2024 {
     replace `util_otros' = 0 if `util_otros' < 0
 
     egen B3R = rowtotal(`util_cont' `util_noc' `util_otros')
+
+    * Utilidad de la actividad empresarial para el costo fiscal del bunching
+    * en 300.000 (util_emp, con signo: puede ser pérdida). Quienes llevan
+    * contabilidad (cont_oblig = 1): utilidad 2800 menos pérdida 2810; los
+    * demás con ingresos empresariales: 1280 menos 1290. util_fuente: 1 =
+    * contabilidad, 2 = sin contabilidad, . = sin actividad empresarial
+    gen double util_emp = .
+    gen byte util_fuente = .
+    replace util_emp = cond(missing(utilidad_neta_ejercicio_2800), 0, utilidad_neta_ejercicio_2800) ///
+        - cond(missing(perdida_ejercicio_2810), 0, perdida_ejercicio_2810) if cont_oblig == 1
+    replace util_fuente = 1 if cont_oblig == 1
+    replace util_emp = emp_bruto - cond(missing(emp_ded), 0, emp_ded) ///
+        if cont_oblig != 1 & emp_bruto > 0 & !missing(emp_bruto)
+    replace util_fuente = 2 if cont_oblig != 1 & emp_bruto > 0 & !missing(emp_bruto)
 
     * ------------------------------------------------------------------
     * 3.7  D11R, D613P: SALARIOS Y APORTES AL IESS
@@ -698,7 +761,8 @@ foreach yr of numlist 2010(1)2024 {
     local final_vars PreTaxHHI PostTaxHHI capital capital_comparable B2R B3R B2B3R D1R D4R D4N D62R D7R D7N D5P D61P B5R D11R D121R D41R D42R D4P D611P D613P D7P B6R liq_107 ing_syo_trabajo_rde_3240
 
     * Variables de bunching: (max) para conservar los missing
-    local bunch_vars base102 rimpe rimpe_bruto emp_bruto emp_ded ///
+    local bunch_vars base102 rimpe rimpe_bruto emp_bruto emp_ded imp102 imp107 util_emp util_fuente ///
+        gp102 gp102_viv gp102_sal gp102_edu gp102_ali gp102_ves gp102_tur reb102 ///
         n_emp_107 base107_max base107_sum otr_emp_107 gp_107 grav_107 ///
         cont_ing cont_cyg cont_cap cont_oblig rimpe_cat rimpe_simpl    ///
         publico_107 tasa_iess_107
@@ -713,6 +777,18 @@ foreach yr of numlist 2010(1)2024 {
     label var rimpe_bruto    "Bunching: ingresos brutos gravados RIMPE (5687)"
     label var emp_bruto      "Bunching: ingresos empresariales brutos (1280)"
     label var emp_ded        "Bunching: deducciones de la actividad empresarial (1290)"
+    label var imp102         "Bunching: impuesto a la renta causado F102 (3490), sin corregir"
+    label var imp107         "Bunching: impuesto a la renta causado F107 (suma de empleadores)"
+    label var gp102          "Bunching: gastos personales declarados en el F102 (3330 o suma de rubros)"
+    label var gp102_viv      "Bunching: gastos personales F102 - vivienda (3310)"
+    label var gp102_sal      "Bunching: gastos personales F102 - salud (3290)"
+    label var gp102_edu      "Bunching: gastos personales F102 - educación, arte y cultura (3280, 5040, 4580)"
+    label var gp102_ali      "Bunching: gastos personales F102 - alimentación (3300)"
+    label var gp102_ves      "Bunching: gastos personales F102 - vestimenta (3320)"
+    label var gp102_tur      "Bunching: gastos personales F102 - turismo (3325, desde 2021)"
+    label var reb102         "Bunching: rebaja del impuesto por gastos personales F102 (3503, desde 2023)"
+    label var util_emp       "Bunching: utilidad de la actividad empresarial (2800 - 2810 con contabilidad; 1280 - 1290 sin)"
+    label var util_fuente    "Bunching: fuente de util_emp (1 = contabilidad, 2 = sin contabilidad)"
     label var n_emp_107      "Bunching: número de empleadores distintos (F107)"
     label var base107_max    "Bunching: base imponible F107 más alta entre empleadores"
     label var base107_sum    "Bunching: suma de bases imponibles F107"

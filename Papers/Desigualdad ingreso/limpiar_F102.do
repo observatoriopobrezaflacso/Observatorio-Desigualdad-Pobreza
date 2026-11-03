@@ -63,7 +63,12 @@ global f102_vars                                                        ///
     base_imponible_3480 suj_reg_rimpe_4896 bas_imp_grav_reg_rimpe_5687  ///  bunching (+ 1280 arriba)
     total_ingresos_1440 total_costos_gastos_2760 tot_patrimonio_neto_1330 ///  umbrales de contabilidad
     total_activo_830 ingr_regimen_micro_noob_4825                       ///  (bunching)
-    cat_reg_rimpe_4897 pag_reg_rimpe_neg_pop_4898                       //   categoría RIMPE, declaración simplificada
+    cat_reg_rimpe_4897 pag_reg_rimpe_neg_pop_4898                       ///  categoría RIMPE, declaración simplificada
+    ded_gto_prn_vivienda_3310 ded_gto_prn_salud_3290                    ///  gastos personales (bunching; casilleros
+    ded_gto_prn_educacion_3280 ded_gto_prn_educ_art_5040                ///  por año en SRI/Insumos/Variables_IRPN.xlsx)
+    gasto_dedu_arte_cultura_4580 ded_gto_prn_alimentacion_3300          ///
+    ded_gto_prn_vestimenta_3320 ded_gto_prn_turismo_3325                ///
+    tot_ded_gto_personales_3330 reb_imp_cau_gast_perso_3503             //   total y rebaja del impuesto (2023+)
 
 * Variables de texto que no se convierten a número
 global f102_texto "CEDULA_PK RUC_PK suj_reg_rimpe_4896 cat_reg_rimpe_4897 pag_reg_rimpe_neg_pop_4898"
