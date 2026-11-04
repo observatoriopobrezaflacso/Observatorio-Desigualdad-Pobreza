@@ -21,12 +21,17 @@
 * calculada con joins sucesivos (no necesita rutas).
 *
 * Uso:  do expandir_accionistas_PN.do ["entrada.dta"] ["carpeta_salida"] [sufijo]
+* Las bases intermedias se guardan en <carpeta_salida>/bases_temp; con
+* global borrar_temp 1 (abajo) se eliminan al finalizar.
 *==============================================================================
 version 17
 clear all
 set more off
 set varabbrev off
 set type double
+
+* 1 = eliminar la carpeta bases_temp al finalizar; 0 = conservarla (default)
+global borrar_temp 0
 
 args entrada salida sufijo
 if `"`entrada'"' == "" local entrada "BDD_PN_accionistas_falsa.dta"
@@ -39,7 +44,12 @@ local tol 1e-6         // tolerancia para residuos (fracción)
 
 timer clear 1
 timer on 1
-tempfile base vig inf prop cuadre h r1 r2 res final A T P extsin noenc
+* bases intermedias: se guardan en <salida>/bases_temp
+local temp "`salida'/bases_temp"
+capture mkdir "`temp'"
+foreach f in base vig inf prop cuadre h r1 r2 res final A T Tacum P extsin {
+    local `f' "`temp'/`f'`sufijo'.dta"
+}
 
 *------------------------------------------------------------------------------
 * 0. Cargar variables necesarias
@@ -54,7 +64,7 @@ foreach v in codigo_registro_anexo numero_ruc registro_actual periodo_procesado 
     quietly replace `v' = strtrim(`v')
 }
 local n_orig = _N
-save `base'
+save "`base'", replace
 
 *------------------------------------------------------------------------------
 * 1. Un solo registro por informante: el vigente (registro_actual = S); si no
@@ -69,12 +79,12 @@ gsort numero_ruc -es_s -periodo_procesado -cod
 by numero_ruc: keep if _n == 1
 local n_vig = _N
 keep numero_ruc codigo_registro_anexo
-save `vig'
+save "`vig'", replace
 keep numero_ruc
-save `inf'
+save "`inf'", replace
 
-use `base', clear
-merge m:1 numero_ruc codigo_registro_anexo using `vig', keep(match) nogen
+use "`base'", clear
+merge m:1 numero_ruc codigo_registro_anexo using "`vig'", keep(match) nogen
 
 *------------------------------------------------------------------------------
 * 2. Relaciones de propiedad
@@ -91,7 +101,7 @@ gen byte ruc_pn = clase == "PN" & tipo_id_accionista == "R" & ///
 replace id_accionista      = substr(id_accionista, 1, 10) if ruc_pn
 replace tipo_id_accionista = "C"                          if ruc_pn
 drop ruc_pn
-save `prop'
+save "`prop'", replace
 
 * cuadre por informante
 gen double p1    = porcentaje_participacion_r / 100 if nivel == 1
@@ -100,7 +110,7 @@ gen byte   iext1 = nivel == 1 & clase == "SOC_EXT"
 gen double pcad  = porcentaje_efectivo_r / 100 if nivel > 1 & inlist(clase, "PN", "SOC_NAC")
 gen byte   icad  = nivel > 1
 collapse (sum) tot1=p1 ext1=pext1 n_ext1=iext1 cad=pcad n_cadena=icad, by(numero_ruc)
-merge 1:1 numero_ruc using `inf', nogen
+merge 1:1 numero_ruc using "`inf'", nogen
 foreach v in tot1 ext1 n_ext1 cad n_cadena {
     quietly replace `v' = 0 if missing(`v')
 }
@@ -109,22 +119,22 @@ gen double no_decl     = max(0, 1 - tot1)
 * tolerancia: los % vienen redondeados a 0.01 pp; residuos menores a 1e-6 son ruido numérico
 replace residuo_ext = 0 if residuo_ext < `tol'
 replace no_decl     = 0 if no_decl     < `tol'
-save `cuadre'
+save "`cuadre'", replace
 
 *------------------------------------------------------------------------------
 * 3. Tenencias directas h(informante -> dueño, peso)
 *------------------------------------------------------------------------------
-use `prop', clear
+use "`prop'", clear
 keep if inlist(clase, "PN", "SOC_NAC")
 * nivel 1: % de participación; niveles 2+ (cadena extranjera): % efectivo
 gen double peso   = cond(nivel == 1, porcentaje_participacion_r, porcentaje_efectivo_r) / 100
 gen byte  directo = nivel == 1
 rename (numero_ruc id_accionista tipo_id_accionista) (inf holder tipo_id)
 keep inf holder tipo_id clase peso directo
-save `h'
+save "`h'", replace
 
 foreach x in ext nodecl {
-    use `cuadre', clear
+    use "`cuadre'", clear
     if "`x'" == "ext" {
         keep if residuo_ext > 0
         gen double peso = residuo_ext
@@ -140,19 +150,19 @@ foreach x in ext nodecl {
     gen byte directo = 1
     rename numero_ruc inf
     keep inf holder tipo_id clase peso directo
-    if "`x'" == "ext" save `r1'
-    else              save `r2'
+    if "`x'" == "ext" save "`r1'", replace
+    else              save "`r2'", replace
 }
-use `h', clear
-append using `r1' `r2'
+use "`h'", clear
+append using "`r1'" "`r2'"
 collapse (sum) peso, by(inf holder tipo_id clase directo)
 drop if peso <= 0
 * sociedades nacionales que no están como informantes
 gen numero_ruc = holder
-merge m:1 numero_ruc using `inf', keep(master match) gen(_m)
+merge m:1 numero_ruc using "`inf'", keep(master match) gen(_m)
 replace clase = "SOC_NAC_NO_ENCONTRADA" if clase == "SOC_NAC" & _m == 1
 drop numero_ruc _m
-save `h', replace
+save "`h'", replace
 
 *------------------------------------------------------------------------------
 * 4. Expansión recursiva (joins iterativos con control de ciclos)
@@ -169,14 +179,14 @@ while 1 {
     if `it' == `max_it' quietly replace clase = "TRUNCADO" if clase == "SOC_NAC"
     preserve
     quietly keep if clase != "SOC_NAC"
-    if `it' > 1 append using `res'
-    quietly save `res', replace
+    if `it' > 1 append using "`res'"
+    quietly save "`res'", replace
     restore
     quietly keep if clase == "SOC_NAC"
     if _N == 0 continue, break
     keep raiz holder peso salto ruta
     rename (holder peso) (inf peso_p)
-    quietly joinby inf using `h'
+    quietly joinby inf using "`h'"
     quietly replace peso    = peso_p * peso
     quietly replace directo = 0
     quietly replace salto   = salto + 1
@@ -186,7 +196,7 @@ while 1 {
 }
 local saltos_max = `it'
 
-use `res', clear
+use "`res'", clear
 gen double peso_dir = peso * (directo == 1 & salto == 1)
 gen long uno = 1
 collapse (sum) pct_total=peso pct_directo=peso_dir n_caminos=uno ///
@@ -209,7 +219,7 @@ label variable n_caminos     "Número de cadenas de propiedad que llegan a este 
 label variable saltos_min    "Mínimo de sociedades recorridas (1 = directo)"
 label variable saltos_max    "Máximo de sociedades recorridas"
 compress
-save `final'
+save "`final'", replace
 save `"`salida'/BDD_PN_accionistas_finales`sufijo'.dta"', replace
 
 * indicadores para el reporte
@@ -244,24 +254,24 @@ restore
 *------------------------------------------------------------------------------
 * 5. Validación: serie P = sum_k A^k B con joins (equivale a (I - A)^-1 B)
 *------------------------------------------------------------------------------
-use `h', clear
+use "`h'", clear
 keep if clase == "SOC_NAC"
 keep inf holder peso
 rename (holder peso) (soc w)
-save `A'
-use `h', clear
+save "`A'", replace
+use "`h'", clear
 keep if clase != "SOC_NAC"
 gen nodo = clase + ":" + holder
 collapse (sum) peso, by(inf nodo)
-save `P'
-save `T'
+save "`P'", replace
+save "`T'", replace
 local k = 0
 local converge "NO converge: hay ciclos con participaciones cruzadas >= 100%"
 while `k' < `max_leon' {
     local ++k
-    use `T', clear
+    use "`T'", clear
     rename (inf peso) (soc pt)
-    quietly joinby soc using `A'
+    quietly joinby soc using "`A'"
     if _N == 0 {
         local converge "converge"
         continue, break
@@ -273,26 +283,27 @@ while `k' < `max_leon' {
         local converge "converge"
         continue, break
     }
-    quietly save `T', replace
-    tempfile t`k'
-    quietly save `t`k''
-    local terminos `terminos' `t`k''
+    quietly save "`T'", replace
+    * acumular los términos A^k B (se suman una sola vez al final)
+    if `k' > 1 quietly append using "`Tacum'"
+    quietly save "`Tacum'", replace
+    local hay_terminos = 1
 }
 local n_terminos = `k'
-use `P', clear
-if "`terminos'" != "" append using `terminos'
+use "`P'", clear
+if "`hay_terminos'" == "1" append using "`Tacum'"
 collapse (sum) peso, by(inf nodo)
 gen double pct_leon = 100 * peso
 rename inf numero_ruc
 keep numero_ruc nodo pct_leon
-save `P', replace
+save "`P'", replace
 
-use `final', clear
+use "`final'", clear
 gen byte cic = inlist(clase, "CICLO", "TRUNCADO")
 bysort numero_ruc: egen byte con_ciclo = max(cic)
 gen nodo = clase + ":" + id_final
 collapse (sum) pct_total (max) con_ciclo, by(numero_ruc nodo)
-merge 1:1 numero_ruc nodo using `P'
+merge 1:1 numero_ruc nodo using "`P'"
 bysort numero_ruc: egen byte cc = max(con_ciclo)
 replace pct_total = 0 if missing(pct_total)
 replace pct_leon  = 0 if missing(pct_leon)
@@ -317,15 +328,15 @@ else {
 * 6. Sociedades accionistas que no están como informantes en el REBEFICS
 *------------------------------------------------------------------------------
 * extranjeras de nivel 1 en informantes sin ninguna cadena declarada
-use `prop', clear
+use "`prop'", clear
 keep if nivel == 1 & clase == "SOC_EXT"
-merge m:1 numero_ruc using `cuadre', keepusing(n_cadena) keep(match) nogen
+merge m:1 numero_ruc using "`cuadre'", keepusing(n_cadena) keep(match) nogen
 keep if n_cadena == 0
 keep id_accionista clase
 duplicates drop
-save `extsin'
+save "`extsin'", replace
 
-use `prop', clear
+use "`prop'", clear
 keep if inlist(clase, "SOC_NAC", "SOC_EXT")
 gen double pct = cond(nivel == 1, porcentaje_participacion_r, porcentaje_efectivo_r)
 egen byte tag_inf = tag(id_accionista clase numero_ruc)
@@ -333,10 +344,10 @@ gen long uno = 1
 collapse (sum) n_relaciones=uno n_informantes=tag_inf (mean) pct_promedio=pct, ///
          by(id_accionista clase)
 gen numero_ruc = id_accionista
-merge m:1 numero_ruc using `inf', keep(master match)
+merge m:1 numero_ruc using "`inf'", keep(master match)
 gen byte en_rebefics = _merge == 3
 drop _merge numero_ruc
-merge 1:1 id_accionista clase using `extsin', keep(master match)
+merge 1:1 id_accionista clase using "`extsin'", keep(master match)
 gen byte extranjera_sin_cadena = _merge == 3
 drop _merge
 
@@ -370,11 +381,11 @@ compress
 save `"`salida'/sociedades_accionistas_no_encontradas`sufijo'.dta"', replace
 
 * otros indicadores
-use `h', clear
+use "`h'", clear
 quietly keep if clase == "SOC_NAC_NO_ENCONTRADA" & directo == 1
 quietly duplicates drop inf, force
 local inf_nac_no = _N
-use `cuadre', clear
+use "`cuadre'", clear
 quietly count if residuo_ext > 0.0005
 local inf_res_ext = r(N)
 quietly count if cad - ext1 > 0.0005
@@ -436,3 +447,16 @@ file write `fh' "  (la matricial reparte el % del ciclo entre los dueños finale
 file write `fh' "Tiempo: `tiempo' s" _n
 file close `fh'
 type `"`salida'/reporte_expansion_accionistas`sufijo'.txt"'
+
+*------------------------------------------------------------------------------
+* 8. Bases temporales
+*------------------------------------------------------------------------------
+if $borrar_temp {
+    local archivos : dir "`temp'" files "*`sufijo'.dta"
+    foreach f of local archivos {
+        erase "`temp'/`f'"
+    }
+    capture rmdir "`temp'"
+    display as text "Bases temporales eliminadas."
+}
+else display as text `"Bases temporales conservadas en: `temp'"'
