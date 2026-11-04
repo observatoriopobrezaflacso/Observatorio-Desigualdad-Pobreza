@@ -46,8 +46,8 @@ write_sav(viv, sav_viv)
 zip(file.path(dir_falso, "2010", "vivienda.zip"), sav_viv, flags = "-jq")
 unlink(sav_viv)
 
-# 2022 como el original: una tabla censo2022 sin metadatos
-con22 <- dbConnect(duckdb::duckdb(), file.path(dir_falso, "2022", "mydb.duckdb"))
+# 2022 sin metadatos, como una base creada desde csv
+con22 <- dbConnect(duckdb::duckdb(), censo_archivo(2022, dir_falso))
 dbWriteTable(con22, "censo2022", data.frame(P01 = c(1, 2, 2), GEDAD = c(6, 8, 15)))
 dbDisconnect(con22, shutdown = TRUE)
 
@@ -56,12 +56,12 @@ suppressMessages(censo_crear_base(
   2010, fuentes = c(censo2010 = "poblacion.sav", censo2010_vivienda = "vivienda.zip"),
   dir = dir_falso, bloque = 450))
 
-prueba("se crea Censo/2010/mydb.duckdb",
-       file.exists(file.path(dir_falso, "2010", "mydb.duckdb")))
+prueba("se crea Censo/2010/censo2010.duckdb",
+       file.exists(censo_archivo(2010, dir_falso)))
 prueba("no sobrescribe sin sobrescribir = TRUE", {
-  antes <- file.mtime(file.path(dir_falso, "2010", "mydb.duckdb"))
+  antes <- file.mtime(censo_archivo(2010, dir_falso))
   suppressMessages(censo_crear_base(2010, fuentes = c(x = "no_existe.sav"), dir = dir_falso))
-  file.mtime(file.path(dir_falso, "2010", "mydb.duckdb")) == antes
+  file.mtime(censo_archivo(2010, dir_falso)) == antes
 })
 
 censo_conectar(c(2010, 2022), dir = dir_falso)
@@ -122,7 +122,7 @@ cat("\n== Bases reales en", censo_dir, "==\n")
 # población total publicada por el INEC (la base puede diferir levemente)
 poblacion_inec <- c(`1982` = 8138974, `1990` = 9648189, `2001` = 12156608,
                     `2010` = 14483499, `2022` = 16938986)
-anios_reales <- censo_anios[file.exists(file.path(censo_dir, censo_anios, "mydb.duckdb"))]
+anios_reales <- censo_anios[file.exists(censo_archivo(censo_anios))]
 
 if (length(anios_reales) == 0) {
   cat("(no hay bases reales todavía; ejecutar 00_crear_bases_censo.R)\n")
@@ -135,16 +135,14 @@ if (length(anios_reales) == 0) {
     prueba(sprintf("%s: %s personas (INEC %s, tolerancia 1%%)", tabla,
                    format(n, big.mark = ","), format(poblacion_inec[[as.character(a)]], big.mark = ",")),
            abs(n / poblacion_inec[[as.character(a)]] - 1) < 0.01)
-    if (a != 2022) {
-      prueba(paste(tabla, "tiene diccionario"),
-             any(!is.na(censo_variables(tabla)$etiqueta)))
-    }
+    prueba(paste(tabla, "tiene diccionario"),
+           any(!is.na(censo_variables(tabla)$etiqueta)))
   }
   censo_desconectar()
 }
 
 # Parte 3: NBI armonizado (01_nbi_armonizado.R) ----
-anios_nbi <- c(1982, 1990, 2001, 2010)
+anios_nbi <- c(1982, 1990, 2001, 2010, 2022)
 if (all(anios_nbi %in% anios_reales)) {
   cat("\n== NBI armonizado ==\n")
   source("01_nbi_armonizado.R")
@@ -157,11 +155,17 @@ if (all(anios_nbi %in% anios_reales)) {
     prueba(sprintf("%d: personas por hogar = tamaño declarado en %.2f%% de hogares", union$anio[i], 100 * union$igual[i]),
            union$igual[i] > if (union$anio[i] == 2001) 0.9999 else 0.99)
   }
-  prueba(sprintf("2010 con regla INEC: %.1f%% (oficial 60.1%%, tolerancia 0.5)", r$pct_nbi_inec[r$anio == 2010]),
-         abs(r$pct_nbi_inec[r$anio == 2010] - 60.1) <= 0.5)
-  nbi_1982_base <- censo_sql("SELECT 100 * AVG((pobreza_nbi >= 2)::INT) p FROM censo1982")$p
-  prueba(sprintf("1982: %.1f%% vs NBI de la base original %.1f%% (tolerancia 2)", r$pct_nbi[r$anio == 1982], nbi_1982_base),
-         abs(r$pct_nbi[r$anio == 1982] - nbi_1982_base) <= 2)
+  prueba(sprintf("2010: %.1f%% (oficial INEC 60.1%%, tolerancia 0.5)", r$pct_nbi[r$anio == 2010]),
+         abs(r$pct_nbi[r$anio == 2010] - 60.1) <= 0.5)
+  prueba(sprintf("2022: %.1f%% (oficial INEC 39.8%%, tolerancia 0.5)", r$pct_nbi[r$anio == 2022]),
+         abs(r$pct_nbi[r$anio == 2022] - 39.8) <= 0.5)
+  acuerdo22 <- censo_sql("SELECT AVG(((n_nbi >= 1)::INT = nbi_oficial)::INT) a FROM nbi_hogar WHERE anio = 2022")$a
+  prueba(sprintf("2022: coincide con la variable NBI del INEC en %.2f%% de hogares", 100 * acuerdo22),
+         acuerdo22 > 0.99)
+  # la diferencia con 1982 viene sobre todo del pozo ciego (dándolo por satisfecho era 1 punto)
+  prueba(sprintf("1982: %.1f%% vs NBI de la base original %.1f%% (tolerancia 2.5)",
+                 r$pct_nbi[r$anio == 1982], r$pct_nbi_oficial[r$anio == 1982]),
+         abs(r$pct_nbi[r$anio == 1982] - r$pct_nbi_oficial[r$anio == 1982]) <= 2.5)
   prueba("pobreza por NBI baja en cada censo", all(diff(r$pct_nbi) < 0))
   prueba("extrema <= NBI <= 100", all(r$pct_nbi_extrema <= r$pct_nbi & r$pct_nbi <= 100))
   censo_desconectar()

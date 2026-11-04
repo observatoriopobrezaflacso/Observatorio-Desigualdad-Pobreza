@@ -3,8 +3,8 @@
 # boletín 5 - observatorio de políticas públicas
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #
-# Cada censo vive en su propia base: Censo/<anio>/mydb.duckdb
-# (las de 1982-2010 se crean con 00_crear_bases_censo.R).
+# Cada censo vive en su propia base: Censo/<anio>/censo<anio>.duckdb
+# (se crean con 00_crear_bases_censo.R).
 # censo_conectar() las adjunta en modo solo lectura y crea vistas con el
 # nombre de cada tabla, así se pueden consultar todas con SQL directo:
 #
@@ -34,6 +34,11 @@ censo_anios <- c(1982, 1990, 2001, 2010, 2022)
 
 .censo <- new.env()
 
+# Archivo de la base de un censo
+censo_archivo <- function(anio, dir = censo_dir) {
+  file.path(dir, anio, paste0("censo", anio, ".duckdb"))
+}
+
 # Conexión ----
 
 censo_conectar <- function(anios = censo_anios, dir = censo_dir) {
@@ -42,7 +47,7 @@ censo_conectar <- function(anios = censo_anios, dir = censo_dir) {
   con <- dbConnect(duckdb::duckdb())
 
   for (a in anios) {
-    db <- file.path(dir, a, "mydb.duckdb")
+    db <- censo_archivo(a, dir)
     if (!file.exists(db)) stop("No existe la base del censo ", a, ": ", db)
     catalogo <- paste0("c", a)
     dbExecute(con, sprintf("ATTACH %s AS %s (READ_ONLY)",

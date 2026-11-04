@@ -13,7 +13,7 @@ cat("\n--- Análisis de mortalidad infantil y materna ---\n")
 # Para mortalidad infantil, usaremos la población de niños <1 año del censo
 # Para mortalidad materna, usaremos mujeres en edad fértil (15-49 años)
 
-con <- dbConnect(duckdb::duckdb(), dbdir = file.path(dir, "Censo/mydb.duckdb"), read_only = TRUE)
+con <- dbConnect(duckdb::duckdb(), dbdir = file.path(dir, "Censo/2022/censo2022.duckdb"), read_only = TRUE)
 
 # Población infantil (<1 año) - gedad == 0
 poblacion_infantil_total <- dbGetQuery(con, "
@@ -220,7 +220,7 @@ defunciones_maternas <- defunciones_maternas %>%
   )
 
 # Población de referencia: mujeres en edad fértil por educación
-con <- dbConnect(duckdb::duckdb(), dbdir = file.path(base_dir, "Censo/mydb.duckdb"), read_only = TRUE)
+con <- dbConnect(duckdb::duckdb(), dbdir = file.path(base_dir, "Censo/2022/censo2022.duckdb"), read_only = TRUE)
 
 poblacion_mujeres_educ <- dbGetQuery(con, "
   SELECT

@@ -1,10 +1,10 @@
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# Crear bases duckdb de los censos 1982, 1990, 2001 y 2010 (ejecutar una vez)
+# Crear bases duckdb de los censos 1982, 1990, 2001, 2010 y 2022 (ejecutar una vez)
 # boletín 5 - observatorio de políticas públicas
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #
-# Igual que el censo 2022 (Censo/2022/mydb.duckdb, tabla censo2022), cada censo
-# queda en Censo/<anio>/mydb.duckdb. La tabla de personas se llama censo<anio>
+# Cada censo queda en Censo/<anio>/censo<anio>.duckdb. La tabla de personas
+# se llama censo<anio>
 # y las demás censo<anio>_<tipo>. Además se guardan dos tablas de metadatos:
 #   diccionario (tabla, variable, etiqueta)        etiquetas de variable SPSS
 #   etiquetas   (tabla, variable, valor, etiqueta) etiquetas de valor SPSS
@@ -36,7 +36,12 @@ censo_fuentes <- list(
   `2010` = c(censo2010                   = "CPV2010S_SPSS_Poblacion.zip",
              censo2010_hogar             = "CPV2010S_SPSS_Hogar.zip",
              censo2010_vivienda          = "CPV2010S_SPSS_Vivienda.zip",
-             censo2010_emigrantes        = "CPV2010S_SPSS_Emigrantes.zip")
+             censo2010_emigrantes        = "CPV2010S_SPSS_Emigrantes.zip"),
+  `2022` = c(censo2022                   = "CPV_2022_Poblacion_Sector.sav",
+             censo2022_vivienda          = "CPV_2022_Vivienda_Sector.sav",
+             censo2022_hogar             = "CPV_2022_Hogar_Sector.sav",
+             censo2022_emigrantes        = "CPV_2022_Emigracion_Sector.sav",
+             censo2022_mortalidad        = "CPV_2022_Mortalidad_Sector.sav")
 )
 
 # Funciones ----
@@ -118,12 +123,12 @@ censo_sav_a_duckdb <- function(con, sav, tabla, bloque = 1e6, encoding = NULL) {
   invisible(n)
 }
 
-# Crea Censo/<anio>/mydb.duckdb. La base se arma en una carpeta temporal local
+# Crea Censo/<anio>/censo<anio>.duckdb. La base se arma en una carpeta temporal local
 # y luego se copia a Drive (duckdb escribe mal sobre carpetas sincronizadas).
 censo_crear_base <- function(anio, fuentes = censo_fuentes[[as.character(anio)]],
                              dir = censo_dir, sobrescribir = FALSE,
                              bloque = 1e6, encoding = NULL) {
-  destino <- file.path(dir, anio, "mydb.duckdb")
+  destino <- censo_archivo(anio, dir)
   if (file.exists(destino) && !sobrescribir) {
     message("Ya existe ", destino, " (use sobrescribir = TRUE)")
     return(invisible(destino))
@@ -132,7 +137,7 @@ censo_crear_base <- function(anio, fuentes = censo_fuentes[[as.character(anio)]]
   tmp <- tempfile(paste0("censo", anio, "_"))
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
-  db_tmp <- file.path(tmp, "mydb.duckdb")
+  db_tmp <- file.path(tmp, basename(destino))
 
   con <- dbConnect(duckdb::duckdb(), dbdir = db_tmp)
   dbExecute(con, "CREATE TABLE diccionario (tabla VARCHAR, variable VARCHAR, etiqueta VARCHAR)")

@@ -55,7 +55,7 @@ if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 # Consultas a base de datos censal (duckdb) ----
 # Usar read_only = TRUE para permitir acceso concurrente
 
-con <- dbConnect(duckdb::duckdb(), dbdir = 'Censo/mydb.duckdb', read_only = TRUE)
+con <- dbConnect(duckdb::duckdb(), dbdir = 'Censo/2022/censo2022.duckdb', read_only = TRUE)
 
 # Código para crear la tabla censo2022 (ejecutar solo una vez)
 # dbExecute(con, "
