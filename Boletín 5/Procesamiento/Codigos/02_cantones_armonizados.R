@@ -29,6 +29,14 @@
 #     mantiene como unidad aparte. Las Golondrinas pasa a García Moreno
 #     (Cotacachi) y El Piedrero a El Triunfo; esas zonas se unen a esos cantones.
 #
+# Contraste con IPUMS International (GEO2_EC, cantones armonizados 1962-2010,
+# más gruesos porque agrupan cantones de menos de 20.000 habitantes): cada
+# unidad debería caer dentro de una unidad IPUMS. Así se halló el error de
+# idparr11 de Camilo Ponce Enríquez. Quedan dos diferencias que siguen los
+# datos de 1982: Sigchos y La Maná tomaron parroquias de Latacunga y de Pujilí
+# (IPUMS las separa) y Quilanga era parroquia de Gonzanamá (IPUMS la une a
+# Calvas). En Azogues, Otavalo, Guayaquil y Huaquillas solo difiere el trazado.
+#
 # Resultado: cantones_armonizados.csv en Resultados/NBI, una fila por parroquia
 # y censo (anio, parroquia, canton, unidad, nombre_unidad).
 #
@@ -66,6 +74,12 @@ vinculos_manuales <- data.frame(
              "Aguarico (Napo en 1990, Orellana en 2001)",
              "Cuyabeno y Aguarico: sin nombres en 1990, se unen al norte amazónico"))
 
+# Correcciones a idparr11 de la base de 1982 (parroquia de 1982 = parroquia de
+# 2010). Camilo Ponce Enríquez (Santa Isabel en 1982) apunta a Dug-Dug, de
+# Paute; su parroquia en 2010 es la cabecera de Camilo Ponce Enríquez. Hallado
+# al cruzar las unidades con los cantones armonizados de IPUMS (GEO2_EC).
+correcciones_idparr11 <- c("010531" = "011550")
+
 # Unidades con 1982 incompleto en la base (sin dato en 1982), por cantón de 2022
 unidades_sin_1982 <- c("0602")  # Alausí: falta la cabecera cantonal en 1982
 
@@ -101,6 +115,8 @@ cantones_parroquias <- function() {
                         FROM censo2001 GROUP BY ALL"),
     `2010` = censo_sql("SELECT id_parr c6, COUNT(*) pob FROM censo2010 GROUP BY ALL"),
     `2022` = censo_sql("SELECT PARROQ c6, COUNT(*) pob FROM censo2022 GROUP BY ALL"))
+  i <- p$`1982`$c6 %in% names(correcciones_idparr11)
+  p$`1982`$c11[i] <- correcciones_idparr11[p$`1982`$c6[i]]
   e82 <- et("censo1982", "idparr82")
   p$`1982`$nombre <- e82$etiqueta[match(as.integer(p$`1982`$c6), as.integer(e82$valor))]
   # en 1990 la etiqueta existe solo si el código sigue en la división de 2001

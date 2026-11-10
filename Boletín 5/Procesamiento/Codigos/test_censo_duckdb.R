@@ -158,6 +158,11 @@ if (all(anios_nbi %in% anios_reales)) {
     prueba(sprintf("%d: personas por hogar = tamaño declarado en %.2f%% de hogares", union$anio[i], 100 * union$igual[i]),
            union$igual[i] > if (union$anio[i] == 2001) 0.9999 else 0.99)
   }
+  cobertura <- r$personas / sapply(r$anio, function(a) censo_sql(sprintf("SELECT COUNT(*) n FROM censo%d", a))$n)
+  prueba(sprintf("el universo NBI cubre al menos 98%% de las personas de cada base (%s)",
+                 paste(sprintf("%.1f", 100 * cobertura), collapse = ", ")), all(cobertura >= 0.98))
+  prueba(sprintf("1990: %s hogares (REDATAM: 2,046,206, tolerancia 0.02%%)", format(r$hogares[r$anio == 1990], big.mark = ",")),
+         abs(r$hogares[r$anio == 1990] / 2046206 - 1) < 0.0002)
   prueba(sprintf("2010: %.1f%% (oficial INEC 60.1%%, tolerancia 0.2)", r$pct_nbi[r$anio == 2010]),
          abs(r$pct_nbi[r$anio == 2010] - 60.1) <= 0.2)
   v10 <- censo_sql("SELECT COUNT(*) FILTER (NOT clasificado) hogares, SUM(n) FILTER (clasificado) personas
@@ -165,6 +170,15 @@ if (all(anios_nbi %in% anios_reales)) {
   prueba(sprintf("2010: %s hogares no clasificados y %s personas válidas (acta INEC: 24,446 y 14,329,606)",
                  format(v10$hogares, big.mark = ","), format(v10$personas, big.mark = ",")),
          v10$hogares == 24446 && v10$personas == 14329606)
+  prueba(sprintf("2010: %s hogares pobres, %.1f%% de hogares (acta INEC: 2,126,004 y 56.2%%, tolerancia 0.2)",
+                 format(r$hogares_pobres[r$anio == 2010], big.mark = ","), r$pct_nbi_hogares[r$anio == 2010]),
+         abs(r$hogares_pobres[r$anio == 2010] / 2126004 - 1) < 0.001 && abs(r$pct_nbi_hogares[r$anio == 2010] - 56.2) <= 0.2)
+  prueba(sprintf("2022: %.1f%% de hogares pobres (INEC 37.1%% del total; variable NBI del INEC %.1f%%)",
+                 r$pct_nbi_hogares[r$anio == 2022], r$pct_nbi_oficial_hogares[r$anio == 2022]),
+         abs(r$pct_nbi_hogares[r$anio == 2022] - r$pct_nbi_oficial_hogares[r$anio == 2022]) <= 0.3)
+  cu22 <- censo_sql("SELECT 100 * AVG(nbi_oficial) p FROM nbi_hogar WHERE anio = 2022 AND substr(dpa_censo, 1, 4) = '0101'")$p
+  prueba(sprintf("2022 Cuenca: %.2f%% de hogares pobres con la variable del INEC (REDATAM 18.5%%)", cu22),
+         abs(cu22 - 18.5) <= 0.1)
   prueba(sprintf("2022: %.1f%% (oficial INEC 39.8%%, tolerancia 0.5)", r$pct_nbi[r$anio == 2022]),
          abs(r$pct_nbi[r$anio == 2022] - 39.8) <= 0.5)
   acuerdo22 <- censo_sql("SELECT AVG(((n_nbi >= 1)::INT = nbi_oficial)::INT) a FROM nbi_hogar WHERE anio = 2022")$a
@@ -192,7 +206,7 @@ if (all(anios_nbi %in% anios_reales)) {
          all(excl$anio == 1982) && sum(excl$pob) == 37806 + 27456)
   tab <- with(cw[cw$unidad != "excluida", ], tapply(pob, list(unidad, anio), sum))
   prueba(sprintf("%d unidades; cada cantón de 2022 en una sola unidad", nrow(tab)),
-         nrow(tab) == 120 && !any(duplicated(unique(cw[cw$anio == 2022, c("canton", "unidad")])$canton)))
+         nrow(tab) == 121 && !any(duplicated(unique(cw[cw$anio == 2022, c("canton", "unidad")])$canton)))
   sin_dato <- rownames(tab)[apply(is.na(tab), 1, any)]
   prueba("todas las unidades tienen población en todos los censos (salvo Alausí, El Carmen, La Concordia y Manga del Cura en 1982)",
          setequal(sin_dato, c("U0602", "U1304", "U2302", "U9003")) && all(!is.na(tab[sin_dato, -1])))

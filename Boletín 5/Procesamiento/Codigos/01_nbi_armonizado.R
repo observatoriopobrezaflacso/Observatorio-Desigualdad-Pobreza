@@ -75,9 +75,16 @@
 #
 # Población a la que se hace cada pregunta (revisado con los datos):
 #   - Universo: hogares en viviendas particulares ocupadas con personas
-#     presentes en todos los censos (97.7% de la población en 1990, 98.4% en
-#     1982 y más del 99% en los demás; el resto vive en viviendas colectivas o
-#     no tiene vivienda).
+#     presentes en todos los censos (98.4% de la población en 1982 y más del
+#     99% en los demás; el resto vive en viviendas colectivas o no tiene
+#     vivienda). En 1990 los hogares segundos o más de una vivienda tienen los
+#     datos de la vivienda en el registro del primer hogar.
+#
+# Contraste con REDATAM del INEC (noviembre de 2026, todos los cantones):
+#   2022 NBI (variable NBIH) y 2001 materiales y hacinamiento: idénticos;
+#   2010 NBI con la sintaxis oficial del INEC: diferencia menor a 0.05 puntos;
+#   1990 materiales y hacinamiento: idénticos en 169 y 171 de 173 cantones
+#   (difieren solo en las zonas no delimitadas y en Piñas, por menos de 0.1).
 #   - Actividad: desde los 12 años en 1982, desde los 8 en 1990 y desde los 5
 #     en 2001-2022. Por eso los ocupados se cuentan desde los 12 en todos.
 #   - Asistencia escolar: desde los 6 años en 1982 y 1990, desde los 5 en 2001
@@ -146,21 +153,35 @@ nbi_sql_hogares <- list(
     FROM p JOIN censo1982_vivienda v USING (idparr82, zona, sector, manzana, idhogar)
     WHERE v.V01 BETWEEN 1 AND 8 AND v.V02 = 1",
 
+  # 264 viviendas repiten la clave completa de otra. En el archivo de personas
+  # sus miembros quedan intercalados por número de persona (1, 1, 2, 2, ...):
+  # el r-ésimo con un mismo ORDPOB va al r-ésimo hogar con esa clave (rk).
+  # Cada hogar tiene su registro (h), pero los datos de la vivienda solo están
+  # en el registro del primer hogar (v), que se ubica por el orden del archivo.
   `1990` = "
-    WITH p AS (
-      SELECT PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG, COUNT(*) n,
+    WITH p90 AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG, ORDPOB ORDER BY fila) rk
+      FROM censo1990),
+    p AS (
+      SELECT PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG, rk, COUNT(*) n,
         COUNT(*) FILTER (EDADOK >= 12 AND (HIZSEM IN (0, 1) OR ALOMEJOR = 1)) ocu,
         MAX(CASE WHEN PARENT = 0 THEN CASE WHEN NIVINS IN (0, 1) THEN 0
              WHEN NIVINS = 2 AND GRACUR <= 6 THEN GRACUR + 1 WHEN NIVINS = 3 AND GRACUR <= 6 THEN 7 + GRACUR
              WHEN NIVINS = 3 THEN 12 WHEN NIVINS = 4 THEN 13 WHEN NIVINS = 5 THEN 18 END END) esc_jefe,
         MAX((EDADOK BETWEEN 6 AND 12 AND ASISTE = 2)::INT) nino
-      FROM censo1990 GROUP BY ALL)
+      FROM p90 GROUP BY ALL),
+    hv AS (SELECT *, SUM((NUMHOG <= 1)::INT) OVER (ORDER BY fila) vseq FROM censo1990_vivienda_hogar),
+    h AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG ORDER BY fila) rk
+      FROM hv WHERE TOTALPOB > 0),
+    v AS (SELECT * FROM hv WHERE NUMHOG <= 1)
     SELECT 1990 anio, printf('%02d%02d%02d', p.PROVIN::INT, p.CANTON::INT, p.PARROQ::INT) dpa_parroquia,
       printf('%02d%02d%02d', p.PROVIN::INT, p.CANTON::INT, p.PARROQ::INT) dpa_censo,
-      p.n, p.ocu, p.esc_jefe, p.nino, (PISO IN (5, 6))::INT piso, (PARED IN (5, 6))::INT pared,
-      (NOT (MEDABA = 1 AND SISABA = 1))::INT agua,
-      (SERHIG IN (3, 4) OR AGUSER <> 1)::INT san, CUADOR dorm, TOTALPOB n_declarado, NULL::INT nbi_oficial
-    FROM p JOIN censo1990_vivienda_hogar v USING (PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG)
+      p.n, p.ocu, p.esc_jefe, p.nino, (v.PISO IN (5, 6))::INT piso, (v.PARED IN (5, 6))::INT pared,
+      (NOT (v.MEDABA = 1 AND v.SISABA = 1))::INT agua,
+      (h.SERHIG IN (3, 4) OR v.AGUSER <> 1)::INT san, h.CUADOR dorm, h.TOTALPOB n_declarado, NULL::INT nbi_oficial
+    FROM p JOIN h USING (PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG, rk)
+    JOIN v USING (vseq)
     WHERE v.TIPVIV BETWEEN 1 AND 8 AND v.CONOCU = 1",
 
   # personas -> hogar: nuevo hogar cuando cambia la clave o se reinicia ORDPOB
@@ -249,27 +270,30 @@ nbi_crear <- function(anios = names(nbi_sql_hogares)) {
   invisible(anios)
 }
 
+# Indicadores: nombre de la columna y condición del hogar (0/1)
+nbi_indicadores <- c(
+  pct_nbi = "(n_nbi >= 1)::INT", pct_nbi_extrema = "(n_nbi >= 2)::INT", pct_nbi_oficial = "nbi_oficial",
+  pct_dependencia = "nbi_dep", pct_escolar = "nbi_esc", pct_vivienda = "nbi_viv", pct_servicios = "nbi_ser",
+  pct_agua = "agua", pct_saneamiento = "san", pct_hacinamiento = "nbi_hac")
+
 # Porcentaje de personas pobres por NBI y con cada carencia, sobre las personas
-# de hogares clasificados (casos válidos, como el INEC).
+# de hogares clasificados (casos válidos, como el INEC). Las columnas
+# terminadas en _hogares son el porcentaje de hogares (el que da una tabla de
+# frecuencias de la variable NBI del hogar en REDATAM).
 # por: columnas adicionales para desagregar (p. ej. "dpa_parroquia")
 # desde: tabla o vista con los hogares (por defecto nbi_hogar)
 nbi_resumen <- function(por = NULL, desde = "nbi_hogar") {
   grupos <- paste(c("anio", por), collapse = ", ")
+  personas <- sprintf("ROUND(100 * SUM(w * %s) / SUM(w), 1) %s", nbi_indicadores, names(nbi_indicadores))
+  hogares <- sprintf("ROUND(100 * SUM(c * %s) / SUM(c), 1) %s_hogares", nbi_indicadores, names(nbi_indicadores))
   censo_sql(sprintf("
     SELECT %s, SUM(n) personas, coalesce(SUM(n) FILTER (NOT clasificado), 0) personas_no_clasificadas,
       SUM(w * (n_nbi >= 1)::INT) pobres,
-      ROUND(100 * SUM(w * (n_nbi >= 1)::INT) / SUM(w), 1) pct_nbi,
-      ROUND(100 * SUM(w * (n_nbi >= 2)::INT) / SUM(w), 1) pct_nbi_extrema,
-      ROUND(100 * SUM(w * nbi_oficial) / SUM(w), 1) pct_nbi_oficial,
-      ROUND(100 * SUM(w * nbi_dep) / SUM(w), 1) pct_dependencia,
-      ROUND(100 * SUM(w * nbi_esc) / SUM(w), 1) pct_escolar,
-      ROUND(100 * SUM(w * nbi_viv) / SUM(w), 1) pct_vivienda,
-      ROUND(100 * SUM(w * nbi_ser) / SUM(w), 1) pct_servicios,
-      ROUND(100 * SUM(w * agua) / SUM(w), 1) pct_agua,
-      ROUND(100 * SUM(w * san) / SUM(w), 1) pct_saneamiento,
-      ROUND(100 * SUM(w * nbi_hac) / SUM(w), 1) pct_hacinamiento
-    FROM (SELECT *, n * clasificado::INT w FROM %s)
-    GROUP BY %s ORDER BY %s", grupos, desde, grupos, grupos))
+      COUNT(*) hogares, COUNT(*) FILTER (NOT clasificado) hogares_no_clasificados,
+      SUM(c * (n_nbi >= 1)::INT) hogares_pobres,
+      %s
+    FROM (SELECT *, n * clasificado::INT w, clasificado::INT c FROM %s)
+    GROUP BY %s ORDER BY %s", grupos, paste(c(personas, hogares), collapse = ",\n      "), desde, grupos, grupos))
 }
 
 # Ejecución ----
