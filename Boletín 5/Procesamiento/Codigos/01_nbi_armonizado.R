@@ -16,10 +16,13 @@
 #   5. Hacinamiento: más de 3 personas por dormitorio (0 dormitorios = 1).
 #
 # Armonización:
-#   - Saneamiento: el pozo ciego cuenta como carencia en todos los censos
-#     (regla del INEC). 1982 y 1990 solo tienen la opción "pozo ciego" (sin
-#     pozo séptico), así que ahí cualquier pozo es carencia; esto puede
-#     sobrestimar la carencia si hogares con pozo séptico marcaron esa opción.
+#   - 1982 y 1990: En el NBI de 2022, tener como fuente de agua un pozo ciego cuenta 
+#.                 como privación. En los censos desde 2001, la pregunta sobre 
+#                  la fuente de agua tiene las opciones "pozo séptico" y "pozo ciego". 
+#                  1982 y 1990 solo tienen la opción "pozo ciego" (sin
+#                  pozo séptico). A todas las personas que respondieron esta opción 
+#                  se las cuenta como deprivadas. Esto puede sobrestimar la 
+#                  carencia si hogares con pozo séptico marcaron esa opción.
 #   - Escolaridad del jefe en la escala del INEC (GRAESC 2010), que cuenta un
 #     año de preescolar: primaria g = g + 1, EGB g = g, secundaria g = 7 + g,
 #     bachillerato g = 10 + g, superior g = 13 + g.
@@ -84,18 +87,32 @@
 #   - Dormitorios y servicio higiénico: por hogar en 1990-2022 (1990 y 2001
 #     preguntan el servicio higiénico al hogar y la eliminación de aguas a la
 #     vivienda); 1982 tiene un registro por hogar con datos de su vivienda.
-#   Diferencias que quedan (efecto sobre el NBI total, en puntos):
-#   - No respuesta: 2010 y 2022 vienen imputados; antes hay "se ignora" (jefe
-#     sin escolaridad: 5.5% de hogares en 1982, 3.7% en 1990, 9.5% en 2001 y
-#     2.3% en 2010; niños 6-12 sin dato de asistencia: 8.3%, 2.7% y 3.1% en
-#     1982-2001). Se cuentan como necesidad satisfecha. Contarlos como
-#     carencia sube el NBI en 0.5-0.7 (1982), 0.3 (1990), 0.4-0.9 (2001) y
-#     0.2 (2010).
+#
+# No respuesta (regla del INEC, sintaxis NBI 2010 y acta de homologación de
+# diciembre de 2011): el NBI se calcula sobre casos válidos.
+#   - Si el jefe no tiene escolaridad conocida, la dependencia no se puede
+#     clasificar. El hogar es pobre si tiene otra carencia; si no tiene
+#     ninguna, sale del denominador (columna clasificado).
+#   - Como en la sintaxis del INEC, el jefe con nivel secundario o superior y
+#     grado desconocido tiene más de 3 años (se le asignan 12).
+#   - Hogares no clasificados: 1.3% en 1982, 0.4% en 1990, 0.6% en 2001,
+#     0.6% en 2010 y ninguno en 2022 (la base viene imputada).
+#   - Los niños de 6 a 12 sin dato de asistencia (8.3%, 2.7% y 3.1% en
+#     1982-2001) cuentan como que asisten, igual que en la sintaxis.
+#
+# Diferencias que quedan con el INEC (efecto sobre el NBI total, en puntos):
+#   - El INEC cuenta los ocupados desde los 10 años en 2010; aquí desde los
+#     12 para comparar con 1982. No cambia el resultado.
+#   - El INEC calcula la escolaridad con nivel y grado y resta un año si la
+#     persona todavía asiste; aquí se usa GRAESC. No cambia el resultado.
 #   - 1982 no tiene la pregunta de recuperación de trabajo (ALOMEJOR en
 #     1990-2001, categorías 3-5 de TIPOACT en 2010). Quitarla en 1990-2010
 #     cambia el NBI en 0.1 puntos (dependencia +1.2 a +1.7).
 #
-# Validación: 2010 da 59.8% (oficial 60.1%) y 2022 39.8% (oficial 39.8%). nbi_oficial
+# Validación: 2010 da 60.06% con 24,446 hogares no clasificados y 14,329,606
+# personas válidas, igual que el acta del INEC; 2022 da 39.8% (oficial 39.8%).
+# 2001 da 71.6% frente al 73.9% que publica el INEC, cuya sintaxis no está
+# disponible. nbi_oficial
 # es el NBI que traen las bases: el del INEC en 2022 (variable NBI del hogar)
 # y el de la base original en 1982 (pobreza_nbi); NULL en los demás años.
 #
@@ -108,7 +125,8 @@ resultados_dir <- file.path(dirname(dirname(censo_dir)), "Boletín 5", "Resultad
 
 # Hogares por censo ----
 # Cada consulta devuelve una fila por hogar en vivienda particular ocupada con:
-# anio, dpa_parroquia, n, ocu, esc_jefe, nino, piso, pared, agua,
+# anio, dpa_parroquia (en 1982, la parroquia de 2011), dpa_censo (código del
+# propio censo), n, ocu, esc_jefe, nino, piso, pared, agua,
 # san, dorm, n_declarado (tamaño del hogar
 # según el archivo de vivienda/hogar, para verificar la unión), nbi_oficial
 
@@ -122,7 +140,7 @@ nbi_sql_hogares <- list(
         MAX((edad BETWEEN 6 AND 12 AND P10 = 2)::INT) nino,
         MAX((pobreza_nbi >= 2)::INT) nbi_oficial
       FROM censo1982 GROUP BY ALL)
-    SELECT 1982 anio, lpad(p.idparr11::INT::VARCHAR, 6, '0') dpa_parroquia, p.n, p.ocu, p.esc_jefe, p.nino,
+    SELECT 1982 anio, lpad(p.idparr11::INT::VARCHAR, 6, '0') dpa_parroquia, lpad(p.idparr82::INT::VARCHAR, 6, '0') dpa_censo, p.n, p.ocu, p.esc_jefe, p.nino,
       (V03c IN (5, 6))::INT piso, (V03b IN (5, 6))::INT pared, (V05 <> 1)::INT agua,
       (V06 IN (3, 4) OR V07 <> 1)::INT san, V10 dorm, totper n_declarado, p.nbi_oficial
     FROM p JOIN censo1982_vivienda v USING (idparr82, zona, sector, manzana, idhogar)
@@ -134,10 +152,11 @@ nbi_sql_hogares <- list(
         COUNT(*) FILTER (EDADOK >= 12 AND (HIZSEM IN (0, 1) OR ALOMEJOR = 1)) ocu,
         MAX(CASE WHEN PARENT = 0 THEN CASE WHEN NIVINS IN (0, 1) THEN 0
              WHEN NIVINS = 2 AND GRACUR <= 6 THEN GRACUR + 1 WHEN NIVINS = 3 AND GRACUR <= 6 THEN 7 + GRACUR
-             WHEN NIVINS = 4 THEN 13 WHEN NIVINS = 5 THEN 18 END END) esc_jefe,
+             WHEN NIVINS = 3 THEN 12 WHEN NIVINS = 4 THEN 13 WHEN NIVINS = 5 THEN 18 END END) esc_jefe,
         MAX((EDADOK BETWEEN 6 AND 12 AND ASISTE = 2)::INT) nino
       FROM censo1990 GROUP BY ALL)
     SELECT 1990 anio, printf('%02d%02d%02d', p.PROVIN::INT, p.CANTON::INT, p.PARROQ::INT) dpa_parroquia,
+      printf('%02d%02d%02d', p.PROVIN::INT, p.CANTON::INT, p.PARROQ::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (PISO IN (5, 6))::INT piso, (PARED IN (5, 6))::INT pared,
       (NOT (MEDABA = 1 AND SISABA = 1))::INT agua,
       (SERHIG IN (3, 4) OR AGUSER <> 1)::INT san, CUADOR dorm, TOTALPOB n_declarado, NULL::INT nbi_oficial
@@ -164,12 +183,14 @@ nbi_sql_hogares <- list(
     p AS (
       SELECT hseq, COUNT(*) n,
         COUNT(*) FILTER (EDAD >= 12 AND (HIZSEM IN (1, 2) OR ALOMEJOR = 1)) ocu,
-        MAX(CASE WHEN PARENT = 0 AND GRACUR <> 99 THEN CASE WHEN NIVINS IN (0, 1) THEN 0
+        MAX(CASE WHEN PARENT = 0 THEN CASE WHEN NIVINS IN (0, 1) THEN 0
+             WHEN GRACUR = 99 THEN CASE WHEN NIVINS IN (3, 5, 6, 7, 8) THEN 12 END
              WHEN NIVINS = 2 THEN GRACUR + 1 WHEN NIVINS = 3 THEN 7 + GRACUR WHEN NIVINS = 4 THEN GRACUR
              WHEN NIVINS = 5 THEN 10 + GRACUR WHEN NIVINS IN (6, 7) THEN 13 + GRACUR WHEN NIVINS = 8 THEN 18 END END) esc_jefe,
         MAX((EDAD BETWEEN 6 AND 12 AND ASISTE = 2)::INT) nino
       FROM p01 GROUP BY hseq)
     SELECT 2001 anio, printf('%02d%02d%02d', h.PROVIN::INT, h.CANTON::INT, h.PARROQ::INT) dpa_parroquia,
+      printf('%02d%02d%02d', h.PROVIN::INT, h.CANTON::INT, h.PARROQ::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (v.PISO IN (5, 6))::INT piso, (v.PARED IN (5, 6))::INT pared,
       (NOT (v.PROVAGUA = 1 AND v.OBTAGUA = 1))::INT agua,
       (h.SERHIG IN (3, 4) OR v.AGUSER NOT IN (1, 3))::INT san, h.DORMHOG dorm, h.TOTPOBL n_declarado, NULL::INT nbi_oficial
@@ -180,10 +201,12 @@ nbi_sql_hogares <- list(
     WITH p AS (
       SELECT id_hog, COUNT(*) n,
         COUNT(*) FILTER (P03 >= 12 AND TIPOACT BETWEEN 1 AND 5) ocu,
-        MAX(CASE WHEN P02 = 1 AND GRAESC <> 99 THEN GRAESC END) esc_jefe,
+        MAX(CASE WHEN P02 = 1 THEN CASE WHEN GRAESC <> 99 THEN GRAESC
+             WHEN P24 = 99 AND P23 IN (5, 7, 8, 9, 10) THEN 12 END END) esc_jefe,
         MAX((P03 BETWEEN 6 AND 12 AND P21 = 2)::INT) nino
       FROM censo2010 GROUP BY id_hog)
     SELECT 2010 anio, printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_parroquia,
+      printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (V05 IN (6, 7))::INT piso, (V03 IN (6, 7))::INT pared,
       (NOT (V07 = 1 AND V08 = 1))::INT agua, (V09 NOT IN (1, 2))::INT san, H01 dorm, TP1 n_declarado, NULL::INT nbi_oficial
     FROM p JOIN censo2010_hogar h USING (id_hog) JOIN censo2010_vivienda v ON v.id_viv = h.id_viv
@@ -197,6 +220,7 @@ nbi_sql_hogares <- list(
         MAX((P03 BETWEEN 6 AND 12 AND P15 = 2)::INT) nino
       FROM censo2022 GROUP BY ID_HOG)
     SELECT 2022 anio, printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_parroquia,
+      printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (V07 IN (7, 8))::INT piso, (V05 IN (7, 8))::INT pared,
       (NOT (V09 = 1 AND V10 IN (1, 2)))::INT agua, (V11 NOT IN (1, 2, 3))::INT san, H01 dorm, H1303 n_declarado, (h.NBI = 1)::INT nbi_oficial
     FROM p JOIN censo2022_hogar h USING (ID_HOG) JOIN censo2022_vivienda v ON v.ID_VIV = h.ID_VIV
@@ -209,7 +233,9 @@ nbi_crear <- function(anios = names(nbi_sql_hogares)) {
   con <- censo_con()
   for (a in anios) {
     dbExecute(con, sprintf("CREATE OR REPLACE TEMP TABLE nbi_hogar_%s AS
-      SELECT *, (nbi_dep + nbi_esc + nbi_viv + nbi_ser + nbi_hac) n_nbi
+      SELECT *, (nbi_dep + nbi_esc + nbi_viv + nbi_ser + nbi_hac) n_nbi,
+        -- casos válidos (INEC): sin escolaridad del jefe y sin otra carencia no se clasifica
+        NOT (esc_jefe IS NULL AND nbi_esc + nbi_viv + nbi_ser + nbi_hac = 0) clasificado
       FROM (SELECT *,
         coalesce((esc_jefe <= 3 AND n > 3 * ocu)::INT, 0) nbi_dep,
         nino nbi_esc,
@@ -223,24 +249,27 @@ nbi_crear <- function(anios = names(nbi_sql_hogares)) {
   invisible(anios)
 }
 
-# Porcentaje de personas pobres por NBI y con cada carencia.
+# Porcentaje de personas pobres por NBI y con cada carencia, sobre las personas
+# de hogares clasificados (casos válidos, como el INEC).
 # por: columnas adicionales para desagregar (p. ej. "dpa_parroquia")
-nbi_resumen <- function(por = NULL) {
+# desde: tabla o vista con los hogares (por defecto nbi_hogar)
+nbi_resumen <- function(por = NULL, desde = "nbi_hogar") {
   grupos <- paste(c("anio", por), collapse = ", ")
   censo_sql(sprintf("
-    SELECT %s, SUM(n) personas,
-      SUM(n * (n_nbi >= 1)::INT) pobres,
-      ROUND(100 * SUM(n * (n_nbi >= 1)::INT) / SUM(n), 1) pct_nbi,
-      ROUND(100 * SUM(n * (n_nbi >= 2)::INT) / SUM(n), 1) pct_nbi_extrema,
-      ROUND(100 * SUM(n * nbi_oficial) / SUM(n), 1) pct_nbi_oficial,
-      ROUND(100 * SUM(n * nbi_dep) / SUM(n), 1) pct_dependencia,
-      ROUND(100 * SUM(n * nbi_esc) / SUM(n), 1) pct_escolar,
-      ROUND(100 * SUM(n * nbi_viv) / SUM(n), 1) pct_vivienda,
-      ROUND(100 * SUM(n * nbi_ser) / SUM(n), 1) pct_servicios,
-      ROUND(100 * SUM(n * agua) / SUM(n), 1) pct_agua,
-      ROUND(100 * SUM(n * san) / SUM(n), 1) pct_saneamiento,
-      ROUND(100 * SUM(n * nbi_hac) / SUM(n), 1) pct_hacinamiento
-    FROM nbi_hogar GROUP BY %s ORDER BY %s", grupos, grupos, grupos))
+    SELECT %s, SUM(n) personas, coalesce(SUM(n) FILTER (NOT clasificado), 0) personas_no_clasificadas,
+      SUM(w * (n_nbi >= 1)::INT) pobres,
+      ROUND(100 * SUM(w * (n_nbi >= 1)::INT) / SUM(w), 1) pct_nbi,
+      ROUND(100 * SUM(w * (n_nbi >= 2)::INT) / SUM(w), 1) pct_nbi_extrema,
+      ROUND(100 * SUM(w * nbi_oficial) / SUM(w), 1) pct_nbi_oficial,
+      ROUND(100 * SUM(w * nbi_dep) / SUM(w), 1) pct_dependencia,
+      ROUND(100 * SUM(w * nbi_esc) / SUM(w), 1) pct_escolar,
+      ROUND(100 * SUM(w * nbi_viv) / SUM(w), 1) pct_vivienda,
+      ROUND(100 * SUM(w * nbi_ser) / SUM(w), 1) pct_servicios,
+      ROUND(100 * SUM(w * agua) / SUM(w), 1) pct_agua,
+      ROUND(100 * SUM(w * san) / SUM(w), 1) pct_saneamiento,
+      ROUND(100 * SUM(w * nbi_hac) / SUM(w), 1) pct_hacinamiento
+    FROM (SELECT *, n * clasificado::INT w FROM %s)
+    GROUP BY %s ORDER BY %s", grupos, desde, grupos, grupos))
 }
 
 # Ejecución ----

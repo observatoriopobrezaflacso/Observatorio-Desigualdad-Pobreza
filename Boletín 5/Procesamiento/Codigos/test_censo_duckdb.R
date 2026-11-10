@@ -145,7 +145,10 @@ if (length(anios_reales) == 0) {
 anios_nbi <- c(1982, 1990, 2001, 2010, 2022)
 if (all(anios_nbi %in% anios_reales)) {
   cat("\n== NBI armonizado ==\n")
-  source("01_nbi_armonizado.R")
+  # 03 carga 01 (NBI) y 02 (cantones); se carga antes de conectar porque
+  # cada script vuelve a cargar censo_duckdb.R
+  options(nbi_mapa.solo_funciones = TRUE)
+  source("03_mapa_nbi_cantonal.R")
   censo_conectar(anios_nbi)
   nbi_crear()
   r <- nbi_resumen()
@@ -155,8 +158,13 @@ if (all(anios_nbi %in% anios_reales)) {
     prueba(sprintf("%d: personas por hogar = tamaño declarado en %.2f%% de hogares", union$anio[i], 100 * union$igual[i]),
            union$igual[i] > if (union$anio[i] == 2001) 0.9999 else 0.99)
   }
-  prueba(sprintf("2010: %.1f%% (oficial INEC 60.1%%, tolerancia 0.5)", r$pct_nbi[r$anio == 2010]),
-         abs(r$pct_nbi[r$anio == 2010] - 60.1) <= 0.5)
+  prueba(sprintf("2010: %.1f%% (oficial INEC 60.1%%, tolerancia 0.2)", r$pct_nbi[r$anio == 2010]),
+         abs(r$pct_nbi[r$anio == 2010] - 60.1) <= 0.2)
+  v10 <- censo_sql("SELECT COUNT(*) FILTER (NOT clasificado) hogares, SUM(n) FILTER (clasificado) personas
+                    FROM nbi_hogar WHERE anio = 2010")
+  prueba(sprintf("2010: %s hogares no clasificados y %s personas válidas (acta INEC: 24,446 y 14,329,606)",
+                 format(v10$hogares, big.mark = ","), format(v10$personas, big.mark = ",")),
+         v10$hogares == 24446 && v10$personas == 14329606)
   prueba(sprintf("2022: %.1f%% (oficial INEC 39.8%%, tolerancia 0.5)", r$pct_nbi[r$anio == 2022]),
          abs(r$pct_nbi[r$anio == 2022] - 39.8) <= 0.5)
   acuerdo22 <- censo_sql("SELECT AVG(((n_nbi >= 1)::INT = nbi_oficial)::INT) a FROM nbi_hogar WHERE anio = 2022")$a
@@ -168,6 +176,30 @@ if (all(anios_nbi %in% anios_reales)) {
          abs(r$pct_nbi[r$anio == 1982] - r$pct_nbi_oficial[r$anio == 1982]) <= 2.5)
   prueba("pobreza por NBI baja en cada censo", all(diff(r$pct_nbi) < 0))
   prueba("extrema <= NBI <= 100", all(r$pct_nbi_extrema <= r$pct_nbi & r$pct_nbi <= 100))
+
+  # Parte 4: cantones armonizados (02_cantones_armonizados.R, 03_mapa_nbi_cantonal.R) ----
+  cat("\n== Cantones armonizados ==\n")
+  cw <- cantones_crear()
+  names(cw)[2] <- "parroquia"
+  pob <- sapply(anios_nbi, function(a) censo_sql(sprintf("SELECT COUNT(*) n FROM censo%d", a))$n)
+  prueba("cada parroquia de cada censo aparece una vez",
+         !any(duplicated(cw[, c("anio", "parroquia")])) &&
+           identical(as.vector(table(cw$anio)), c(850L, 934L, 995L, 1024L, 1042L)))
+  prueba("la población de la tabla de cantones suma el total de cada censo",
+         all(tapply(cw$pob, cw$anio, sum) == pob))
+  excl <- cw[cw$unidad == "excluida", ]
+  prueba("solo se excluyen en 1982 las zonas no delimitadas del norte y Alausí (65,262 personas)",
+         all(excl$anio == 1982) && sum(excl$pob) == 37806 + 27456)
+  tab <- with(cw[cw$unidad != "excluida", ], tapply(pob, list(unidad, anio), sum))
+  prueba(sprintf("%d unidades; cada cantón de 2022 en una sola unidad", nrow(tab)),
+         nrow(tab) == 120 && !any(duplicated(unique(cw[cw$anio == 2022, c("canton", "unidad")])$canton)))
+  sin_dato <- rownames(tab)[apply(is.na(tab), 1, any)]
+  prueba("todas las unidades tienen población en todos los censos (salvo Alausí, El Carmen, La Concordia y Manga del Cura en 1982)",
+         setequal(sin_dato, c("U0602", "U1304", "U2302", "U9003")) && all(!is.na(tab[sin_dato, -1])))
+  nc <- nbi_cantonal(cw)
+  suma <- aggregate(pobres ~ anio, nc, sum)
+  prueba("los pobres por unidad suman los pobres nacionales (1990-2022)",
+         all(suma$pobres[suma$anio > 1982] == r$pobres[r$anio > 1982]))
   censo_desconectar()
 }
 
