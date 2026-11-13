@@ -250,11 +250,10 @@ nbi_sql_hogares <- list(
 
 # Componentes y pobreza por hogar ----
 
-nbi_crear <- function(anios = names(nbi_sql_hogares)) {
-  con <- censo_con()
-  for (a in anios) {
-    dbExecute(con, sprintf("CREATE OR REPLACE TEMP TABLE nbi_hogar_%s AS
-      SELECT *, (nbi_dep + nbi_esc + nbi_viv + nbi_ser + nbi_hac) n_nbi,
+# Consulta que agrega las cinco carencias, su suma y la condición de caso
+# válido a una consulta de hogares (la usa también el censo de 1974 de IPUMS)
+nbi_componentes_sql <- function(consulta) {
+  sprintf("SELECT *, (nbi_dep + nbi_esc + nbi_viv + nbi_ser + nbi_hac) n_nbi,
         -- casos válidos (INEC): sin escolaridad del jefe y sin otra carencia no se clasifica
         NOT (esc_jefe IS NULL AND nbi_esc + nbi_viv + nbi_ser + nbi_hac = 0) clasificado
       FROM (SELECT *,
@@ -263,7 +262,14 @@ nbi_crear <- function(anios = names(nbi_sql_hogares)) {
         GREATEST(piso, pared) nbi_viv,
         GREATEST(agua, san) nbi_ser,
         (n > 3 * GREATEST(coalesce(dorm, 1), 1))::INT nbi_hac
-      FROM (%s))", a, nbi_sql_hogares[[a]]))
+      FROM (%s))", consulta)
+}
+
+nbi_crear <- function(anios = names(nbi_sql_hogares)) {
+  con <- censo_con()
+  for (a in anios) {
+    dbExecute(con, sprintf("CREATE OR REPLACE TEMP TABLE nbi_hogar_%s AS %s",
+                           a, nbi_componentes_sql(nbi_sql_hogares[[a]])))
   }
   dbExecute(con, paste("CREATE OR REPLACE TEMP VIEW nbi_hogar AS",
                        paste(sprintf("SELECT * FROM nbi_hogar_%s", anios), collapse = " UNION ALL ")))
@@ -282,18 +288,20 @@ nbi_indicadores <- c(
 # frecuencias de la variable NBI del hogar en REDATAM).
 # por: columnas adicionales para desagregar (p. ej. "dpa_parroquia")
 # desde: tabla o vista con los hogares (por defecto nbi_hogar)
-nbi_resumen <- function(por = NULL, desde = "nbi_hogar") {
+# peso: factor de expansión del hogar (1 en los censos; en una muestra, la
+#   columna con el peso; los conteos quedan expandidos)
+nbi_resumen <- function(por = NULL, desde = "nbi_hogar", peso = "1") {
   grupos <- paste(c("anio", por), collapse = ", ")
   personas <- sprintf("ROUND(100 * SUM(w * %s) / SUM(w), 1) %s", nbi_indicadores, names(nbi_indicadores))
   hogares <- sprintf("ROUND(100 * SUM(c * %s) / SUM(c), 1) %s_hogares", nbi_indicadores, names(nbi_indicadores))
   censo_sql(sprintf("
-    SELECT %s, SUM(n) personas, coalesce(SUM(n) FILTER (NOT clasificado), 0) personas_no_clasificadas,
+    SELECT %s, SUM(f * n) personas, coalesce(SUM(f * n) FILTER (NOT clasificado), 0) personas_no_clasificadas,
       SUM(w * (n_nbi >= 1)::INT) pobres,
-      COUNT(*) hogares, COUNT(*) FILTER (NOT clasificado) hogares_no_clasificados,
+      SUM(f) hogares, coalesce(SUM(f) FILTER (NOT clasificado), 0) hogares_no_clasificados,
       SUM(c * (n_nbi >= 1)::INT) hogares_pobres,
       %s
-    FROM (SELECT *, n * clasificado::INT w, clasificado::INT c FROM %s)
-    GROUP BY %s ORDER BY %s", grupos, paste(c(personas, hogares), collapse = ",\n      "), desde, grupos, grupos))
+    FROM (SELECT *, f * n * clasificado::INT w, f * clasificado::INT c FROM (SELECT *, %s f FROM %s))
+    GROUP BY %s ORDER BY %s", grupos, paste(c(personas, hogares), collapse = ",\n      "), peso, desde, grupos, grupos))
 }
 
 # Ejecución ----
