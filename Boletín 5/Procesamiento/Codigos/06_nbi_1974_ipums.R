@@ -25,7 +25,10 @@
 #   - Ocupados: 12 años o más que trabajaron o tenían trabajo (la pregunta se
 #     hace desde los 12 años, como en 1982).
 #   - Escolaridad del jefe: primaria g = g + 1, secundaria g = 7 + g, superior
-#     g = 13 + g; ninguno y centro de alfabetización = 0; secundaria sin grado = 12.
+#     g = 13 + g; ninguno = 0; secundaria sin grado = 12. Centro de
+#     alfabetización por tramos, como el INEC en 2010 y 2022 (ESCOLA) y
+#     01_nbi_armonizado.R en 1982-2001: grados 0-1 = 0, 2-3 = 3, 4-5 = 5 y
+#     6 = 7 años.
 #   - Asistencia: niñas/os de 6 a 12 años que no asisten (se pregunta desde los 6).
 #   - Vivienda: piso de tierra u otros, o paredes de caña no revestida u otros.
 #   - Agua: no llega por tubería dentro de la vivienda. La pregunta de 1974 no
@@ -234,7 +237,8 @@ nbi_sql_1974 <- "
     SELECT SERIAL, COUNT(*) n,
       COUNT(*) FILTER (EC1974A_AGE >= 12 AND EC1974A_EMPSTAT IN (1, 2)) ocu,
       MAX(CASE WHEN EC1974A_RELATE = 0 THEN CASE
-           WHEN EC1974A_EDLEV = 0 OR EC1974A_EDLEV BETWEEN 40 AND 46 THEN 0
+           WHEN EC1974A_EDLEV IN (0, 40, 41) THEN 0
+           WHEN EC1974A_EDLEV IN (42, 43) THEN 3 WHEN EC1974A_EDLEV IN (44, 45) THEN 5 WHEN EC1974A_EDLEV = 46 THEN 7
            WHEN EC1974A_EDLEV BETWEEN 10 AND 16 THEN EC1974A_EDLEV - 9
            WHEN EC1974A_EDLEV BETWEEN 21 AND 26 THEN EC1974A_EDLEV - 13
            WHEN EC1974A_EDLEV = 29 THEN 12

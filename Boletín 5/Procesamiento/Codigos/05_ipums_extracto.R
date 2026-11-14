@@ -36,6 +36,7 @@ variables <- c(
   "RELATE", "AGE", "SCHOOL", "EDATTAIN", "YRSCHOOL", "EDUCEC", "LIT", "EMPSTAT"
 )
 
+# Extracto 1 (ipumsi_00001): insumos del NBI de 1974 y 1982
 extracto <- function(vars = variables) {
   define_extract_micro(
     collection = "ipumsi",
@@ -46,11 +47,25 @@ extracto <- function(vars = variables) {
   )
 }
 
+# Extracto 2 (ipumsi_00002): piso, agua, servicio higiénico y electricidad
+# desde 1962. La muestra de 1962 es de personas (3%), sin hogares: los datos de
+# la vivienda solo los tiene el jefe.
+extracto_servicios <- function() {
+  define_extract_micro(
+    collection = "ipumsi",
+    description = "Boletin 5 FLACSO: servicios por provincia Ecuador 1962-1982",
+    samples = c("ec1962a", "ec1974a", "ec1982a"),
+    variables = c("SERIAL", "PERNUM", "HHWT", "PERWT", "GQ", "GEO1_EC", "GEO2_EC", "GEO2_EC1962", "GEO2_EC1974",
+                  "GEO2_EC1982", "RELATE", "AGE", "FLOOR", "WATSUP", "TOILET", "SEWAGE", "ELECTRIC", "ROOMS", "SCHOOL",
+                  paste0("EC1974A_", c("DWTYPE", "OCCUPAN", "FLOOR", "WATSUP", "TOILET"))),
+    data_format = "fixed_width"
+  )
+}
+
 if (!isTRUE(getOption("ipums.solo_funciones"))) {
-  ext <- submit_extract(extracto())
-  cat("Extracto enviado:", ext$number, "\n")
-  ext <- wait_for_extract(ext)
   dir.create(ipums_dir, showWarnings = FALSE, recursive = TRUE)
-  ddi <- download_extract(ext, download_dir = ipums_dir)
-  cat("Descargado:", ddi, "\n")
+  for (definicion in list(extracto(), extracto_servicios())) {
+    ext <- wait_for_extract(submit_extract(definicion))
+    cat("Descargado:", download_extract(ext, download_dir = ipums_dir), "\n")
+  }
 }

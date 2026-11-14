@@ -26,8 +26,22 @@
 #   - Escolaridad del jefe en la escala del INEC (GRAESC 2010), que cuenta un
 #     año de preescolar: primaria g = g + 1, EGB g = g, secundaria g = 7 + g,
 #     bachillerato g = 10 + g, superior g = 13 + g.
+#   - Centro de alfabetización: como el INEC en 2010 (GRAESC) y 2022 (ESCOLA),
+#     equivale a la primaria en tres tramos de dos años: aprobado el primer,
+#     segundo o tercer tramo da 3, 5 o 7 años. 1982 registra los grados 1 a 3
+#     (1 + 2g años); 1990 y 2001 registran 0, 2, 4 y 6 (0, 3, 5 y 7 años). El
+#     grado desconocido (9 en 1990, 99 en 2001) queda sin dato, como la
+#     primaria con grado desconocido y la alfabetización en 2010.
 #   - Ocupados: personas de 12 años o más (1982 solo pregunta actividad desde
 #     los 12; en 2010 no cambia el resultado).
+#   - 2022: ocupado es quien trabajó la semana pasada según P22 (opciones 1 a
+#     6), como hace el INEC en su NBI, y no la condición de actividad
+#     CONDACT1. CONDACT1 sigue la definición de empleo de la OIT y no cuenta a
+#     quien produce solo para el consumo del hogar (unas 280,000 personas de
+#     12 años o más, todas en agricultura, cría de animales o pesca); los
+#     censos anteriores sí los cuentan como trabajadores. Con CONDACT1 había
+#     4,712 hogares pobres solo por dependencia que el INEC no marca, sobre
+#     todo en la Sierra rural.
 #   - 2001: los archivos no tienen manzana, por lo que un hogar puede tener la 
 #           la misma clave (unión de provincia, cantón, ...,  vivienda y ho-
 #           gar), pero pertnecer a distintas manzanas (ej. "vivienda 1, ho - 
@@ -62,13 +76,16 @@
 #        con ese nuevo identificador de vivienda. 
 #
 #   - 1982: El NBI indica que se debe considerar a un hogar como privado si su
-#           vivienda tiene paredes de "caña no revestida u otros materiales". 
-#           En el resto de años, la pregunta sobre el material de las paredes
-#           tiene las opciones "caña revestida" y "caña no revestida", Hormigón, 
-#           "...", y "otros materiales". En 1982, no hay la opcón de "caña no 
-#           revestida", por lo que solo se considera a un hogar privado si está
-#           si su pared está hecha de "otros materiales" o tiene la categoría 
-#           6, que tiene pocas observaciones y no está etiquetada.
+#           vivienda tiene paredes de "caña no revestida u otros materiales".
+#           En 1982 las etiquetas de la base están corridas: el código 5 dice
+#           "otros materiales" y el 6 no tiene etiqueta. Pero la codificación
+#           es la misma de los demás censos: 5 es caña no revestida y 6 otros
+#           materiales. Lo muestran las proporciones de hogares: el código 5
+#           tiene 16.3% en 1982, entre la caña no revestida de 1974 (24.8%) y la
+#           de 1990 (11.8%), y el 6 tiene 2.3%, como "otros" en los demás años;
+#           la caña revestida (código 4) tiene 8.7%, entre 9.7% (1974) y 6.5%
+#           (1990). Por eso los códigos 5 y 6 cuentan como carencia, igual que
+#           en los demás censos.
 #
 #   - 2022: agua de empresa pública o junta de agua (V10 1-2) por tubería dentro
 #     de la vivienda; el inodoro a biodigestor cuenta como pozo séptico.
@@ -81,7 +98,8 @@
 #     datos de la vivienda en el registro del primer hogar.
 #
 # Contraste con REDATAM del INEC (noviembre de 2026, todos los cantones):
-#   2022 NBI (variable NBIH) y 2001 materiales y hacinamiento: idénticos;
+#   2022 NBI (variable NBIH) y 2001 todos los componentes salvo la
+#   escolaridad del jefe (ver Validación): idénticos;
 #   2010 NBI con la sintaxis oficial del INEC: diferencia menor a 0.05 puntos;
 #   1990 materiales y hacinamiento: idénticos en 169 y 171 de 173 cantones
 #   (difieren solo en las zonas no delimitadas y en Piñas, por menos de 0.1).
@@ -117,11 +135,37 @@
 #     cambia el NBI en 0.1 puntos (dependencia +1.2 a +1.7).
 #
 # Validación: 2010 da 60.06% con 24,446 hogares no clasificados y 14,329,606
-# personas válidas, igual que el acta del INEC; 2022 da 39.8% (oficial 39.8%).
-# 2001 da 71.6% frente al 73.9% que publica el INEC, cuya sintaxis no está
-# disponible. nbi_oficial
-# es el NBI que traen las bases: el del INEC en 2022 (variable NBI del hogar)
-# y el de la base original en 1982 (pobreza_nbi); NULL en los demás años.
+# personas válidas, igual que el acta del INEC; 2022 da 39.8% (oficial 39.8%)
+# y coincide hogar por hogar con la variable NBI de la base salvo 3 hogares,
+# cuyo único ocupado tiene 10 u 11 años (el INEC cuenta ocupados desde los 10).
+# 2001 da 71.7% frente al 73.9% que publica el INEC (NBI, Versión Libro
+# Metodológico, tabla 1: 8,668,274 personas y 1,966,758 hogares pobres; la
+# sintaxis de 2001 no está disponible).
+#
+# 2001 frente al INEC (contraste con REDATAM, noviembre de 2026). REDATAM 2001
+# no trae una variable de NBI; se armó cada componente allí con las variables
+# del censo. Universo (2,879,935 hogares y 12,068,651 personas), materiales,
+# agua, saneamiento, hacinamiento, niños que no asisten y personas por ocupado
+# coinciden exactamente con este script, en hogares y en personas. La
+# diferencia está en la escolaridad del jefe: la GRAESC de 2001 que trae
+# REDATAM no cuenta el año de preescolar (primaria g = g, secundaria g = 6 + g)
+# y pone 0 años a los 273,253 jefes con nivel o grado desconocido. La GRAESC
+# de 2010 y la sintaxis NBI 2010 del INEC sí cuentan el año de preescolar; aquí
+# se usa esa escala en todos los censos para que la serie sea comparable.
+#   - Con la GRAESC de 2001, el jefe sin dato fuera de los casos válidos si no
+#     tiene otra carencia y los niños sin dato de asistencia como que no
+#     asisten, el NBI de 2001 da 73.87% de personas (8,662,334 pobres; INEC
+#     8,668,274) y 69.84% de hogares (1,945,276; INEC 1,966,758, 70.5%).
+#   - Las personas cuadran con el INEC; quedan 21,000 hogares pobres de menos
+#     (0.7 puntos) que ninguna variante explica a la vez que las personas.
+#     Puede venir de cómo el INEC separó los hogares sin manzana; no se pudo
+#     comprobar.
+#   - Por eso la caída del NBI del INEC entre 2001 y 2010 (73.9% a 60.1%)
+#     mezcla un cambio real con un cambio de escala de escolaridad.
+#
+# nbi_oficial es el NBI que traen las bases: el del INEC en 2022 (variable NBI
+# del hogar) y el de la base original en 1982 (pobreza_nbi); NULL en los demás
+# años.
 #
 # Directorio de trabajo: Boletín 5/Procesamiento/Codigos
 
@@ -134,7 +178,8 @@ resultados_dir <- file.path(dirname(dirname(censo_dir)), "Boletín 5", "Resultad
 # Cada consulta devuelve una fila por hogar en vivienda particular ocupada con:
 # anio, dpa_parroquia (en 1982, la parroquia de 2011), dpa_censo (código del
 # propio censo), n, ocu, esc_jefe, nino, piso, pared, agua,
-# san, dorm, n_declarado (tamaño del hogar
+# san, ssh (letrina o sin servicio higiénico), luz (sin electricidad; estas dos
+# no entran en el NBI, las usa 07_servicios_provincial.R), dorm, n_declarado (tamaño del hogar
 # según el archivo de vivienda/hogar, para verificar la unión), nbi_oficial
 
 nbi_sql_hogares <- list(
@@ -142,14 +187,14 @@ nbi_sql_hogares <- list(
     WITH p AS (
       SELECT idparr11, idparr82, zona, sector, manzana, idhogar, COUNT(*) n,
         COUNT(*) FILTER (edad >= 12 AND P13 IN (0, 1)) ocu,
-        MAX(CASE WHEN P02 = 0 THEN CASE P11a WHEN 0 THEN 0 WHEN 1 THEN 0 WHEN 2 THEN P11b + 1
+        MAX(CASE WHEN P02 = 0 THEN CASE P11a WHEN 0 THEN 0 WHEN 1 THEN 1 + 2 * P11b WHEN 2 THEN P11b + 1
              WHEN 3 THEN 7 + P11b WHEN 4 THEN 13 + P11b END END) esc_jefe,
         MAX((edad BETWEEN 6 AND 12 AND P10 = 2)::INT) nino,
         MAX((pobreza_nbi >= 2)::INT) nbi_oficial
       FROM censo1982 GROUP BY ALL)
     SELECT 1982 anio, lpad(p.idparr11::INT::VARCHAR, 6, '0') dpa_parroquia, lpad(p.idparr82::INT::VARCHAR, 6, '0') dpa_censo, p.n, p.ocu, p.esc_jefe, p.nino,
       (V03c IN (5, 6))::INT piso, (V03b IN (5, 6))::INT pared, (V05 <> 1)::INT agua,
-      (V06 IN (3, 4) OR V07 <> 1)::INT san, V10 dorm, totper n_declarado, p.nbi_oficial
+      (V06 IN (3, 4) OR V07 <> 1)::INT san, (V06 IN (3, 4))::INT ssh, (V08 = 3)::INT luz, V10 dorm, totper n_declarado, p.nbi_oficial
     FROM p JOIN censo1982_vivienda v USING (idparr82, zona, sector, manzana, idhogar)
     WHERE v.V01 BETWEEN 1 AND 8 AND v.V02 = 1",
 
@@ -165,7 +210,8 @@ nbi_sql_hogares <- list(
     p AS (
       SELECT PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG, rk, COUNT(*) n,
         COUNT(*) FILTER (EDADOK >= 12 AND (HIZSEM IN (0, 1) OR ALOMEJOR = 1)) ocu,
-        MAX(CASE WHEN PARENT = 0 THEN CASE WHEN NIVINS IN (0, 1) THEN 0
+        MAX(CASE WHEN PARENT = 0 THEN CASE WHEN NIVINS = 0 THEN 0
+             WHEN NIVINS = 1 AND GRACUR IN (0, 2, 4, 6) THEN GRACUR + (GRACUR > 0)::INT
              WHEN NIVINS = 2 AND GRACUR <= 6 THEN GRACUR + 1 WHEN NIVINS = 3 AND GRACUR <= 6 THEN 7 + GRACUR
              WHEN NIVINS = 3 THEN 12 WHEN NIVINS = 4 THEN 13 WHEN NIVINS = 5 THEN 18 END END) esc_jefe,
         MAX((EDADOK BETWEEN 6 AND 12 AND ASISTE = 2)::INT) nino
@@ -179,7 +225,7 @@ nbi_sql_hogares <- list(
       printf('%02d%02d%02d', p.PROVIN::INT, p.CANTON::INT, p.PARROQ::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (v.PISO IN (5, 6))::INT piso, (v.PARED IN (5, 6))::INT pared,
       (NOT (v.MEDABA = 1 AND v.SISABA = 1))::INT agua,
-      (h.SERHIG IN (3, 4) OR v.AGUSER <> 1)::INT san, h.CUADOR dorm, h.TOTALPOB n_declarado, NULL::INT nbi_oficial
+      (h.SERHIG IN (3, 4) OR v.AGUSER <> 1)::INT san, (h.SERHIG IN (3, 4))::INT ssh, (v.ELECTR = 2)::INT luz, h.CUADOR dorm, h.TOTALPOB n_declarado, NULL::INT nbi_oficial
     FROM p JOIN h USING (PROVIN, CANTON, PARROQ, ZONA, SECTOR, MANZAN, AREEMP, NUMVIV, NUMHOG, rk)
     JOIN v USING (vseq)
     WHERE v.TIPVIV BETWEEN 1 AND 8 AND v.CONOCU = 1",
@@ -204,7 +250,8 @@ nbi_sql_hogares <- list(
     p AS (
       SELECT hseq, COUNT(*) n,
         COUNT(*) FILTER (EDAD >= 12 AND (HIZSEM IN (1, 2) OR ALOMEJOR = 1)) ocu,
-        MAX(CASE WHEN PARENT = 0 THEN CASE WHEN NIVINS IN (0, 1) THEN 0
+        MAX(CASE WHEN PARENT = 0 THEN CASE WHEN NIVINS = 0 THEN 0
+             WHEN NIVINS = 1 AND GRACUR IN (0, 2, 4, 6) THEN GRACUR + (GRACUR > 0)::INT
              WHEN GRACUR = 99 THEN CASE WHEN NIVINS IN (3, 5, 6, 7, 8) THEN 12 END
              WHEN NIVINS = 2 THEN GRACUR + 1 WHEN NIVINS = 3 THEN 7 + GRACUR WHEN NIVINS = 4 THEN GRACUR
              WHEN NIVINS = 5 THEN 10 + GRACUR WHEN NIVINS IN (6, 7) THEN 13 + GRACUR WHEN NIVINS = 8 THEN 18 END END) esc_jefe,
@@ -214,7 +261,7 @@ nbi_sql_hogares <- list(
       printf('%02d%02d%02d', h.PROVIN::INT, h.CANTON::INT, h.PARROQ::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (v.PISO IN (5, 6))::INT piso, (v.PARED IN (5, 6))::INT pared,
       (NOT (v.PROVAGUA = 1 AND v.OBTAGUA = 1))::INT agua,
-      (h.SERHIG IN (3, 4) OR v.AGUSER NOT IN (1, 3))::INT san, h.DORMHOG dorm, h.TOTPOBL n_declarado, NULL::INT nbi_oficial
+      (h.SERHIG IN (3, 4) OR v.AGUSER NOT IN (1, 3))::INT san, (h.SERHIG IN (3, 4))::INT ssh, (v.ELECTR = 2)::INT luz, h.DORMHOG dorm, h.TOTPOBL n_declarado, NULL::INT nbi_oficial
     FROM p JOIN hg01 h USING (hseq) JOIN v01 v USING (vseq)
     WHERE v.TIPVIV BETWEEN 1 AND 8 AND v.CONOCU = 1",
 
@@ -229,21 +276,21 @@ nbi_sql_hogares <- list(
     SELECT 2010 anio, printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_parroquia,
       printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (V05 IN (6, 7))::INT piso, (V03 IN (6, 7))::INT pared,
-      (NOT (V07 = 1 AND V08 = 1))::INT agua, (V09 NOT IN (1, 2))::INT san, H01 dorm, TP1 n_declarado, NULL::INT nbi_oficial
+      (NOT (V07 = 1 AND V08 = 1))::INT agua, (V09 NOT IN (1, 2))::INT san, (V09 IN (5, 6))::INT ssh, (V10 = 5)::INT luz, H01 dorm, TP1 n_declarado, NULL::INT nbi_oficial
     FROM p JOIN censo2010_hogar h USING (id_hog) JOIN censo2010_vivienda v ON v.id_viv = h.id_viv
     WHERE v.VTV BETWEEN 1 AND 8",
 
   `2022` = "
     WITH p AS (
       SELECT ID_HOG, COUNT(*) n,
-        COUNT(*) FILTER (P03 >= 12 AND CONDACT1 = 2) ocu,
+        COUNT(*) FILTER (P03 >= 12 AND P22 BETWEEN 1 AND 6) ocu,
         MAX(CASE WHEN P01 = 1 THEN ESCOLA END) esc_jefe,
         MAX((P03 BETWEEN 6 AND 12 AND P15 = 2)::INT) nino
       FROM censo2022 GROUP BY ID_HOG)
     SELECT 2022 anio, printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_parroquia,
       printf('%02d%02d%02d', v.I01::INT, v.I02::INT, v.I03::INT) dpa_censo,
       p.n, p.ocu, p.esc_jefe, p.nino, (V07 IN (7, 8))::INT piso, (V05 IN (7, 8))::INT pared,
-      (NOT (V09 = 1 AND V10 IN (1, 2)))::INT agua, (V11 NOT IN (1, 2, 3))::INT san, H01 dorm, H1303 n_declarado, (h.NBI = 1)::INT nbi_oficial
+      (NOT (V09 = 1 AND V10 IN (1, 2)))::INT agua, (V11 NOT IN (1, 2, 3))::INT san, (V11 IN (6, 7))::INT ssh, (V12 = 2 AND V13 = 5)::INT luz, H01 dorm, H1303 n_declarado, (h.NBI = 1)::INT nbi_oficial
     FROM p JOIN censo2022_hogar h USING (ID_HOG) JOIN censo2022_vivienda v ON v.ID_VIV = h.ID_VIV
     WHERE v.V01 BETWEEN 1 AND 8"
 )
